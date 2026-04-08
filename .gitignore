@@ -45,6 +45,7 @@ Thumbs.db
 # Local pipeline infrastructure (NEVER commit)
 .claude/
 Makefile
-docker-compose.yml
+
+# Local Docker overrides (base docker-compose.yml IS committed)
 docker-compose.local.yml
 docker-compose.override.yml
