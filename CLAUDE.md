@@ -135,12 +135,12 @@ npm test 2>/dev/null || echo "测试框架尚未初始化"
 
 ### 步骤 5：工作结束时
 
-每个用户故事（US）实现完成后：
-1. **必须 commit**，消息格式：`feat(US-NNN): 简短描述`
+每个 Sprint 任务（无论是基础设施任务还是用户故事）完成后：
+1. **必须 commit**，消息格式：用户故事用 `feat(US-NNN): 简短描述`，基础设施任务用 `feat(sprint-N/task-N): 简短描述`
 2. **必须勾选** `docs/sprints/sprint-N.md` 中对应的 checkbox
 3. **必须把 test.todo() 变成真正的测试**，确保通过
 
-这 3 步是质量锁定机制 — commit 锁定代码、checkbox 锁定进度、测试锁定行为。任何一步都不可跳过。
+这 3 步是质量锁定机制 — commit 锁定代码、checkbox 锁定进度、测试锁定行为。任何一步都不可跳过。适用于所有任务类型，不仅仅是用户故事。
 
 ---
 

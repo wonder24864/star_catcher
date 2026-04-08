@@ -41,17 +41,9 @@ describe('AI Harness Integrity', () => {
     }
   })
 
-  test('all AI operations have corresponding Zod schemas', () => {
-    // Each file in src/lib/ai/operations/ should have a matching schema
-    // in src/lib/ai/harness/schemas/
-    test.todo('verify schema files exist for each operation')
-  })
+  test.todo('all AI operations have corresponding Zod schemas')
 
-  test('all AI operations have corresponding prompt templates', () => {
-    test.todo('verify prompt files exist for each operation')
-  })
+  test.todo('all AI operations have corresponding prompt templates')
 
-  test('ContentGuardrail is applied to all student-facing AI content', () => {
-    test.todo('grep for generate-help calls and verify guardrail usage')
-  })
+  test.todo('ContentGuardrail is applied to all student-facing AI content')
 })

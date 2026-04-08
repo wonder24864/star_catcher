@@ -5,8 +5,22 @@
  * Prevents deploying with missing translations.
  */
 import { describe, test, expect } from 'vitest'
-import { execSync } from 'child_process'
-import { existsSync, readFileSync } from 'fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'fs'
+import { join, extname } from 'path'
+
+function collectFiles(dir: string, exts: string[]): string[] {
+  const files: string[] = []
+  if (!existsSync(dir)) return files
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry)
+    if (statSync(full).isDirectory()) {
+      files.push(...collectFiles(full, exts))
+    } else if (exts.includes(extname(full))) {
+      files.push(full)
+    }
+  }
+  return files
+}
 
 describe('i18n Coverage', () => {
   test('all translation keys exist in both zh.json and en.json', () => {
@@ -14,23 +28,33 @@ describe('i18n Coverage', () => {
     const enPath = 'messages/en.json'
 
     if (!existsSync(zhPath) || !existsSync(enPath)) {
-      test.todo('translation files not yet created')
-      return
+      return // translation files not yet created, skip
     }
 
     const zh = JSON.parse(readFileSync(zhPath, 'utf-8'))
     const en = JSON.parse(readFileSync(enPath, 'utf-8'))
 
-    // Extract all t('key') calls from source
-    const result = execSync(
-      "grep -rohP \"t\\(['\\\"]([^'\\\"]+)['\\\"]\\)\" src/ --include='*.ts' --include='*.tsx' || true",
-      { encoding: 'utf-8' }
-    )
+    // Extract all t('key') calls from source, resolving useTranslations namespace
+    const srcFiles = collectFiles('src', ['.ts', '.tsx'])
+    const keySet = new Set<string>()
+    // \b ensures t( is standalone, not part of get(, redirect(, etc.
+    const tCallPattern = /\bt\(['"]([^'"]+)['"]\)/g
+    const nsPattern = /useTranslations\(['"]([^'"]+)['"]\)/
 
-    const keys = [...new Set(
-      result.match(/t\(['"]([^'"]+)['"]\)/g)?.map((m) => m.replace(/t\(['"]|['"]\)/g, '')) || []
-    )]
+    for (const file of srcFiles) {
+      const content = readFileSync(file, 'utf-8')
+      const nsMatch = content.match(nsPattern)
+      const ns = nsMatch ? nsMatch[1] : ''
 
+      let match
+      while ((match = tCallPattern.exec(content)) !== null) {
+        const key = ns ? `${ns}.${match[1]}` : match[1]
+        keySet.add(key)
+      }
+      tCallPattern.lastIndex = 0
+    }
+
+    const keys = [...keySet]
     const missingZh = keys.filter((k) => !getNestedValue(zh, k))
     const missingEn = keys.filter((k) => !getNestedValue(en, k))
 
@@ -38,9 +62,7 @@ describe('i18n Coverage', () => {
     expect(missingEn, 'Missing keys in en.json').toEqual([])
   })
 
-  test('no hardcoded Chinese strings in components', () => {
-    test.todo('scan tsx files for Chinese character strings outside t() calls')
-  })
+  test.todo('no hardcoded Chinese strings in components')
 })
 
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {

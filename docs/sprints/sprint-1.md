@@ -13,21 +13,21 @@
 
 ### Week 1
 
-- [ ] 1. 项目初始化：Next.js + TypeScript + Tailwind + shadcn/ui
-- [ ] 2. Docker Compose 环境搭建（`docker compose -p star-catcher up -d`）
-- [ ] 3. Prisma Schema 定义 + 数据库迁移（`prisma/schema.prisma` 已存在）
-- [ ] 4. tRPC 基础配置
-- [ ] 5. NextAuth.js 集成（用户名密码认证）
-- [ ] 6. next-intl 国际化配置 + 初始翻译文件
-- [ ] 7. 注册/登录页面 + API
+- [x] 1. 项目初始化：Next.js + TypeScript + Tailwind + shadcn/ui
+- [x] 2. Docker Compose 环境搭建（`docker compose -p star-catcher up -d`）
+- [x] 3. Prisma Schema 定义 + 数据库迁移（`prisma/schema.prisma` 已存在）
+- [x] 4. tRPC 基础配置
+- [x] 5. NextAuth.js 集成（用户名密码认证）
+- [x] 6. next-intl 国际化配置 + 初始翻译文件
+- [x] 7. 注册/登录页面 + API
 
 ### Week 2
 
-- [ ] 8. 用户个人信息页
-- [ ] 9. 家庭组 CRUD（创建、邀请、加入、管理成员）
-- [ ] 10. 家长-学生关系视图（切换查看不同学生）
-- [ ] 11. 基础布局（学生端/家长端/管理员端导航）
-- [ ] 12. RBAC 中间件（路由守卫）
+- [x] 8. 用户个人信息页
+- [x] 9. 家庭组 CRUD（创建、邀请、加入、管理成员）
+- [x] 10. 家长-学生关系视图（切换查看不同学生）
+- [x] 11. 基础布局（学生端/家长端/管理员端导航）
+- [x] 12. RBAC 中间件（路由守卫）
 
 ## 验收标准
 

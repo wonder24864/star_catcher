@@ -2,6 +2,9 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { locales } from "@/i18n/config";
+import { TRPCProvider } from "@/lib/trpc/provider";
+import { SessionProvider } from "@/components/providers/session-provider";
+import { Toaster } from "@/components/ui/sonner";
 
 export default async function LocaleLayout({
   children,
@@ -17,7 +20,12 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      {children}
+      <SessionProvider>
+        <TRPCProvider>
+          {children}
+          <Toaster />
+        </TRPCProvider>
+      </SessionProvider>
     </NextIntlClientProvider>
   );
 }
