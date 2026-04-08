@@ -1,0 +1,113 @@
+{
+  "app": {
+    "name": "Star Catcher",
+    "tagline": "智能错题本"
+  },
+  "nav": {
+    "home": "首页",
+    "check": "作业检查",
+    "errors": "错题本",
+    "settings": "设置",
+    "family": "家庭",
+    "overview": "概览",
+    "students": "学生",
+    "admin": "管理"
+  },
+  "auth": {
+    "login": "登录",
+    "register": "注册",
+    "logout": "退出登录",
+    "username": "用户名",
+    "password": "密码",
+    "confirmPassword": "确认密码",
+    "nickname": "昵称",
+    "role": "角色",
+    "grade": "年级",
+    "rememberMe": "记住我",
+    "forgotPassword": "忘记密码？",
+    "noAccount": "没有账号？",
+    "hasAccount": "已有账号？",
+    "registerNow": "立即注册",
+    "loginNow": "立即登录",
+    "student": "学生",
+    "parent": "家长"
+  },
+  "grades": {
+    "PRIMARY_1": "一年级",
+    "PRIMARY_2": "二年级",
+    "PRIMARY_3": "三年级",
+    "PRIMARY_4": "四年级",
+    "PRIMARY_5": "五年级",
+    "PRIMARY_6": "六年级",
+    "JUNIOR_1": "初一",
+    "JUNIOR_2": "初二",
+    "JUNIOR_3": "初三",
+    "SENIOR_1": "高一",
+    "SENIOR_2": "高二",
+    "SENIOR_3": "高三"
+  },
+  "family": {
+    "create": "创建家庭组",
+    "join": "加入家庭组",
+    "invite": "邀请成员",
+    "inviteCode": "邀请码",
+    "groupName": "家庭组名称",
+    "members": "成员列表",
+    "owner": "创建者",
+    "member": "成员",
+    "remove": "移除",
+    "leave": "退出",
+    "switchStudent": "切换学生"
+  },
+  "profile": {
+    "title": "个人信息",
+    "edit": "编辑",
+    "save": "保存",
+    "cancel": "取消",
+    "changePassword": "修改密码",
+    "currentPassword": "当前密码",
+    "newPassword": "新密码",
+    "language": "语言"
+  },
+  "common": {
+    "loading": "加载中...",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "confirm": "确认",
+    "back": "返回",
+    "next": "下一步",
+    "submit": "提交",
+    "search": "搜索",
+    "filter": "筛选",
+    "noData": "暂无数据",
+    "success": "操作成功",
+    "switchLanguage": "English"
+  },
+  "error": {
+    "required": "此项为必填",
+    "invalidUsername": "用户名需 4-32 位，仅支持字母、数字和下划线",
+    "invalidPassword": "密码需至少 8 位，包含字母和数字",
+    "passwordMismatch": "两次密码不一致",
+    "usernameExists": "用户名已被使用",
+    "loginFailed": "用户名或密码错误",
+    "accountLocked": "账号已被锁定，请 15 分钟后重试",
+    "unauthorized": "请先登录",
+    "forbidden": "无权访问",
+    "dataConflict": "数据已被修改，请刷新后重试",
+    "rateLimitExceeded": "操作太频繁，请稍后再试",
+    "networkError": "网络错误，请检查连接",
+    "serverError": "服务器错误，请稍后重试"
+  },
+  "validation": {
+    "usernameLength": "用户名长度需为 4-32 个字符",
+    "usernameFormat": "用户名仅支持字母、数字和下划线",
+    "passwordLength": "密码长度需至少 8 个字符",
+    "passwordFormat": "密码需包含字母和数字",
+    "nicknameLength": "昵称长度需为 1-32 个字符",
+    "groupNameLength": "家庭组名称长度需为 1-32 个字符",
+    "inviteCodeFormat": "邀请码为 6 位字母和数字",
+    "gradeRequired": "学生需选择年级"
+  }
+}

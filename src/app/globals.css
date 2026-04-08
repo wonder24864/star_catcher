@@ -1,0 +1,165 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Star Catcher Design System — shadcn/ui compatible
+ * Three themes: Candy (elementary), Fresh (middle school), Pro (high school/parent/admin)
+ * See docs/DESIGN-SYSTEM.md for full spec
+ */
+
+/* ==================== Theme: Pro (Default) ==================== */
+:root {
+  --radius: 0.5rem;
+  --background: oklch(0.985 0.002 247);
+  --foreground: oklch(0.145 0.015 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0.015 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0.015 260);
+  --primary: oklch(0.623 0.17 252);
+  --primary-foreground: oklch(0.985 0.002 247);
+  --secondary: oklch(0.7 0.15 163);
+  --secondary-foreground: oklch(0.985 0.002 247);
+  --muted: oklch(0.965 0.003 264);
+  --muted-foreground: oklch(0.556 0.022 258);
+  --accent: oklch(0.795 0.15 75);
+  --accent-foreground: oklch(0.26 0.015 260);
+  --destructive: oklch(0.577 0.245 27);
+  --destructive-foreground: oklch(0.985 0.002 247);
+  --success: oklch(0.7 0.15 163);
+  --success-foreground: oklch(0.985 0.002 247);
+  --border: oklch(0.922 0.004 264);
+  --input: oklch(0.922 0.004 264);
+  --ring: oklch(0.623 0.17 252);
+  --sidebar-background: oklch(0.985 0.002 247);
+  --sidebar-foreground: oklch(0.145 0.015 260);
+  --sidebar-primary: oklch(0.623 0.17 252);
+  --sidebar-primary-foreground: oklch(0.985 0.002 247);
+  --sidebar-accent: oklch(0.965 0.003 264);
+  --sidebar-accent-foreground: oklch(0.26 0.015 260);
+  --sidebar-border: oklch(0.922 0.004 264);
+  --sidebar-ring: oklch(0.623 0.17 252);
+  /* Pro theme metrics */
+  --font-size-base: 14px;
+  --button-min-height: 40px;
+  --spacing-unit: 4px;
+}
+
+/* ==================== Theme: Candy (Elementary) ==================== */
+[data-theme="candy"] {
+  --radius: 0.75rem;
+  --background: oklch(0.98 0.015 60);
+  --foreground: oklch(0.25 0.02 210);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.25 0.02 210);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.02 210);
+  --primary: oklch(0.65 0.2 20);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.72 0.13 180);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.96 0.01 60);
+  --muted-foreground: oklch(0.48 0.02 210);
+  --accent: oklch(0.9 0.14 90);
+  --accent-foreground: oklch(0.25 0.02 210);
+  --destructive: oklch(0.65 0.2 20);
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.72 0.13 180);
+  --success-foreground: oklch(1 0 0);
+  --border: oklch(0.93 0.015 60);
+  --input: oklch(0.93 0.015 60);
+  --ring: oklch(0.65 0.2 20);
+  --sidebar-background: oklch(0.98 0.015 60);
+  --sidebar-foreground: oklch(0.25 0.02 210);
+  --sidebar-primary: oklch(0.65 0.2 20);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.96 0.01 60);
+  --sidebar-accent-foreground: oklch(0.25 0.02 210);
+  --sidebar-border: oklch(0.93 0.015 60);
+  --sidebar-ring: oklch(0.65 0.2 20);
+  /* Candy theme metrics */
+  --font-size-base: 18px;
+  --button-min-height: 52px;
+  --spacing-unit: 8px;
+}
+
+/* ==================== Theme: Fresh (Middle School) ==================== */
+[data-theme="fresh"] {
+  --radius: 0.625rem;
+  --background: oklch(0.98 0.003 264);
+  --foreground: oklch(0.25 0.02 210);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.25 0.02 210);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.02 210);
+  --primary: oklch(0.55 0.2 285);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.68 0.15 165);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.965 0.003 264);
+  --muted-foreground: oklch(0.48 0.02 210);
+  --accent: oklch(0.85 0.13 80);
+  --accent-foreground: oklch(0.25 0.02 210);
+  --destructive: oklch(0.6 0.18 40);
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.68 0.15 165);
+  --success-foreground: oklch(1 0 0);
+  --border: oklch(0.93 0.003 264);
+  --input: oklch(0.93 0.003 264);
+  --ring: oklch(0.55 0.2 285);
+  --sidebar-background: oklch(0.98 0.003 264);
+  --sidebar-foreground: oklch(0.25 0.02 210);
+  --sidebar-primary: oklch(0.55 0.2 285);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.965 0.003 264);
+  --sidebar-accent-foreground: oklch(0.25 0.02 210);
+  --sidebar-border: oklch(0.93 0.003 264);
+  --sidebar-ring: oklch(0.55 0.2 285);
+  /* Fresh theme metrics */
+  --font-size-base: 16px;
+  --button-min-height: 44px;
+  --spacing-unit: 8px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar-background: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-size: var(--font-size-base);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+}

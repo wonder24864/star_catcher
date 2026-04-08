@@ -1,0 +1,380 @@
+// Star Catcher - Prisma Schema
+// Source of truth for all data models (see docs/adr/002-prisma-source-of-truth.md)
+//
+// Soft-delete convention: User, Family, ErrorQuestion have deletedAt fields.
+// All queries MUST filter WHERE deletedAt IS NULL.
+// Use Prisma Client Extensions ($extends) to inject this globally.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== Users & Auth ====================
+
+model User {
+  id             String    @id @default(cuid())
+  username       String    @unique @db.VarChar(32)
+  password       String    @db.VarChar(128) // bcrypt hashed
+  nickname       String    @db.VarChar(32)
+  role           UserRole
+  grade          Grade?    // Required for STUDENT role
+  locale         Locale    @default(zh)
+  isActive       Boolean   @default(true)
+  deletedAt      DateTime? @db.Timestamptz // Soft delete
+  loginFailCount Int       @default(0) // Consecutive login failures
+  lockedUntil    DateTime? @db.Timestamptz // Account lock expiry
+  createdAt      DateTime  @default(now()) @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @db.Timestamptz
+
+  familyMemberships FamilyMember[]
+  homeworkSessions  HomeworkSession[]
+  errorQuestions    ErrorQuestion[]
+  parentNotes       ParentNote[]
+  adminLogs         AdminLog[]
+  parentConfigs     ParentStudentConfig[] @relation("ParentConfigs")
+  studentConfigs    ParentStudentConfig[] @relation("StudentConfigs")
+
+  @@index([username])
+  @@index([role])
+}
+
+enum UserRole {
+  STUDENT
+  PARENT
+  ADMIN
+}
+
+enum Grade {
+  PRIMARY_1
+  PRIMARY_2
+  PRIMARY_3
+  PRIMARY_4
+  PRIMARY_5
+  PRIMARY_6
+  JUNIOR_1
+  JUNIOR_2
+  JUNIOR_3
+  SENIOR_1
+  SENIOR_2
+  SENIOR_3
+}
+
+enum Locale {
+  zh
+  en
+}
+
+// ==================== Family Groups ====================
+
+model Family {
+  id                  String    @id @default(cuid())
+  name                String    @db.VarChar(32)
+  inviteCode          String?   @unique @db.VarChar(8)
+  inviteCodeExpiresAt DateTime? @db.Timestamptz
+  deletedAt           DateTime? @db.Timestamptz // Soft delete
+  createdAt           DateTime  @default(now()) @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @db.Timestamptz
+
+  members FamilyMember[]
+
+  @@index([inviteCode])
+}
+
+model FamilyMember {
+  id       String           @id @default(cuid())
+  userId   String
+  familyId String
+  role     FamilyMemberRole
+  joinedAt DateTime         @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  family Family @relation(fields: [familyId], references: [id])
+
+  @@unique([userId, familyId])
+  @@index([familyId])
+  @@index([userId])
+}
+
+enum FamilyMemberRole {
+  OWNER
+  MEMBER
+}
+
+// ==================== Homework Check ====================
+
+model HomeworkSession {
+  id          String         @id @default(cuid())
+  studentId   String
+  createdBy   String         // Operator ID (could be parent acting on behalf)
+  subject     Subject?       // AI auto-detected, user can override
+  contentType ContentType?   // AI auto-detected
+  grade       Grade?         // AI auto-detected
+  title       String?        @db.VarChar(128)
+  status      HomeworkStatus @default(CREATED)
+  finalScore  Float?         // Written on completion
+  totalRounds Int            @default(0)
+  createdAt   DateTime       @default(now()) @db.Timestamptz
+  updatedAt   DateTime       @updatedAt @db.Timestamptz
+
+  student      User              @relation(fields: [studentId], references: [id])
+  images       HomeworkImage[]
+  checkRounds  CheckRound[]
+  questions    SessionQuestion[]
+  helpRequests HelpRequest[]
+
+  @@index([studentId, createdAt])
+  @@index([studentId, status])
+  @@index([status, createdAt]) // Admin stats queries
+}
+
+enum Subject {
+  MATH
+  CHINESE
+  ENGLISH
+  PHYSICS
+  CHEMISTRY
+  BIOLOGY
+  POLITICS
+  HISTORY
+  GEOGRAPHY
+  OTHER
+}
+
+enum ContentType {
+  EXAM
+  HOMEWORK
+  DICTATION
+  COPYWRITING
+  ORAL_CALC
+  COMPOSITION
+  OTHER
+}
+
+enum HomeworkStatus {
+  CREATED
+  RECOGNIZING
+  RECOGNIZED
+  RECOGNITION_FAILED
+  CHECKING
+  COMPLETED
+}
+
+model HomeworkImage {
+  id               String   @id @default(cuid())
+  homeworkSessionId String
+  imageUrl         String   // MinIO URL
+  originalFilename String?
+  sortOrder        Int      @default(0)
+  exifRotation     Int      @default(0) // EXIF orientation correction (0/90/180/270)
+  privacyStripped  Boolean  @default(false) // GPS/privacy EXIF data stripped
+  createdAt        DateTime @default(now())
+
+  homeworkSession HomeworkSession @relation(fields: [homeworkSessionId], references: [id], onDelete: Cascade)
+
+  @@index([homeworkSessionId])
+}
+
+model SessionQuestion {
+  id               String        @id @default(cuid())
+  homeworkSessionId String
+  questionNumber   Int
+  questionType     QuestionType?
+  content          String        @db.Text
+  studentAnswer    String?       @db.Text
+  correctAnswer    String?       @db.Text
+  isCorrect        Boolean?
+  confidence       Float?        // AI confidence 0.0-1.0
+  needsReview      Boolean       @default(false) // Flagged when confidence < 0.7
+  imageRegion      Json?         // Relative coords {x%, y%, w%, h%}
+  aiKnowledgePoint String?       @db.VarChar(256)
+  createdAt        DateTime      @default(now()) @db.Timestamptz
+  updatedAt        DateTime      @updatedAt @db.Timestamptz
+
+  homeworkSession HomeworkSession       @relation(fields: [homeworkSessionId], references: [id], onDelete: Cascade)
+  roundResults    RoundQuestionResult[]
+  helpRequests    HelpRequest[]
+  errorQuestion   ErrorQuestion?
+
+  @@index([homeworkSessionId])
+}
+
+enum QuestionType {
+  CHOICE
+  FILL_BLANK
+  TRUE_FALSE
+  SHORT_ANSWER
+  CALCULATION
+  ESSAY
+  DICTATION_ITEM
+  COPY_ITEM
+  OTHER
+}
+
+model CheckRound {
+  id               String   @id @default(cuid())
+  homeworkSessionId String
+  roundNumber      Int
+  score            Float?
+  totalQuestions   Int?
+  correctCount     Int?
+  createdAt        DateTime @default(now())
+
+  homeworkSession HomeworkSession       @relation(fields: [homeworkSessionId], references: [id], onDelete: Cascade)
+  results         RoundQuestionResult[]
+
+  @@unique([homeworkSessionId, roundNumber])
+  @@index([homeworkSessionId])
+}
+
+model RoundQuestionResult {
+  id                String  @id @default(cuid())
+  checkRoundId      String
+  sessionQuestionId String
+  studentAnswer     String? // Answer in this round
+  isCorrect         Boolean
+  correctedFromPrev Boolean @default(false)
+
+  checkRound      CheckRound      @relation(fields: [checkRoundId], references: [id], onDelete: Cascade)
+  sessionQuestion SessionQuestion @relation(fields: [sessionQuestionId], references: [id], onDelete: Cascade)
+
+  @@index([checkRoundId])
+  @@index([sessionQuestionId])
+}
+
+model HelpRequest {
+  id               String   @id @default(cuid())
+  homeworkSessionId String
+  sessionQuestionId String
+  level            Int      // 1, 2, or 3
+  aiResponse       String   // AI-generated help content
+  createdAt        DateTime @default(now())
+
+  homeworkSession HomeworkSession @relation(fields: [homeworkSessionId], references: [id], onDelete: Cascade)
+  sessionQuestion SessionQuestion @relation(fields: [sessionQuestionId], references: [id], onDelete: Cascade)
+
+  @@index([homeworkSessionId])
+  @@index([sessionQuestionId])
+}
+
+// ==================== Error Notebook ====================
+
+model ErrorQuestion {
+  id                String       @id @default(cuid())
+  studentId         String
+  sessionQuestionId String?      @unique
+  subject           Subject
+  contentType       ContentType?
+  grade             Grade?
+  questionType      QuestionType?
+  content           String       @db.Text
+  contentHash       String?      @db.VarChar(64) // SHA256 for dedup (see ADR-005)
+  studentAnswer     String?      @db.Text
+  correctAnswer     String?      @db.Text
+  errorAnalysis     String?      @db.Text // AI error analysis
+  aiKnowledgePoint  String?      @db.VarChar(256)
+  imageUrl          String?
+  totalAttempts     Int          @default(1)
+  correctAttempts   Int          @default(0)
+  isMastered        Boolean      @default(false)
+  deletedAt         DateTime?    @db.Timestamptz // Soft delete
+  createdAt         DateTime     @default(now()) @db.Timestamptz
+  updatedAt         DateTime     @updatedAt @db.Timestamptz
+
+  student         User              @relation(fields: [studentId], references: [id])
+  sessionQuestion SessionQuestion?  @relation(fields: [sessionQuestionId], references: [id])
+  parentNotes     ParentNote[]
+
+  @@unique([studentId, contentHash])
+  @@index([studentId, subject])
+  @@index([studentId, createdAt])
+  @@index([studentId, isMastered])
+  @@index([studentId, deletedAt, createdAt])  // Soft-delete filtered list queries
+}
+
+model ParentNote {
+  id              String   @id @default(cuid())
+  parentId        String
+  errorQuestionId String
+  content         String   @db.VarChar(500)
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  updatedAt       DateTime @updatedAt @db.Timestamptz
+
+  parent        User          @relation(fields: [parentId], references: [id])
+  errorQuestion ErrorQuestion @relation(fields: [errorQuestionId], references: [id], onDelete: Cascade)
+
+  @@index([errorQuestionId])
+}
+
+// ==================== Parent Settings ====================
+
+model ParentStudentConfig {
+  id           String   @id @default(cuid())
+  parentId     String
+  studentId    String
+  parent       User     @relation("ParentConfigs", fields: [parentId], references: [id])
+  student      User     @relation("StudentConfigs", fields: [studentId], references: [id])
+  maxHelpLevel Int      @default(2) // Max help level (1-3), default 2 for elementary
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([parentId, studentId])
+  @@index([parentId])  // "get all students for this parent"
+  @@index([studentId]) // "get all parents for this student"
+}
+
+// ==================== System Admin ====================
+
+model AdminLog {
+  id        String   @id @default(cuid())
+  adminId   String
+  action    String
+  target    String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id])
+
+  @@index([adminId, createdAt])
+}
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
+
+// ==================== AI Call Logging ====================
+// All AI calls are logged via the Harness CallLogger (see ADR-001)
+
+enum AIOperationType {
+  OCR_RECOGNIZE
+  SUBJECT_DETECT
+  HELP_GENERATE
+}
+
+model AICallLog {
+  id            String          @id @default(cuid())
+  userId        String?
+  operationType AIOperationType
+  provider      String          @db.VarChar(16) // azure / local
+  model         String          @db.VarChar(32) // gpt-5.4
+  correlationId String?         @db.VarChar(64) // BullMQ jobId or tRPC requestId
+  inputTokens   Int             @default(0)
+  outputTokens  Int             @default(0)
+  durationMs    Int             @default(0)
+  success       Boolean
+  errorMessage  String?         @db.Text
+  createdAt     DateTime        @default(now()) @db.Timestamptz
+
+  @@index([createdAt])
+  @@index([operationType])
+  @@index([userId, createdAt])
+}

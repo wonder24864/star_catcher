@@ -1,0 +1,113 @@
+{
+  "app": {
+    "name": "Star Catcher",
+    "tagline": "Intelligent Error Notebook"
+  },
+  "nav": {
+    "home": "Home",
+    "check": "Homework Check",
+    "errors": "Error Notebook",
+    "settings": "Settings",
+    "family": "Family",
+    "overview": "Overview",
+    "students": "Students",
+    "admin": "Admin"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "nickname": "Nickname",
+    "role": "Role",
+    "grade": "Grade",
+    "rememberMe": "Remember Me",
+    "forgotPassword": "Forgot Password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "registerNow": "Register Now",
+    "loginNow": "Login Now",
+    "student": "Student",
+    "parent": "Parent"
+  },
+  "grades": {
+    "PRIMARY_1": "Grade 1",
+    "PRIMARY_2": "Grade 2",
+    "PRIMARY_3": "Grade 3",
+    "PRIMARY_4": "Grade 4",
+    "PRIMARY_5": "Grade 5",
+    "PRIMARY_6": "Grade 6",
+    "JUNIOR_1": "Grade 7",
+    "JUNIOR_2": "Grade 8",
+    "JUNIOR_3": "Grade 9",
+    "SENIOR_1": "Grade 10",
+    "SENIOR_2": "Grade 11",
+    "SENIOR_3": "Grade 12"
+  },
+  "family": {
+    "create": "Create Family Group",
+    "join": "Join Family Group",
+    "invite": "Invite Members",
+    "inviteCode": "Invite Code",
+    "groupName": "Group Name",
+    "members": "Members",
+    "owner": "Owner",
+    "member": "Member",
+    "remove": "Remove",
+    "leave": "Leave",
+    "switchStudent": "Switch Student"
+  },
+  "profile": {
+    "title": "Profile",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "language": "Language"
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "search": "Search",
+    "filter": "Filter",
+    "noData": "No data",
+    "success": "Success",
+    "switchLanguage": "中文"
+  },
+  "error": {
+    "required": "This field is required",
+    "invalidUsername": "Username must be 4-32 characters, letters, numbers and underscores only",
+    "invalidPassword": "Password must be at least 8 characters with letters and numbers",
+    "passwordMismatch": "Passwords do not match",
+    "usernameExists": "Username is already taken",
+    "loginFailed": "Invalid username or password",
+    "accountLocked": "Account is locked. Please try again in 15 minutes",
+    "unauthorized": "Please login first",
+    "forbidden": "Access denied",
+    "dataConflict": "Data has been modified. Please refresh and try again",
+    "rateLimitExceeded": "Too many requests. Please try again later",
+    "networkError": "Network error. Please check your connection",
+    "serverError": "Server error. Please try again later"
+  },
+  "validation": {
+    "usernameLength": "Username must be 4-32 characters",
+    "usernameFormat": "Username can only contain letters, numbers and underscores",
+    "passwordLength": "Password must be at least 8 characters",
+    "passwordFormat": "Password must contain both letters and numbers",
+    "nicknameLength": "Nickname must be 1-32 characters",
+    "groupNameLength": "Group name must be 1-32 characters",
+    "inviteCodeFormat": "Invite code must be 6 alphanumeric characters",
+    "gradeRequired": "Grade is required for students"
+  }
+}
