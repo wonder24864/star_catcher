@@ -65,7 +65,17 @@ export const confirmResultsSchema = z.object({
   ]).optional(),
 });
 
+export const getCheckStatusSchema = z.object({
+  sessionId: z.string().min(1),
+});
+
+export const completeSessionSchema = z.object({
+  sessionId: z.string().min(1),
+});
+
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
 export type GetSessionInput = z.infer<typeof getSessionSchema>;
 export type ListSessionsInput = z.infer<typeof listSessionsSchema>;
 export type UpdateImageOrderInput = z.infer<typeof updateImageOrderSchema>;
+export type GetCheckStatusInput = z.infer<typeof getCheckStatusSchema>;
+export type CompleteSessionInput = z.infer<typeof completeSessionSchema>;

@@ -389,6 +389,45 @@ describe("homework.confirmResults", () => {
     expect(result.grade).toBe("PRIMARY_3");
   });
 
+  test("creates CheckRound #1 from OCR isCorrect values", async () => {
+    seedSession({ status: "RECOGNIZED" });
+    seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+    seedQuestion("hw-session-1", { questionNumber: 2, isCorrect: false });
+    seedQuestion("hw-session-1", { questionNumber: 3, isCorrect: true });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await caller.homework.confirmResults({ sessionId: "hw-session-1" });
+
+    expect(db._checkRounds).toHaveLength(1);
+    const round = db._checkRounds[0];
+    expect(round.roundNumber).toBe(1);
+    expect(round.totalQuestions).toBe(3);
+    expect(round.correctCount).toBe(2);
+    expect(round.score).toBe(67); // round(2/3 * 100)
+    expect(db._roundQuestionResults).toHaveLength(3);
+  });
+
+  test("creates CheckRound #1 with null score when session has no questions", async () => {
+    seedSession({ status: "RECOGNIZED" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await caller.homework.confirmResults({ sessionId: "hw-session-1" });
+
+    expect(db._checkRounds).toHaveLength(1);
+    expect(db._checkRounds[0].score).toBeNull();
+    expect(db._checkRounds[0].totalQuestions).toBe(0);
+    expect(db._roundQuestionResults).toHaveLength(0);
+  });
+
+  test("sets totalRounds to 1 on session", async () => {
+    seedSession({ status: "RECOGNIZED" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await caller.homework.confirmResults({ sessionId: "hw-session-1" });
+
+    expect(db._homeworkSessions[0].totalRounds).toBe(1);
+  });
+
   test("rejects if session is not in RECOGNIZED status", async () => {
     seedSession({ status: "CREATED" });
 
@@ -404,6 +443,138 @@ describe("homework.confirmResults", () => {
     const caller = createCaller(createMockContext(db, studentSession));
     await expect(
       caller.homework.confirmResults({ sessionId: "hw-session-1" })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+});
+
+// --- Check flow state machine tests (Task 19) ---
+
+describe("homework.getCheckStatus", () => {
+  test("returns session with rounds and per-question results", async () => {
+    seedSession({ status: "CHECKING" });
+    const q1 = seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+    const q2 = seedQuestion("hw-session-1", { questionNumber: 2, isCorrect: false });
+    // Simulate round already created (as confirmResults would do)
+    db._checkRounds.push({
+      id: "round-1",
+      homeworkSessionId: "hw-session-1",
+      roundNumber: 1,
+      score: 50,
+      totalQuestions: 2,
+      correctCount: 1,
+      createdAt: new Date(),
+    });
+    db._roundQuestionResults.push(
+      { id: "rr1", checkRoundId: "round-1", sessionQuestionId: q1.id, studentAnswer: "63", isCorrect: true, correctedFromPrev: false },
+      { id: "rr2", checkRoundId: "round-1", sessionQuestionId: q2.id, studentAnswer: "10", isCorrect: false, correctedFromPrev: false },
+    );
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.getCheckStatus({ sessionId: "hw-session-1" });
+
+    expect(result.status).toBe("CHECKING");
+    expect(result.questions).toHaveLength(2);
+    expect(result.checkRounds).toHaveLength(1);
+    expect(result.checkRounds[0].roundNumber).toBe(1);
+    expect(result.checkRounds[0].score).toBe(50);
+    expect(result.checkRounds[0].results).toHaveLength(2);
+  });
+
+  test("is accessible by a family parent", async () => {
+    seedFamily();
+    seedSession({ status: "CHECKING" });
+
+    const caller = createCaller(createMockContext(db, parentSession));
+    const result = await caller.homework.getCheckStatus({ sessionId: "hw-session-1" });
+    expect(result.sessionId ?? result.id).toBeTruthy();
+  });
+
+  test("rejects if session is not in check phase", async () => {
+    seedSession({ status: "RECOGNIZED" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.getCheckStatus({ sessionId: "hw-session-1" })
+    ).rejects.toThrow("SESSION_NOT_IN_CHECK_PHASE");
+  });
+
+  test("rejects for non-owner non-parent", async () => {
+    seedSession({ createdBy: "other", studentId: "other", status: "CHECKING" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.getCheckStatus({ sessionId: "hw-session-1" })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+
+  test("returns COMPLETED session (review after completion)", async () => {
+    seedSession({ status: "COMPLETED" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.getCheckStatus({ sessionId: "hw-session-1" });
+    expect(result.status).toBe("COMPLETED");
+  });
+});
+
+describe("homework.completeSession", () => {
+  test("transitions CHECKING → COMPLETED with last round score", async () => {
+    seedSession({ status: "CHECKING" });
+    db._checkRounds.push({
+      id: "round-1",
+      homeworkSessionId: "hw-session-1",
+      roundNumber: 1,
+      score: 80,
+      totalQuestions: 5,
+      correctCount: 4,
+      createdAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.completeSession({ sessionId: "hw-session-1" });
+
+    expect(result.status).toBe("COMPLETED");
+    expect(result.finalScore).toBe(80);
+  });
+
+  test("sets finalScore from the highest roundNumber when multiple rounds exist", async () => {
+    seedSession({ status: "CHECKING" });
+    db._checkRounds.push(
+      { id: "round-1", homeworkSessionId: "hw-session-1", roundNumber: 1, score: 60, totalQuestions: 5, correctCount: 3, createdAt: new Date() },
+      { id: "round-2", homeworkSessionId: "hw-session-1", roundNumber: 2, score: 100, totalQuestions: 5, correctCount: 5, createdAt: new Date() },
+    );
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.completeSession({ sessionId: "hw-session-1" });
+
+    expect(result.status).toBe("COMPLETED");
+    expect(result.finalScore).toBe(100);
+  });
+
+  test("sets finalScore to null when no rounds exist", async () => {
+    seedSession({ status: "CHECKING" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.completeSession({ sessionId: "hw-session-1" });
+
+    expect(result.status).toBe("COMPLETED");
+    expect(result.finalScore).toBeNull();
+  });
+
+  test("rejects if session is not in CHECKING status", async () => {
+    seedSession({ status: "RECOGNIZED" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.completeSession({ sessionId: "hw-session-1" })
+    ).rejects.toThrow("SESSION_NOT_IN_CHECKING_STATUS");
+  });
+
+  test("rejects for non-owner", async () => {
+    seedSession({ createdBy: "other", studentId: "other", status: "CHECKING" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.completeSession({ sessionId: "hw-session-1" })
     ).rejects.toThrow("FORBIDDEN");
   });
 });

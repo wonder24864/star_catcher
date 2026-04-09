@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, type Context } from "../trpc";
 import { deleteObject } from "@/lib/storage";
+import { calculateScore } from "@/lib/scoring";
 import {
   createSessionSchema,
   getSessionSchema,
@@ -11,6 +12,8 @@ import {
   deleteQuestionSchema,
   addQuestionSchema,
   confirmResultsSchema,
+  getCheckStatusSchema,
+  completeSessionSchema,
 } from "@/lib/validations/homework";
 
 /** Verify the caller owns or is the student of a session. Returns the session. */
@@ -308,7 +311,8 @@ export const homeworkRouter = router({
 
   /**
    * Confirm recognition results and optionally update subject/grade.
-   * Transitions session to CHECKING status for the check flow.
+   * Transitions session to CHECKING status and creates CheckRound #1
+   * based on the current isCorrect values from OCR recognition.
    */
   confirmResults: protectedProcedure
     .input(confirmResultsSchema)
@@ -322,13 +326,120 @@ export const homeworkRouter = router({
         });
       }
 
-      // Update session with confirmed subject/grade and transition to CHECKING
+      // Compute round 1 scores from OCR-confirmed isCorrect values
+      const questions = await ctx.db.sessionQuestion.findMany({
+        where: { homeworkSessionId: input.sessionId },
+      });
+      const totalQuestions = questions.length;
+      const correctCount = questions.filter((q) => q.isCorrect === true).length;
+      const score = calculateScore(correctCount, totalQuestions);
+
+      // Transition session to CHECKING and record round count
       const updated = await ctx.db.homeworkSession.update({
         where: { id: input.sessionId },
         data: {
           status: "CHECKING",
           subject: input.subject || undefined,
           grade: input.grade || undefined,
+          totalRounds: 1,
+        },
+      });
+
+      // Create CheckRound #1 with per-question results
+      await ctx.db.checkRound.create({
+        data: {
+          homeworkSessionId: input.sessionId,
+          roundNumber: 1,
+          score,
+          totalQuestions,
+          correctCount,
+          results: {
+            create: questions.map((q) => ({
+              sessionQuestionId: q.id,
+              studentAnswer: q.studentAnswer,
+              isCorrect: q.isCorrect ?? false,
+              correctedFromPrev: false,
+            })),
+          },
+        },
+      });
+
+      return updated;
+    }),
+
+  // --- Check flow state machine ---
+
+  /**
+   * Get full check status: all rounds with per-question results.
+   * Used by the check results page (Task 20).
+   */
+  getCheckStatus: protectedProcedure
+    .input(getCheckStatusSchema)
+    .query(async ({ ctx, input }) => {
+      const session = await ctx.db.homeworkSession.findUnique({
+        where: { id: input.sessionId },
+        include: {
+          questions: { orderBy: { questionNumber: "asc" } },
+          checkRounds: {
+            orderBy: { roundNumber: "asc" },
+            include: { results: true },
+          },
+        },
+      });
+
+      if (!session) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "SESSION_NOT_FOUND" });
+      }
+
+      const userId = ctx.session.userId;
+      const hasDirectAccess =
+        session.createdBy === userId || session.studentId === userId;
+
+      if (!hasDirectAccess) {
+        if (ctx.session.role === "PARENT") {
+          await verifyParentStudentAccess(ctx.db, userId, session.studentId);
+        } else {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+      }
+
+      if (session.status !== "CHECKING" && session.status !== "COMPLETED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "SESSION_NOT_IN_CHECK_PHASE",
+        });
+      }
+
+      return session;
+    }),
+
+  /**
+   * Complete the check session.
+   * Transitions CHECKING → COMPLETED, sets finalScore to last round's score.
+   */
+  completeSession: protectedProcedure
+    .input(completeSessionSchema)
+    .mutation(async ({ ctx, input }) => {
+      const session = await verifySessionAccess(ctx.db, input.sessionId, ctx.session.userId);
+
+      if (session.status !== "CHECKING") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "SESSION_NOT_IN_CHECKING_STATUS",
+        });
+      }
+
+      // Get the last round's score
+      const lastRound = await ctx.db.checkRound.findFirst({
+        where: { homeworkSessionId: input.sessionId },
+        orderBy: { roundNumber: "desc" },
+      });
+
+      const updated = await ctx.db.homeworkSession.update({
+        where: { id: input.sessionId },
+        data: {
+          status: "COMPLETED",
+          finalScore: lastRound?.score ?? null,
         },
       });
 

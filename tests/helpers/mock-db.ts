@@ -81,6 +81,25 @@ type MockHomeworkImage = {
   createdAt: Date;
 };
 
+type MockCheckRound = {
+  id: string;
+  homeworkSessionId: string;
+  roundNumber: number;
+  score: number | null;
+  totalQuestions: number | null;
+  correctCount: number | null;
+  createdAt: Date;
+};
+
+type MockRoundQuestionResult = {
+  id: string;
+  checkRoundId: string;
+  sessionQuestionId: string;
+  studentAnswer: string | null;
+  isCorrect: boolean;
+  correctedFromPrev: boolean;
+};
+
 let counter = 0;
 function cuid() {
   return `test_${++counter}_${Date.now()}`;
@@ -93,6 +112,8 @@ export function createMockDb() {
   const homeworkSessions: MockHomeworkSession[] = [];
   const homeworkImages: MockHomeworkImage[] = [];
   const sessionQuestions: MockSessionQuestion[] = [];
+  const checkRounds: MockCheckRound[] = [];
+  const roundQuestionResults: MockRoundQuestionResult[] = [];
 
   return {
     user: {
@@ -277,6 +298,22 @@ export function createMockDb() {
             .filter((q) => q.homeworkSessionId === session.id)
             .sort((a, b) => a.questionNumber - b.questionNumber);
         }
+        if (include?.checkRounds) {
+          const includeRounds = include.checkRounds as {
+            orderBy?: { roundNumber?: string };
+            include?: { results?: boolean };
+          };
+          let rounds = checkRounds.filter((r) => r.homeworkSessionId === session.id);
+          if (includeRounds.orderBy?.roundNumber === "asc") {
+            rounds = rounds.slice().sort((a, b) => a.roundNumber - b.roundNumber);
+          }
+          result.checkRounds = includeRounds.include?.results
+            ? rounds.map((r) => ({
+                ...r,
+                results: roundQuestionResults.filter((rr) => rr.checkRoundId === r.id),
+              }))
+            : rounds;
+        }
         return result;
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -424,6 +461,86 @@ export function createMockDb() {
         return null;
       },
     },
+    checkRound: {
+      findFirst: async ({
+        where,
+        orderBy,
+      }: {
+        where?: Record<string, unknown>;
+        orderBy?: Record<string, unknown>;
+      }) => {
+        let result = [...checkRounds];
+        if (where?.homeworkSessionId) {
+          result = result.filter((r) => r.homeworkSessionId === where.homeworkSessionId);
+        }
+        if (orderBy?.roundNumber === "desc") {
+          result.sort((a, b) => b.roundNumber - a.roundNumber);
+        } else if (orderBy?.roundNumber === "asc") {
+          result.sort((a, b) => a.roundNumber - b.roundNumber);
+        }
+        return result[0] ?? null;
+      },
+      findMany: async ({
+        where,
+        orderBy,
+        include,
+      }: {
+        where?: Record<string, unknown>;
+        orderBy?: Record<string, unknown>;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        include?: any;
+      }) => {
+        let result = [...checkRounds];
+        if (where?.homeworkSessionId) {
+          result = result.filter((r) => r.homeworkSessionId === where.homeworkSessionId);
+        }
+        if (orderBy?.roundNumber === "asc") {
+          result.sort((a, b) => a.roundNumber - b.roundNumber);
+        }
+        if (include?.results) {
+          return result.map((r) => ({
+            ...r,
+            results: roundQuestionResults.filter((rr) => rr.checkRoundId === r.id),
+          }));
+        }
+        return result;
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      create: async ({ data }: { data: any }) => {
+        const round: MockCheckRound = {
+          id: cuid(),
+          homeworkSessionId: data.homeworkSessionId as string,
+          roundNumber: data.roundNumber as number,
+          score: data.score ?? null,
+          totalQuestions: data.totalQuestions ?? null,
+          correctCount: data.correctCount ?? null,
+          createdAt: new Date(),
+        };
+        checkRounds.push(round);
+        // Handle nested results.create
+        if (data.results?.create && Array.isArray(data.results.create)) {
+          for (const r of data.results.create as Array<Record<string, unknown>>) {
+            roundQuestionResults.push({
+              id: cuid(),
+              checkRoundId: round.id,
+              sessionQuestionId: r.sessionQuestionId as string,
+              studentAnswer: (r.studentAnswer as string) ?? null,
+              isCorrect: r.isCorrect as boolean,
+              correctedFromPrev: (r.correctedFromPrev as boolean) ?? false,
+            });
+          }
+        }
+        return round;
+      },
+    },
+    roundQuestionResult: {
+      findMany: async ({ where }: { where?: Record<string, unknown> }) => {
+        if (where?.checkRoundId) {
+          return roundQuestionResults.filter((r) => r.checkRoundId === where.checkRoundId);
+        }
+        return roundQuestionResults;
+      },
+    },
     // Expose internals for test assertions
     _users: users,
     _families: families,
@@ -431,6 +548,8 @@ export function createMockDb() {
     _homeworkSessions: homeworkSessions,
     _homeworkImages: homeworkImages,
     _sessionQuestions: sessionQuestions,
+    _checkRounds: checkRounds,
+    _roundQuestionResults: roundQuestionResults,
   };
 }
 
