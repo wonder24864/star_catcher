@@ -127,7 +127,13 @@ star_catcher/
 │
 ├── src/                       # 应用源代码
 │   ├── app/                   # Next.js App Router 页面
-│   ├── components/            # 可复用组件（nav、providers、ui）
+│   │   └── [locale]/(dashboard)/check/  # 作业检查
+│   │       ├── page.tsx       # 检查列表页
+│   │       └── new/page.tsx   # 新建检查 — 上传流程页
+│   ├── components/            # 可复用组件（nav、providers、ui、homework）
+│   │   └── homework/          # 作业相关组件
+│   │       ├── photo-capture.tsx  # 拍照/相册输入组件
+│   │       └── photo-grid.tsx     # 照片网格（缩略图、拖拽排序、删除）
 │   ├── hooks/                 # 自定义 React Hooks
 │   │   └── use-upload.ts      # 上传编排 Hook（压缩→预签名→上传→确认）
 │   ├── i18n/                  # 国际化配置
@@ -144,7 +150,8 @@ star_catcher/
 │   │   ├── utils.ts           # 通用工具函数
 │   │   └── validations/       # Zod 校验 Schema
 │   │       ├── auth.ts        # 注册/登录校验
-│   │       └── upload.ts      # 上传校验（格式、大小、常量）
+│   │       ├── upload.ts      # 上传校验（格式、大小、常量）
+│   │       └── homework.ts    # 作业会话校验
 │   ├── server/                # tRPC 服务端
 │   │   ├── trpc.ts            # tRPC 初始化 + 角色中间件
 │   │   ├── context.ts         # tRPC 上下文工厂
@@ -153,7 +160,8 @@ star_catcher/
 │   │       ├── auth.ts        # 认证路由（注册）
 │   │       ├── user.ts        # 用户路由（个人信息、密码）
 │   │       ├── family.ts      # 家庭组路由（创建、邀请、加入、管理）
-│   │       └── upload.ts      # 上传路由（预签名 URL、确认、下载、删除）
+│   │       ├── upload.ts      # 上传路由（预签名 URL、确认、下载、删除）
+│   │       └── homework.ts    # 作业路由（创建会话、列表、排序、删除）
 │   ├── instrumentation.ts     # Next.js 启动钩子（MinIO 桶自动创建）
 │   └── types/                 # TypeScript 类型声明
 │
@@ -171,7 +179,8 @@ star_catcher/
     ├── unit/                  # 单元测试
     │   ├── storage.test.ts    # 存储服务测试
     │   ├── compress.test.ts   # 图片压缩工具测试
-    │   └── upload-router.test.ts  # 上传路由测试
+    │   ├── upload-router.test.ts  # 上传路由测试
+    │   └── homework-router.test.ts # 作业路由测试
     ├── architecture/          # 架构守护测试（自动化检查）
     │   ├── harness-integrity.test.ts  # 检测是否有代码绕过 AI Harness 管道
     │   └── i18n-coverage.test.ts      # 检测翻译 key 在中英文文件中是否齐全

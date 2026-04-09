@@ -245,8 +245,29 @@ export function createMockDb() {
       },
     },
     homeworkSession: {
-      findUnique: async ({ where }: { where: Record<string, unknown> }) => {
-        return homeworkSessions.find((s) => s.id === where.id) || null;
+      findUnique: async ({ where, include }: { where: Record<string, unknown>; include?: Record<string, unknown> }) => {
+        const session = homeworkSessions.find((s) => s.id === where.id) || null;
+        if (session && include?.images) {
+          const imgs = homeworkImages
+            .filter((i) => i.homeworkSessionId === session.id)
+            .sort((a, b) => a.sortOrder - b.sortOrder);
+          return { ...session, images: imgs };
+        }
+        return session;
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      findMany: async ({ where, orderBy, take, include }: { where?: Record<string, unknown>; orderBy?: any; take?: number; include?: any }) => {
+        let result = [...homeworkSessions];
+        if (where?.studentId) result = result.filter((s) => s.studentId === where.studentId);
+        if (orderBy?.createdAt === "desc") result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        if (take) result = result.slice(0, take);
+        if (include?._count?.select?.images) {
+          return result.map((s) => ({
+            ...s,
+            _count: { images: homeworkImages.filter((i) => i.homeworkSessionId === s.id).length },
+          }));
+        }
+        return result;
       },
       create: async ({ data }: { data: Record<string, unknown> }) => {
         const session: MockHomeworkSession = {
@@ -265,6 +286,20 @@ export function createMockDb() {
         };
         homeworkSessions.push(session);
         return session;
+      },
+      delete: async ({ where }: { where: Record<string, unknown> }) => {
+        const idx = homeworkSessions.findIndex((s) => s.id === where.id);
+        if (idx >= 0) {
+          const deleted = homeworkSessions.splice(idx, 1);
+          // Cascade: remove associated images
+          for (let i = homeworkImages.length - 1; i >= 0; i--) {
+            if (homeworkImages[i].homeworkSessionId === deleted[0].id) {
+              homeworkImages.splice(i, 1);
+            }
+          }
+          return deleted[0];
+        }
+        return null;
       },
     },
     homeworkImage: {
@@ -300,6 +335,11 @@ export function createMockDb() {
         };
         homeworkImages.push(image);
         return image;
+      },
+      update: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        const img = homeworkImages.find((i) => i.id === where.id);
+        if (img) Object.assign(img, data);
+        return img || null;
       },
       delete: async ({ where }: { where: Record<string, unknown> }) => {
         const idx = homeworkImages.findIndex((i) => i.id === where.id);

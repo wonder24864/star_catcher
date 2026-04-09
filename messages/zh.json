@@ -100,6 +100,35 @@
     "networkError": "网络错误，请检查连接",
     "serverError": "服务器错误，请稍后重试"
   },
+  "homework": {
+    "title": "作业检查",
+    "newCheck": "新建检查",
+    "recentSessions": "最近的检查",
+    "noSessions": "还没有作业检查记录",
+    "takePhoto": "拍照",
+    "selectFromAlbum": "从相册选择",
+    "photoCount": "{count}/{max} 张",
+    "startRecognition": "开始识别",
+    "deletePhoto": "删除照片",
+    "deleteSession": "删除",
+    "confirmDeletePhoto": "确定删除这张照片吗？",
+    "confirmDeleteSession": "确定删除此次检查吗？所有照片将被删除。",
+    "dragToReorder": "长按拖拽排序",
+    "emptyUpload": "请拍照或从相册选择照片",
+    "maxPhotosReached": "最多上传 {max} 张照片",
+    "imageCount": "{count} 张照片",
+    "untitled": "未命名作业",
+    "back": "返回",
+    "selectStudent": "请先选择学生",
+    "status": {
+      "CREATED": "待上传",
+      "RECOGNIZING": "识别中",
+      "RECOGNIZED": "已识别",
+      "RECOGNITION_FAILED": "识别失败",
+      "CHECKING": "检查中",
+      "COMPLETED": "已完成"
+    }
+  },
   "upload": {
     "compressing": "正在压缩图片...",
     "uploading": "正在上传...",

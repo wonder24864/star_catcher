@@ -166,8 +166,54 @@ describe('US-009: Multi Photo Upload', () => {
     ).rejects.toThrow('MAX_IMAGES_REACHED')
   })
 
-  test.todo('drag to reorder')
-  test.todo('delete individual photos')
+  test('drag to reorder updates sort order', async () => {
+    // Seed session with 3 images
+    db._homeworkSessions.push({
+      id: 'sess2', studentId: 'student1', createdBy: 'student1',
+      subject: null, contentType: null, grade: null, title: null,
+      status: 'CREATED', finalScore: null, totalRounds: 0,
+      createdAt: new Date(), updatedAt: new Date(),
+    })
+    const img1 = { id: 'img-a', homeworkSessionId: 'sess2', imageUrl: 'a.jpg', originalFilename: 'a.jpg', sortOrder: 0, exifRotation: 0, privacyStripped: true, createdAt: new Date() }
+    const img2 = { id: 'img-b', homeworkSessionId: 'sess2', imageUrl: 'b.jpg', originalFilename: 'b.jpg', sortOrder: 1, exifRotation: 0, privacyStripped: true, createdAt: new Date() }
+    const img3 = { id: 'img-c', homeworkSessionId: 'sess2', imageUrl: 'c.jpg', originalFilename: 'c.jpg', sortOrder: 2, exifRotation: 0, privacyStripped: true, createdAt: new Date() }
+    db._homeworkImages.push(img1, img2, img3)
+
+    const caller = createCaller(createMockContext(db, {
+      userId: 'student1', role: 'STUDENT', grade: 'PRIMARY_3', locale: 'zh',
+    }))
+
+    // Reorder: c, a, b
+    await caller.homework.updateImageOrder({
+      sessionId: 'sess2',
+      imageIds: ['img-c', 'img-a', 'img-b'],
+    })
+
+    expect(db._homeworkImages.find(i => i.id === 'img-c')?.sortOrder).toBe(0)
+    expect(db._homeworkImages.find(i => i.id === 'img-a')?.sortOrder).toBe(1)
+    expect(db._homeworkImages.find(i => i.id === 'img-b')?.sortOrder).toBe(2)
+  })
+
+  test('delete individual photos', async () => {
+    db._homeworkSessions.push({
+      id: 'sess3', studentId: 'student1', createdBy: 'student1',
+      subject: null, contentType: null, grade: null, title: null,
+      status: 'CREATED', finalScore: null, totalRounds: 0,
+      createdAt: new Date(), updatedAt: new Date(),
+    })
+    db._homeworkImages.push({
+      id: 'del-img', homeworkSessionId: 'sess3', imageUrl: 'homework/student1/sess3/test.jpg',
+      originalFilename: 'test.jpg', sortOrder: 0, exifRotation: 0, privacyStripped: true, createdAt: new Date(),
+    })
+
+    const caller = createCaller(createMockContext(db, {
+      userId: 'student1', role: 'STUDENT', grade: 'PRIMARY_3', locale: 'zh',
+    }))
+
+    await caller.upload.deleteImage({ imageId: 'del-img' })
+    expect(db._homeworkImages).toHaveLength(0)
+  })
+
   test.todo('AI recognizes in order and merges results')
 })
 
