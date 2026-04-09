@@ -146,6 +146,21 @@
       "RECOGNITION_FAILED": "Failed",
       "CHECKING": "Checking",
       "COMPLETED": "Completed"
+    },
+    "check": {
+      "title": "Check Results",
+      "round": "Round {round}",
+      "scoreDisplay": "{correct} correct / {total} total · Score: {score}",
+      "allCorrect": "All correct!",
+      "wrongCount": "{count} questions need correction",
+      "scoreHistory": "Score History",
+      "recheck": "I've corrected, check again",
+      "complete": "End Check",
+      "confirmCompleteTitle": "Confirm End Check",
+      "confirmCompleteDesc": "You still have {count} incorrect questions. End check anyway?",
+      "completedTitle": "Check Complete",
+      "finalScore": "Final Score: {score}",
+      "backToList": "Back to List"
     }
   },
   "upload": {

@@ -70,7 +70,7 @@ export default function RecognitionResultsPage() {
   const confirmResults = trpc.homework.confirmResults.useMutation({
     onSuccess: () => {
       toast.success(t("common.success"));
-      router.push("/check");
+      router.push(`/check/${sessionId}/results`);
     },
     onError: () => toast.error(t("error.serverError")),
   });

@@ -80,8 +80,11 @@ export default function CheckPage() {
               onClick={() => {
                 if (s.status === "CREATED") {
                   router.push(`/check/new?sessionId=${s.id}`);
+                } else if (s.status === "RECOGNIZED") {
+                  router.push(`/check/${s.id}`);
+                } else if (s.status === "CHECKING" || s.status === "COMPLETED") {
+                  router.push(`/check/${s.id}/results`);
                 }
-                // Other statuses will navigate to check results (future tasks)
               }}
             >
               <CardContent className="flex items-center justify-between py-4">

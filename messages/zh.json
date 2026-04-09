@@ -146,6 +146,21 @@
       "RECOGNITION_FAILED": "识别失败",
       "CHECKING": "检查中",
       "COMPLETED": "已完成"
+    },
+    "check": {
+      "title": "检查结果",
+      "round": "第 {round} 轮",
+      "scoreDisplay": "{correct} 题正确 / 共 {total} 题，得分 {score} 分",
+      "allCorrect": "全部答对！",
+      "wrongCount": "还有 {count} 题需要改正",
+      "scoreHistory": "得分变化",
+      "recheck": "我改好了，再检查一次",
+      "complete": "结束检查",
+      "confirmCompleteTitle": "确认结束检查",
+      "confirmCompleteDesc": "还有 {count} 题未改正，确定结束检查吗？",
+      "completedTitle": "检查完成",
+      "finalScore": "最终得分：{score} 分",
+      "backToList": "返回作业列表"
     }
   },
   "upload": {
