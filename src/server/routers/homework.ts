@@ -7,6 +7,10 @@ import {
   listSessionsSchema,
   updateImageOrderSchema,
   deleteSessionSchema,
+  updateQuestionSchema,
+  deleteQuestionSchema,
+  addQuestionSchema,
+  confirmResultsSchema,
 } from "@/lib/validations/homework";
 
 /** Verify the caller owns or is the student of a session. Returns the session. */
@@ -94,6 +98,9 @@ export const homeworkRouter = router({
         include: {
           images: {
             orderBy: { sortOrder: "asc" },
+          },
+          questions: {
+            orderBy: { questionNumber: "asc" },
           },
         },
       });
@@ -208,5 +215,123 @@ export const homeworkRouter = router({
       });
 
       return { success: true };
+    }),
+
+  // --- Question CRUD (for recognition results editing) ---
+
+  /**
+   * Update a question's fields (inline editing on recognition results page).
+   */
+  updateQuestion: protectedProcedure
+    .input(updateQuestionSchema)
+    .mutation(async ({ ctx, input }) => {
+      const question = await ctx.db.sessionQuestion.findUnique({
+        where: { id: input.questionId },
+        include: { homeworkSession: true },
+      });
+      if (!question) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "QUESTION_NOT_FOUND" });
+      }
+
+      const session = question.homeworkSession;
+      if (session.createdBy !== ctx.session.userId && session.studentId !== ctx.session.userId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const { questionId, ...data } = input;
+      const updated = await ctx.db.sessionQuestion.update({
+        where: { id: questionId },
+        data,
+      });
+      return updated;
+    }),
+
+  /**
+   * Delete a question (remove incorrectly recognized question).
+   */
+  deleteQuestion: protectedProcedure
+    .input(deleteQuestionSchema)
+    .mutation(async ({ ctx, input }) => {
+      const question = await ctx.db.sessionQuestion.findUnique({
+        where: { id: input.questionId },
+        include: { homeworkSession: true },
+      });
+      if (!question) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "QUESTION_NOT_FOUND" });
+      }
+
+      const session = question.homeworkSession;
+      if (session.createdBy !== ctx.session.userId && session.studentId !== ctx.session.userId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      await ctx.db.sessionQuestion.delete({ where: { id: input.questionId } });
+      return { success: true };
+    }),
+
+  /**
+   * Add a question that AI missed.
+   */
+  addQuestion: protectedProcedure
+    .input(addQuestionSchema)
+    .mutation(async ({ ctx, input }) => {
+      const session = await verifySessionAccess(ctx.db, input.sessionId, ctx.session.userId);
+
+      if (session.status !== "RECOGNIZED" && session.status !== "CREATED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "SESSION_NOT_EDITABLE",
+        });
+      }
+
+      // Get next question number
+      const existingQuestions = await ctx.db.sessionQuestion.findMany({
+        where: { homeworkSessionId: input.sessionId },
+      });
+      const maxNumber = existingQuestions.reduce((max, q) => Math.max(max, q.questionNumber), 0);
+
+      const question = await ctx.db.sessionQuestion.create({
+        data: {
+          homeworkSessionId: input.sessionId,
+          questionNumber: maxNumber + 1,
+          questionType: input.questionType || undefined,
+          content: input.content,
+          studentAnswer: input.studentAnswer ?? null,
+          correctAnswer: input.correctAnswer ?? null,
+          isCorrect: input.isCorrect ?? null,
+          confidence: 1.0, // Manually added = full confidence
+          needsReview: false,
+        },
+      });
+      return question;
+    }),
+
+  /**
+   * Confirm recognition results and optionally update subject/grade.
+   * Transitions session to CHECKING status for the check flow.
+   */
+  confirmResults: protectedProcedure
+    .input(confirmResultsSchema)
+    .mutation(async ({ ctx, input }) => {
+      const session = await verifySessionAccess(ctx.db, input.sessionId, ctx.session.userId);
+
+      if (session.status !== "RECOGNIZED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "SESSION_NOT_IN_RECOGNIZED_STATUS",
+        });
+      }
+
+      // Update session with confirmed subject/grade and transition to CHECKING
+      const updated = await ctx.db.homeworkSession.update({
+        where: { id: input.sessionId },
+        data: {
+          status: "CHECKING",
+          subject: input.subject || undefined,
+          grade: input.grade || undefined,
+        },
+      });
+
+      return updated;
     }),
 });

@@ -53,6 +53,23 @@ type MockHomeworkSession = {
   updatedAt: Date;
 };
 
+type MockSessionQuestion = {
+  id: string;
+  homeworkSessionId: string;
+  questionNumber: number;
+  questionType: string | null;
+  content: string;
+  studentAnswer: string | null;
+  correctAnswer: string | null;
+  isCorrect: boolean | null;
+  confidence: number | null;
+  needsReview: boolean;
+  imageRegion: unknown;
+  aiKnowledgePoint: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 type MockHomeworkImage = {
   id: string;
   homeworkSessionId: string;
@@ -75,6 +92,7 @@ export function createMockDb() {
   const familyMembers: MockFamilyMember[] = [];
   const homeworkSessions: MockHomeworkSession[] = [];
   const homeworkImages: MockHomeworkImage[] = [];
+  const sessionQuestions: MockSessionQuestion[] = [];
 
   return {
     user: {
@@ -247,13 +265,19 @@ export function createMockDb() {
     homeworkSession: {
       findUnique: async ({ where, include }: { where: Record<string, unknown>; include?: Record<string, unknown> }) => {
         const session = homeworkSessions.find((s) => s.id === where.id) || null;
-        if (session && include?.images) {
-          const imgs = homeworkImages
+        if (!session) return null;
+        let result: Record<string, unknown> = { ...session };
+        if (include?.images) {
+          result.images = homeworkImages
             .filter((i) => i.homeworkSessionId === session.id)
             .sort((a, b) => a.sortOrder - b.sortOrder);
-          return { ...session, images: imgs };
         }
-        return session;
+        if (include?.questions) {
+          result.questions = sessionQuestions
+            .filter((q) => q.homeworkSessionId === session.id)
+            .sort((a, b) => a.questionNumber - b.questionNumber);
+        }
+        return result;
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       findMany: async ({ where, orderBy, take, include }: { where?: Record<string, unknown>; orderBy?: any; take?: number; include?: any }) => {
@@ -286,6 +310,11 @@ export function createMockDb() {
         };
         homeworkSessions.push(session);
         return session;
+      },
+      update: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        const session = homeworkSessions.find((s) => s.id === where.id);
+        if (session) Object.assign(session, data, { updatedAt: new Date() });
+        return session || null;
       },
       delete: async ({ where }: { where: Record<string, unknown> }) => {
         const idx = homeworkSessions.findIndex((s) => s.id === where.id);
@@ -350,12 +379,58 @@ export function createMockDb() {
         return null;
       },
     },
+    sessionQuestion: {
+      findUnique: async ({ where, include }: { where: Record<string, unknown>; include?: Record<string, unknown> }) => {
+        const q = sessionQuestions.find((sq) => sq.id === where.id) || null;
+        if (q && include?.homeworkSession) {
+          return { ...q, homeworkSession: homeworkSessions.find((s) => s.id === q.homeworkSessionId) || null };
+        }
+        return q;
+      },
+      findMany: async ({ where }: { where?: Record<string, unknown> }) => {
+        if (where?.homeworkSessionId) {
+          return sessionQuestions.filter((q) => q.homeworkSessionId === where.homeworkSessionId);
+        }
+        return sessionQuestions;
+      },
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        const q: MockSessionQuestion = {
+          id: cuid(),
+          homeworkSessionId: data.homeworkSessionId as string,
+          questionNumber: data.questionNumber as number,
+          questionType: (data.questionType as string) || null,
+          content: data.content as string,
+          studentAnswer: (data.studentAnswer as string) ?? null,
+          correctAnswer: (data.correctAnswer as string) ?? null,
+          isCorrect: (data.isCorrect as boolean) ?? null,
+          confidence: (data.confidence as number) ?? null,
+          needsReview: (data.needsReview as boolean) || false,
+          imageRegion: data.imageRegion ?? null,
+          aiKnowledgePoint: (data.aiKnowledgePoint as string) || null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        sessionQuestions.push(q);
+        return q;
+      },
+      update: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        const q = sessionQuestions.find((sq) => sq.id === where.id);
+        if (q) Object.assign(q, data, { updatedAt: new Date() });
+        return q || null;
+      },
+      delete: async ({ where }: { where: Record<string, unknown> }) => {
+        const idx = sessionQuestions.findIndex((q) => q.id === where.id);
+        if (idx >= 0) return sessionQuestions.splice(idx, 1)[0];
+        return null;
+      },
+    },
     // Expose internals for test assertions
     _users: users,
     _families: families,
     _familyMembers: familyMembers,
     _homeworkSessions: homeworkSessions,
     _homeworkImages: homeworkImages,
+    _sessionQuestions: sessionQuestions,
   };
 }
 
