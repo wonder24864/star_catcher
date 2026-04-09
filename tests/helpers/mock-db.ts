@@ -38,6 +38,32 @@ type MockFamilyMember = {
   joinedAt: Date;
 };
 
+type MockHomeworkSession = {
+  id: string;
+  studentId: string;
+  createdBy: string;
+  subject: string | null;
+  contentType: string | null;
+  grade: string | null;
+  title: string | null;
+  status: string;
+  finalScore: number | null;
+  totalRounds: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type MockHomeworkImage = {
+  id: string;
+  homeworkSessionId: string;
+  imageUrl: string;
+  originalFilename: string | null;
+  sortOrder: number;
+  exifRotation: number;
+  privacyStripped: boolean;
+  createdAt: Date;
+};
+
 let counter = 0;
 function cuid() {
   return `test_${++counter}_${Date.now()}`;
@@ -47,6 +73,8 @@ export function createMockDb() {
   const users: MockUser[] = [];
   const families: MockFamily[] = [];
   const familyMembers: MockFamilyMember[] = [];
+  const homeworkSessions: MockHomeworkSession[] = [];
+  const homeworkImages: MockHomeworkImage[] = [];
 
   return {
     user: {
@@ -137,6 +165,20 @@ export function createMockDb() {
         }
         return null;
       },
+      findFirst: async ({ where }: { where?: Record<string, unknown> }) => {
+        return familyMembers.find((m) => {
+          if (where?.userId && m.userId !== where.userId) return false;
+          if (where?.familyId) {
+            const fid = where.familyId;
+            if (typeof fid === "object" && fid !== null && "in" in fid) {
+              if (!(fid as { in: string[] }).in.includes(m.familyId)) return false;
+            } else {
+              if (m.familyId !== fid) return false;
+            }
+          }
+          return true;
+        }) || null;
+      },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       findMany: async ({ where, include }: { where?: Record<string, unknown>; include?: any }) => {
         let result = familyMembers;
@@ -202,10 +244,78 @@ export function createMockDb() {
         return {};
       },
     },
+    homeworkSession: {
+      findUnique: async ({ where }: { where: Record<string, unknown> }) => {
+        return homeworkSessions.find((s) => s.id === where.id) || null;
+      },
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        const session: MockHomeworkSession = {
+          id: cuid(),
+          studentId: data.studentId as string,
+          createdBy: data.createdBy as string,
+          subject: (data.subject as string) || null,
+          contentType: (data.contentType as string) || null,
+          grade: (data.grade as string) || null,
+          title: (data.title as string) || null,
+          status: (data.status as string) || "CREATED",
+          finalScore: null,
+          totalRounds: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        homeworkSessions.push(session);
+        return session;
+      },
+    },
+    homeworkImage: {
+      findUnique: async ({ where, include }: { where: Record<string, unknown>; include?: Record<string, unknown> }) => {
+        const img = homeworkImages.find((i) => i.id === where.id) || null;
+        if (img && include?.homeworkSession) {
+          return { ...img, homeworkSession: homeworkSessions.find((s) => s.id === img.homeworkSessionId) || null };
+        }
+        return img;
+      },
+      findMany: async ({ where }: { where?: Record<string, unknown> }) => {
+        if (where?.homeworkSessionId) {
+          return homeworkImages.filter((i) => i.homeworkSessionId === where.homeworkSessionId);
+        }
+        return homeworkImages;
+      },
+      count: async ({ where }: { where?: Record<string, unknown> }) => {
+        if (where?.homeworkSessionId) {
+          return homeworkImages.filter((i) => i.homeworkSessionId === where.homeworkSessionId).length;
+        }
+        return homeworkImages.length;
+      },
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        const image: MockHomeworkImage = {
+          id: cuid(),
+          homeworkSessionId: data.homeworkSessionId as string,
+          imageUrl: data.imageUrl as string,
+          originalFilename: (data.originalFilename as string) || null,
+          sortOrder: (data.sortOrder as number) || 0,
+          exifRotation: (data.exifRotation as number) || 0,
+          privacyStripped: (data.privacyStripped as boolean) || false,
+          createdAt: new Date(),
+        };
+        homeworkImages.push(image);
+        return image;
+      },
+      delete: async ({ where }: { where: Record<string, unknown> }) => {
+        const idx = homeworkImages.findIndex((i) => i.id === where.id);
+        if (idx >= 0) {
+          const deleted = homeworkImages.splice(idx, 1);
+          return deleted[0];
+        }
+        return null;
+      },
+    },
     // Expose internals for test assertions
     _users: users,
     _families: families,
     _familyMembers: familyMembers,
+    _homeworkSessions: homeworkSessions,
+    _homeworkImages: homeworkImages,
   };
 }
 

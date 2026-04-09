@@ -100,6 +100,20 @@
     "networkError": "Network error. Please check your connection",
     "serverError": "Server error. Please try again later"
   },
+  "upload": {
+    "compressing": "Compressing image...",
+    "uploading": "Uploading...",
+    "confirming": "Confirming upload...",
+    "done": "Upload complete",
+    "error": "Upload failed",
+    "retrying": "Upload failed, retrying...",
+    "formatNotSupported": "Unsupported file format",
+    "fileTooLarge": "File too large (images max 20MB, PDF max 50MB)",
+    "maxImagesReached": "Maximum 10 images per session",
+    "networkError": "Network error, please check connection and retry",
+    "sessionNotFound": "Homework session not found",
+    "progress": "{progress}% uploaded"
+  },
   "validation": {
     "usernameLength": "Username must be 4-32 characters",
     "usernameFormat": "Username can only contain letters, numbers and underscores",
