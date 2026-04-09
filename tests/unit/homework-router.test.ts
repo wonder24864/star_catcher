@@ -251,3 +251,159 @@ describe("homework.deleteSession", () => {
     ).rejects.toThrow("FORBIDDEN");
   });
 });
+
+// --- Question CRUD tests (Task 18) ---
+
+function seedQuestion(sessionId: string, overrides?: Partial<{ id: string; questionNumber: number; content: string; isCorrect: boolean | null; confidence: number }>) {
+  const q = {
+    id: overrides?.id ?? `q-${db._sessionQuestions.length + 1}`,
+    homeworkSessionId: sessionId,
+    questionNumber: overrides?.questionNumber ?? db._sessionQuestions.length + 1,
+    questionType: "CALCULATION" as string | null,
+    content: overrides?.content ?? "25 + 38 = ?",
+    studentAnswer: "63",
+    correctAnswer: "63",
+    isCorrect: overrides?.isCorrect ?? true,
+    confidence: overrides?.confidence ?? 0.9,
+    needsReview: false,
+    imageRegion: null,
+    aiKnowledgePoint: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  db._sessionQuestions.push(q);
+  return q;
+}
+
+describe("homework.updateQuestion", () => {
+  test("updates question fields", async () => {
+    seedSession({ status: "RECOGNIZED" });
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.updateQuestion({
+      questionId: q.id,
+      isCorrect: true,
+      studentAnswer: "63",
+    });
+
+    expect(result.isCorrect).toBe(true);
+  });
+
+  test("rejects for non-owner", async () => {
+    seedSession({ createdBy: "other", studentId: "other", status: "RECOGNIZED" });
+    const q = seedQuestion("hw-session-1");
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.updateQuestion({ questionId: q.id, isCorrect: false })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+
+  test("rejects for nonexistent question", async () => {
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.updateQuestion({ questionId: "nonexistent", isCorrect: true })
+    ).rejects.toThrow("QUESTION_NOT_FOUND");
+  });
+});
+
+describe("homework.deleteQuestion", () => {
+  test("deletes a question", async () => {
+    seedSession({ status: "RECOGNIZED" });
+    const q = seedQuestion("hw-session-1");
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.deleteQuestion({ questionId: q.id });
+
+    expect(result.success).toBe(true);
+    expect(db._sessionQuestions).toHaveLength(0);
+  });
+
+  test("rejects for non-owner", async () => {
+    seedSession({ createdBy: "other", studentId: "other" });
+    const q = seedQuestion("hw-session-1");
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.deleteQuestion({ questionId: q.id })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+});
+
+describe("homework.addQuestion", () => {
+  test("adds a question with next questionNumber", async () => {
+    seedSession({ status: "RECOGNIZED" });
+    seedQuestion("hw-session-1", { questionNumber: 1 });
+    seedQuestion("hw-session-1", { questionNumber: 2 });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.addQuestion({
+      sessionId: "hw-session-1",
+      content: "New question: 10 × 5 = ?",
+      studentAnswer: "50",
+      correctAnswer: "50",
+    });
+
+    expect(result.questionNumber).toBe(3);
+    expect(result.content).toBe("New question: 10 × 5 = ?");
+    expect(result.confidence).toBe(1.0); // Manually added
+    expect(db._sessionQuestions).toHaveLength(3);
+  });
+
+  test("rejects if session is not editable", async () => {
+    seedSession({ status: "CHECKING" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.addQuestion({
+        sessionId: "hw-session-1",
+        content: "test",
+      })
+    ).rejects.toThrow("SESSION_NOT_EDITABLE");
+  });
+});
+
+describe("homework.confirmResults", () => {
+  test("transitions session to CHECKING status", async () => {
+    seedSession({ status: "RECOGNIZED" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.confirmResults({ sessionId: "hw-session-1" });
+
+    expect(result.status).toBe("CHECKING");
+  });
+
+  test("updates subject and grade if provided", async () => {
+    seedSession({ status: "RECOGNIZED" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.confirmResults({
+      sessionId: "hw-session-1",
+      subject: "MATH",
+      grade: "PRIMARY_3",
+    });
+
+    expect(result.status).toBe("CHECKING");
+    expect(result.subject).toBe("MATH");
+    expect(result.grade).toBe("PRIMARY_3");
+  });
+
+  test("rejects if session is not in RECOGNIZED status", async () => {
+    seedSession({ status: "CREATED" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.confirmResults({ sessionId: "hw-session-1" })
+    ).rejects.toThrow("SESSION_NOT_IN_RECOGNIZED_STATUS");
+  });
+
+  test("rejects for non-owner", async () => {
+    seedSession({ createdBy: "other", studentId: "other", status: "RECOGNIZED" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.confirmResults({ sessionId: "hw-session-1" })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+});
