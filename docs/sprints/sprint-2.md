@@ -16,7 +16,7 @@
 
 - [x] 13. 文件上传：MinIO 集成 + 预签名 URL + 客户端图片压缩
 - [x] 14. 拍照组件：摄像头调用 + 相册选择 + 多张管理
-- [ ] 15. AI Provider 抽象层 + Azure OpenAI 实现（含 usage 信息提取）
+- [x] 15. AI Provider 抽象层 + Azure OpenAI 实现（含 usage 信息提取）
 - [ ] 16. AI Harness 基础设施：
   - [ ] PromptManager + OCR Prompt 模板
   - [ ] OutputValidator + OCR Zod Schema
