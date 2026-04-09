@@ -41,9 +41,40 @@ describe('AI Harness Integrity', () => {
     }
   })
 
-  test.todo('all AI operations have corresponding Zod schemas')
+  test('all AI operations have corresponding Zod schemas', () => {
+    // Every AIOperationType in Prisma schema must have a matching schema file
+    const operationNames = ['recognize-homework', 'grade-answer', 'help-generate', 'subject-detect']
+    const fs = require('fs')
+    const path = require('path')
 
-  test.todo('all AI operations have corresponding prompt templates')
+    for (const name of operationNames) {
+      const schemaPath = path.join(process.cwd(), 'src/lib/ai/harness/schemas', `${name}.ts`)
+      expect(fs.existsSync(schemaPath), `Missing schema: ${name}`).toBe(true)
+    }
+  })
 
-  test.todo('ContentGuardrail is applied to all student-facing AI content')
+  test('all AI operations have corresponding prompt templates', () => {
+    const operationNames = ['recognize-homework', 'grade-answer', 'help-generate', 'subject-detect']
+    const fs = require('fs')
+    const path = require('path')
+
+    for (const name of operationNames) {
+      const promptPath = path.join(process.cwd(), 'src/lib/ai/prompts', `${name}.ts`)
+      expect(fs.existsSync(promptPath), `Missing prompt: ${name}`).toBe(true)
+    }
+  })
+
+  test('ContentGuardrail is integrated in Harness pipeline', () => {
+    const fs = require('fs')
+    const path = require('path')
+
+    const pipelineCode = fs.readFileSync(
+      path.join(process.cwd(), 'src/lib/ai/harness/index.ts'),
+      'utf-8'
+    )
+
+    // ContentGuardrail must be imported and called in the pipeline
+    expect(pipelineCode).toContain('checkContentSafety')
+    expect(pipelineCode).toContain('CONTENT_GUARDRAIL_BLOCKED')
+  })
 })

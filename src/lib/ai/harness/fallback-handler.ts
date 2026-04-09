@@ -35,11 +35,24 @@ export function getFallbackResult<T>(
       return {
         success: true,
         data: {
-          content: locale === "zh"
+          helpText: locale === "zh"
             ? "请仔细审题，思考已知条件和要求的关系。"
             : "Read the problem carefully and think about the relationship between given conditions and requirements.",
           level: 1,
         } as T,
+        fallback: true,
+      };
+
+    case "GRADE_ANSWER":
+      return {
+        success: false,
+        error: {
+          message: locale === "zh"
+            ? "评分失败，请重试"
+            : "Grading failed. Please retry.",
+          code: "GRADING_FAILED",
+          retryable: false,
+        },
         fallback: true,
       };
 

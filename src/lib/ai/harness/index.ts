@@ -4,7 +4,7 @@
  * Pipeline flow:
  *   Pre-call:  RateLimiter → PromptInjectionGuard → PromptManager
  *   Call:      AIProvider.chat() / .vision()
- *   Post-call: OutputValidator → CallLogger
+ *   Post-call: OutputValidator → ContentGuardrail → CallLogger
  *   Error:     FallbackHandler → CallLogger
  *
  * Business code NEVER calls AIProvider directly.
@@ -16,6 +16,7 @@ import type { AIHarnessRequest, AIHarnessResult } from "./types";
 import { checkRateLimit } from "./rate-limiter";
 import { checkInjection, sanitizeInput } from "./prompt-injection-guard";
 import { validateOutput } from "./output-validator";
+import { checkContentSafety } from "./content-guardrail";
 import { logAICall } from "./call-logger";
 import { getFallbackResult } from "./fallback-handler";
 
@@ -126,6 +127,33 @@ export async function executeOperation<T>(
           message: validation.error,
           code: "OUTPUT_VALIDATION_FAILED",
           retryable: true, // BullMQ can retry
+        },
+        usage: response.usage,
+        durationMs,
+      };
+    }
+
+    // --- Post-call: Content Guardrail (K-12 safety) ---
+    const guardrailCheck = checkContentSafety(response.content);
+    if (!guardrailCheck.safe) {
+      await logAICall({
+        userId: context.userId,
+        operationType: operation.name,
+        provider: provider.config.provider,
+        model: provider.config.model,
+        correlationId: context.correlationId,
+        usage: response.usage,
+        durationMs,
+        success: false,
+        errorMessage: `Content guardrail: ${guardrailCheck.reason}`,
+      });
+
+      return {
+        success: false,
+        error: {
+          message: guardrailCheck.reason || "Content blocked by safety filter",
+          code: "CONTENT_GUARDRAIL_BLOCKED",
+          retryable: false,
         },
         usage: response.usage,
         durationMs,

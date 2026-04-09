@@ -31,10 +31,10 @@
 - [x] 19. 多轮检查流程：状态机实现
 - [x] 20. 第一轮检查结果展示（对/错 + 得分）
 - [x] 21. 改正提交 + 重新检查
-- [ ] 22. AI Harness 补充：
-  - [ ] ContentGuardrail（K-12 内容安全）
-  - [ ] FallbackHandler（降级策略）
-  - [ ] help-generate / subject-detect Prompt 模板 + Zod Schema
+- [x] 22. AI Harness 补充：
+  - [x] ContentGuardrail（K-12 内容安全）
+  - [x] FallbackHandler（降级策略）
+  - [x] help-generate / subject-detect Prompt 模板 + Zod Schema
 - [ ] 23. 求助功能（渐进式揭示，经 Harness 管道）
 - [ ] 24. 手动录入页面 + 学科自动识别（经 Harness 管道）
 - [ ] 25. 错题自动录入错题库（含 contentHash 去重）

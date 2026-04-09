@@ -211,10 +211,18 @@ describe("FallbackHandler", () => {
   });
 
   test("HELP_GENERATE returns generic hint", () => {
-    const result = getFallbackResult<{ content: string }>("HELP_GENERATE", "zh");
+    const result = getFallbackResult<{ helpText: string; level: number }>("HELP_GENERATE", "zh");
     expect(result.success).toBe(true);
     expect(result.fallback).toBe(true);
-    expect(result.data?.content).toBeTruthy();
+    expect(result.data?.helpText).toBeTruthy();
+    expect(result.data?.level).toBe(1);
+  });
+
+  test("GRADE_ANSWER returns non-success with error", () => {
+    const result = getFallbackResult("GRADE_ANSWER", "zh");
+    expect(result.success).toBe(false);
+    expect(result.fallback).toBe(true);
+    expect(result.error?.code).toBe("GRADING_FAILED");
   });
 });
 
@@ -288,6 +296,26 @@ describe("Harness Pipeline (executeOperation)", () => {
     expect(result.success).toBe(false);
     expect(result.error?.code).toBe("AI_CALL_FAILED");
     expect(result.error?.retryable).toBe(true);
+  });
+
+  test("blocks unsafe content via ContentGuardrail", async () => {
+    provider.nextResponse = {
+      content: '{"answer": "这道题涉及暴力行为"}',
+      usage: { inputTokens: 30, outputTokens: 15 },
+      model: "mock",
+      finishReason: "stop",
+    };
+
+    const result = await executeOperation(provider, {
+      operation: testOperation,
+      prompt: testPrompt,
+      variables: {},
+      context: testContext,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.code).toBe("CONTENT_GUARDRAIL_BLOCKED");
+    expect(result.error?.retryable).toBe(false);
   });
 
   test("handles output validation failure", async () => {
