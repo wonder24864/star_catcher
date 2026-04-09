@@ -160,7 +160,14 @@
       "confirmCompleteDesc": "还有 {count} 题未改正，确定结束检查吗？",
       "completedTitle": "检查完成",
       "finalScore": "最终得分：{score} 分",
-      "backToList": "返回作业列表"
+      "backToList": "返回作业列表",
+      "correctionFormTitle": "提交改正",
+      "correctionFormDesc": "请为以下错题输入改正答案",
+      "yourNewAnswer": "改正答案",
+      "answerPlaceholder": "输入你的答案...",
+      "submitCorrections": "提交改正",
+      "submitting": "提交中...",
+      "recheckSuccess": "已提交，正在显示第 {round} 轮结果"
     }
   },
   "upload": {

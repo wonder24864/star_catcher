@@ -353,6 +353,31 @@ export function createMockDb() {
         if (session) Object.assign(session, data, { updatedAt: new Date() });
         return session || null;
       },
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where: Record<string, unknown>;
+        data: Record<string, unknown>;
+      }) => {
+        let count = 0;
+        for (const s of homeworkSessions) {
+          let matches = true;
+          if (where.id && s.id !== where.id) matches = false;
+          if (where.updatedAt !== undefined) {
+            const whereTime =
+              where.updatedAt instanceof Date
+                ? where.updatedAt.getTime()
+                : new Date(where.updatedAt as string).getTime();
+            if (s.updatedAt.getTime() !== whereTime) matches = false;
+          }
+          if (matches) {
+            Object.assign(s, data, { updatedAt: new Date() });
+            count++;
+          }
+        }
+        return { count };
+      },
       delete: async ({ where }: { where: Record<string, unknown> }) => {
         const idx = homeworkSessions.findIndex((s) => s.id === where.id);
         if (idx >= 0) {

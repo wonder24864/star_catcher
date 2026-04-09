@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, type Context } from "../trpc";
 import { deleteObject } from "@/lib/storage";
 import { calculateScore } from "@/lib/scoring";
+import { gradeAnswer } from "@/lib/ai/operations/grade-answer";
 import {
   createSessionSchema,
   getSessionSchema,
@@ -14,6 +15,7 @@ import {
   confirmResultsSchema,
   getCheckStatusSchema,
   completeSessionSchema,
+  submitCorrectionsSchema,
 } from "@/lib/validations/homework";
 
 /** Verify the caller owns or is the student of a session. Returns the session. */
@@ -444,5 +446,119 @@ export const homeworkRouter = router({
       });
 
       return updated;
+    }),
+
+  /**
+   * Submit corrected answers and start a new check round.
+   * Calls AI to grade each correction, creates CheckRound N+1.
+   * Uses optimistic locking on totalRounds to prevent concurrent submissions.
+   */
+  submitCorrections: protectedProcedure
+    .input(submitCorrectionsSchema)
+    .mutation(async ({ ctx, input }) => {
+      const session = await verifySessionAccess(ctx.db, input.sessionId, ctx.session.userId);
+
+      if (session.status !== "CHECKING") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "SESSION_NOT_IN_CHECKING_STATUS",
+        });
+      }
+
+      // Fetch all questions for score recalculation
+      const allQuestions = await ctx.db.sessionQuestion.findMany({
+        where: { homeworkSessionId: input.sessionId },
+      });
+      const questionMap = new Map(allQuestions.map((q) => [q.id, q]));
+
+      // Grade each correction in parallel via AI Harness
+      const correctedIds = new Set(input.corrections.map((c) => c.questionId));
+      const gradeJobs = input.corrections.map(async (correction) => {
+        const question = questionMap.get(correction.questionId);
+        if (!question) return null;
+
+        const result = await gradeAnswer({
+          questionContent: question.content,
+          studentAnswer: correction.newAnswer,
+          correctAnswer: question.correctAnswer ?? null,
+          subject: session.subject ?? undefined,
+          grade: session.grade ?? undefined,
+          context: {
+            userId: ctx.session.userId,
+            locale: ctx.session.locale,
+            grade: session.grade ?? undefined,
+            correlationId: `submit-${input.sessionId}`,
+          },
+        });
+
+        return {
+          questionId: question.id,
+          newAnswer: correction.newAnswer,
+          // AI failure → mark as needsReview, treat as incorrect
+          isCorrect: result.success ? (result.data?.isCorrect ?? false) : false,
+          confidence: result.success ? (result.data?.confidence ?? 0) : 0,
+          needsReview: !result.success,
+        };
+      });
+
+      const gradeResults = (await Promise.all(gradeJobs)).filter(
+        (r): r is NonNullable<typeof r> => r !== null
+      );
+
+      // Update each corrected SessionQuestion
+      for (const grade of gradeResults) {
+        await ctx.db.sessionQuestion.update({
+          where: { id: grade.questionId },
+          data: {
+            studentAnswer: grade.newAnswer,
+            isCorrect: grade.isCorrect,
+            confidence: grade.confidence,
+            needsReview: grade.needsReview,
+          },
+        });
+      }
+
+      // Recalculate score from all questions' current state
+      const updatedQuestions = await ctx.db.sessionQuestion.findMany({
+        where: { homeworkSessionId: input.sessionId },
+      });
+      const totalQuestions = updatedQuestions.length;
+      const correctCount = updatedQuestions.filter((q) => q.isCorrect === true).length;
+      const score = calculateScore(correctCount, totalQuestions);
+      const newRoundNumber = session.totalRounds + 1;
+
+      // Create the new CheckRound with per-question results
+      await ctx.db.checkRound.create({
+        data: {
+          homeworkSessionId: input.sessionId,
+          roundNumber: newRoundNumber,
+          score,
+          totalQuestions,
+          correctCount,
+          results: {
+            create: updatedQuestions.map((q) => ({
+              sessionQuestionId: q.id,
+              studentAnswer: q.studentAnswer,
+              isCorrect: q.isCorrect ?? false,
+              correctedFromPrev: correctedIds.has(q.id),
+            })),
+          },
+        },
+      });
+
+      // Optimistic lock: update totalRounds only if session hasn't changed
+      const lockResult = await ctx.db.homeworkSession.updateMany({
+        where: { id: input.sessionId, updatedAt: session.updatedAt },
+        data: { totalRounds: newRoundNumber },
+      });
+
+      if (lockResult.count === 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "DATA_CONFLICT",
+        });
+      }
+
+      return { success: true, newRoundNumber, score };
     }),
 });

@@ -358,6 +358,7 @@ enum AIOperationType {
   OCR_RECOGNIZE
   SUBJECT_DETECT
   HELP_GENERATE
+  GRADE_ANSWER
 }
 
 model AICallLog {

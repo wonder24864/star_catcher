@@ -10,6 +10,15 @@ import { createMockDb, createMockContext, type MockDb } from "../helpers/mock-db
 vi.mock("@/lib/storage", () => import("../helpers/mock-storage"));
 import { storageCalls, resetStorageCalls } from "../helpers/mock-storage";
 
+// Mock AI operations used by submitCorrections
+vi.mock("@/lib/ai/operations/grade-answer", () => ({
+  gradeAnswer: vi.fn().mockResolvedValue({
+    success: true,
+    data: { isCorrect: true, confidence: 0.95 },
+  }),
+}));
+import { gradeAnswer } from "@/lib/ai/operations/grade-answer";
+
 const createCaller = createCallerFactory(appRouter);
 
 let db: MockDb;
@@ -575,6 +584,160 @@ describe("homework.completeSession", () => {
     const caller = createCaller(createMockContext(db, studentSession));
     await expect(
       caller.homework.completeSession({ sessionId: "hw-session-1" })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+});
+
+describe("homework.submitCorrections", () => {
+  beforeEach(() => {
+    vi.mocked(gradeAnswer).mockResolvedValue({
+      success: true,
+      data: { isCorrect: true, confidence: 0.95 },
+    });
+  });
+
+  test("grades corrections, creates new round, updates totalRounds", async () => {
+    seedSession({ status: "CHECKING" });
+    const q1 = seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+    const q2 = seedQuestion("hw-session-1", { questionNumber: 2, isCorrect: false });
+    db._checkRounds.push({
+      id: "round-1", homeworkSessionId: "hw-session-1", roundNumber: 1,
+      score: 50, totalQuestions: 2, correctCount: 1, createdAt: new Date(),
+    });
+    db._homeworkSessions[0].totalRounds = 1; // Reflect the seeded round
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.submitCorrections({
+      sessionId: "hw-session-1",
+      corrections: [{ questionId: q2.id, newAnswer: "correct answer" }],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.newRoundNumber).toBe(2);
+    expect(result.score).toBe(100); // AI says isCorrect=true, both now correct
+    expect(db._checkRounds).toHaveLength(2);
+    expect(db._checkRounds[1].roundNumber).toBe(2);
+    expect(db._homeworkSessions[0].totalRounds).toBe(2);
+  });
+
+  test("updates SessionQuestion with new answer and isCorrect", async () => {
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: false });
+    db._checkRounds.push({
+      id: "round-1", homeworkSessionId: "hw-session-1", roundNumber: 1,
+      score: 0, totalQuestions: 1, correctCount: 0, createdAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await caller.homework.submitCorrections({
+      sessionId: "hw-session-1",
+      corrections: [{ questionId: q.id, newAnswer: "new answer" }],
+    });
+
+    const updated = db._sessionQuestions.find((sq) => sq.id === q.id);
+    expect(updated?.studentAnswer).toBe("new answer");
+    expect(updated?.isCorrect).toBe(true);
+  });
+
+  test("marks question as needsReview when AI fails", async () => {
+    vi.mocked(gradeAnswer).mockResolvedValueOnce({
+      success: false,
+      error: { message: "AI error", code: "AI_CALL_FAILED", retryable: true },
+    });
+
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: false });
+    db._checkRounds.push({
+      id: "round-1", homeworkSessionId: "hw-session-1", roundNumber: 1,
+      score: 0, totalQuestions: 1, correctCount: 0, createdAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.submitCorrections({
+      sessionId: "hw-session-1",
+      corrections: [{ questionId: q.id, newAnswer: "attempted answer" }],
+    });
+
+    expect(result.success).toBe(true);
+    const updated = db._sessionQuestions.find((sq) => sq.id === q.id);
+    expect(updated?.isCorrect).toBe(false);
+    expect(updated?.needsReview).toBe(true);
+  });
+
+  test("marks correctedFromPrev=true for corrected questions in round results", async () => {
+    seedSession({ status: "CHECKING" });
+    const q1 = seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+    const q2 = seedQuestion("hw-session-1", { questionNumber: 2, isCorrect: false });
+    db._checkRounds.push({
+      id: "round-1", homeworkSessionId: "hw-session-1", roundNumber: 1,
+      score: 50, totalQuestions: 2, correctCount: 1, createdAt: new Date(),
+    });
+    db._homeworkSessions[0].totalRounds = 1; // Reflect the seeded round
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await caller.homework.submitCorrections({
+      sessionId: "hw-session-1",
+      corrections: [{ questionId: q2.id, newAnswer: "fix" }],
+    });
+
+    const newRound = db._checkRounds.find((r) => r.roundNumber === 2)!;
+    const rr2 = db._roundQuestionResults.find(
+      (rr) => rr.checkRoundId === newRound.id && rr.sessionQuestionId === q2.id
+    );
+    const rr1 = db._roundQuestionResults.find(
+      (rr) => rr.checkRoundId === newRound.id && rr.sessionQuestionId === q1.id
+    );
+    expect(rr2?.correctedFromPrev).toBe(true);
+    expect(rr1?.correctedFromPrev).toBe(false);
+  });
+
+  test("throws DATA_CONFLICT on optimistic lock failure", async () => {
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: false });
+    db._checkRounds.push({
+      id: "round-1", homeworkSessionId: "hw-session-1", roundNumber: 1,
+      score: 0, totalQuestions: 1, correctCount: 0, createdAt: new Date(),
+    });
+    db._homeworkSessions[0].totalRounds = 1;
+
+    // Simulate a concurrent write by replacing updateMany to return count=0
+    const orig = db.homeworkSession.updateMany;
+    db.homeworkSession.updateMany = vi.fn().mockResolvedValue({ count: 0 });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.submitCorrections({
+        sessionId: "hw-session-1",
+        corrections: [{ questionId: q.id, newAnswer: "x" }],
+      })
+    ).rejects.toThrow("DATA_CONFLICT");
+
+    db.homeworkSession.updateMany = orig; // Restore
+  });
+
+  test("rejects session not in CHECKING status", async () => {
+    seedSession({ status: "COMPLETED" });
+    const q = seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: false });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.submitCorrections({
+        sessionId: "hw-session-1",
+        corrections: [{ questionId: q.id, newAnswer: "x" }],
+      })
+    ).rejects.toThrow("SESSION_NOT_IN_CHECKING_STATUS");
+  });
+
+  test("rejects for non-owner", async () => {
+    seedSession({ createdBy: "other", studentId: "other", status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: false });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.submitCorrections({
+        sessionId: "hw-session-1",
+        corrections: [{ questionId: q.id, newAnswer: "x" }],
+      })
     ).rejects.toThrow("FORBIDDEN");
   });
 });

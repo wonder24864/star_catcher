@@ -14,6 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +58,10 @@ export default function CheckResultsPage() {
   const sessionId = params.sessionId as string;
 
   const [confirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
+  const [correctionDialogOpen, setCorrectionDialogOpen] = useState(false);
+  // Map of questionId → new answer text
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+
   const utils = trpc.useUtils();
 
   const { data: session, isLoading } = trpc.homework.getCheckStatus.useQuery(
@@ -70,6 +76,24 @@ export default function CheckResultsPage() {
       setConfirmCompleteOpen(false);
     },
     onError: () => toast.error(t("error.serverError")),
+  });
+
+  const submitCorrections = trpc.homework.submitCorrections.useMutation({
+    onSuccess: (data) => {
+      utils.homework.getCheckStatus.invalidate({ sessionId });
+      toast.success(
+        t("homework.check.recheckSuccess", { round: data.newRoundNumber })
+      );
+      setCorrectionDialogOpen(false);
+      setAnswers({});
+    },
+    onError: (err) => {
+      if (err.message === "DATA_CONFLICT") {
+        toast.error(t("error.dataConflict"));
+      } else {
+        toast.error(t("error.serverError"));
+      }
+    },
   });
 
   if (isLoading) {
@@ -95,8 +119,28 @@ export default function CheckResultsPage() {
   const rounds = sessionData.checkRounds ?? [];
   const questions = sessionData.questions ?? [];
   const latestRound = rounds[rounds.length - 1] as CheckRound | undefined;
-  const wrongCount = questions.filter((q) => q.isCorrect !== true).length;
+  const wrongQuestions = questions.filter((q) => q.isCorrect !== true);
+  const wrongCount = wrongQuestions.length;
   const isCompleted = sessionData.status === "COMPLETED";
+
+  const handleRecheckClick = () => {
+    // Pre-fill answers with last known studentAnswer
+    const prefilled: Record<string, string> = {};
+    for (const q of wrongQuestions) {
+      prefilled[q.id] = q.studentAnswer ?? "";
+    }
+    setAnswers(prefilled);
+    setCorrectionDialogOpen(true);
+  };
+
+  const handleSubmitCorrections = () => {
+    const corrections = wrongQuestions
+      .map((q) => ({ questionId: q.id, newAnswer: answers[q.id]?.trim() ?? "" }))
+      .filter((c) => c.newAnswer.length > 0);
+
+    if (corrections.length === 0) return;
+    submitCorrections.mutate({ sessionId, corrections });
+  };
 
   const handleCompleteClick = () => {
     if (wrongCount > 0) {
@@ -188,7 +232,6 @@ export default function CheckResultsPage() {
           >
             <CardContent className="py-3">
               <div className="flex items-start gap-3">
-                {/* Icon */}
                 <div
                   className={cn(
                     "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5",
@@ -250,11 +293,11 @@ export default function CheckResultsPage() {
               ? t("homework.check.allCorrect")
               : t("homework.check.wrongCount", { count: wrongCount })}
           </p>
-          {/* Re-check: Task 21 will enable this */}
           <Button
             variant="outline"
             size="lg"
-            disabled
+            disabled={wrongCount === 0}
+            onClick={handleRecheckClick}
             className="flex items-center gap-2"
           >
             <RefreshCw className="h-4 w-4" />
@@ -279,6 +322,58 @@ export default function CheckResultsPage() {
           </Button>
         </div>
       )}
+
+      {/* Correction input dialog */}
+      <Dialog open={correctionDialogOpen} onOpenChange={setCorrectionDialogOpen}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("homework.check.correctionFormTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("homework.check.correctionFormDesc")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {wrongQuestions.map((q) => (
+              <div key={q.id} className="space-y-1.5">
+                <Label className="text-sm font-medium">
+                  #{q.questionNumber} {q.content}
+                </Label>
+                <Input
+                  placeholder={t("homework.check.answerPlaceholder")}
+                  value={answers[q.id] ?? ""}
+                  onChange={(e) =>
+                    setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setCorrectionDialogOpen(false)}
+              disabled={submitCorrections.isPending}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={handleSubmitCorrections}
+              disabled={
+                submitCorrections.isPending ||
+                wrongQuestions.every(
+                  (q) => !answers[q.id]?.trim()
+                )
+              }
+            >
+              {submitCorrections.isPending
+                ? t("homework.check.submitting")
+                : t("homework.check.submitCorrections")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirm-complete dialog */}
       <Dialog open={confirmCompleteOpen} onOpenChange={setConfirmCompleteOpen}>

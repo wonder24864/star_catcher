@@ -160,7 +160,14 @@
       "confirmCompleteDesc": "You still have {count} incorrect questions. End check anyway?",
       "completedTitle": "Check Complete",
       "finalScore": "Final Score: {score}",
-      "backToList": "Back to List"
+      "backToList": "Back to List",
+      "correctionFormTitle": "Submit Corrections",
+      "correctionFormDesc": "Enter your corrected answers for the questions below",
+      "yourNewAnswer": "Corrected answer",
+      "answerPlaceholder": "Enter your answer...",
+      "submitCorrections": "Submit Corrections",
+      "submitting": "Submitting...",
+      "recheckSuccess": "Submitted — showing Round {round} results"
     }
   },
   "upload": {

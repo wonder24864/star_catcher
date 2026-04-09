@@ -73,6 +73,19 @@ export const completeSessionSchema = z.object({
   sessionId: z.string().min(1),
 });
 
+export const submitCorrectionsSchema = z.object({
+  sessionId: z.string().min(1),
+  corrections: z
+    .array(
+      z.object({
+        questionId: z.string().min(1),
+        newAnswer: z.string().min(1), // Business rule: empty string not a valid answer
+      })
+    )
+    .min(1)
+    .max(50),
+});
+
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
 export type GetSessionInput = z.infer<typeof getSessionSchema>;
 export type ListSessionsInput = z.infer<typeof listSessionsSchema>;
