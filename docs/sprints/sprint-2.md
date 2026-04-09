@@ -23,7 +23,7 @@
   - [x] CallLogger（AICallLog 写入）
   - [x] PromptInjectionGuard（输入净化）
   - [x] RateLimiter（Redis 滑动窗口）
-- [ ] 17. OCR Operation：`recognizeHomework` 编排（经 Harness 管道）
+- [x] 17. OCR Operation：`recognizeHomework` 编排（经 Harness 管道）
 - [ ] 18. 识别结果确认/修正页面
 
 ### Week 4
