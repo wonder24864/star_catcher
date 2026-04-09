@@ -17,12 +17,12 @@
 - [x] 13. 文件上传：MinIO 集成 + 预签名 URL + 客户端图片压缩
 - [x] 14. 拍照组件：摄像头调用 + 相册选择 + 多张管理
 - [x] 15. AI Provider 抽象层 + Azure OpenAI 实现（含 usage 信息提取）
-- [ ] 16. AI Harness 基础设施：
-  - [ ] PromptManager + OCR Prompt 模板
-  - [ ] OutputValidator + OCR Zod Schema
-  - [ ] CallLogger（AICallLog 写入）
-  - [ ] PromptInjectionGuard（输入净化）
-  - [ ] RateLimiter（Redis 滑动窗口）
+- [x] 16. AI Harness 基础设施：
+  - [x] PromptManager + OCR Prompt 模板
+  - [x] OutputValidator + OCR Zod Schema
+  - [x] CallLogger（AICallLog 写入）
+  - [x] PromptInjectionGuard（输入净化）
+  - [x] RateLimiter（Redis 滑动窗口）
 - [ ] 17. OCR Operation：`recognizeHomework` 编排（经 Harness 管道）
 - [ ] 18. 识别结果确认/修正页面
 
