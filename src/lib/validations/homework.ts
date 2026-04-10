@@ -86,6 +86,24 @@ export const submitCorrectionsSchema = z.object({
     .max(50),
 });
 
+// --- Manual error input schemas ---
+
+export const createManualErrorSchema = z.object({
+  studentId: z.string().min(1),
+  content: z.string().min(1).max(5000),
+  studentAnswer: z.string().max(2000).optional(),
+  correctAnswer: z.string().max(2000).optional(),
+  questionType: z.enum([
+    "CHOICE", "FILL_BLANK", "TRUE_FALSE", "SHORT_ANSWER",
+    "CALCULATION", "ESSAY", "DICTATION_ITEM", "COPY_ITEM", "OTHER",
+  ]).optional(),
+  /** Override AI-detected subject (used when confidence < 0.8 and user edits) */
+  subject: z.enum([
+    "MATH", "CHINESE", "ENGLISH", "PHYSICS", "CHEMISTRY",
+    "BIOLOGY", "POLITICS", "HISTORY", "GEOGRAPHY", "OTHER",
+  ]).optional(),
+});
+
 // --- Help request schemas ---
 
 export const requestHelpSchema = z.object({

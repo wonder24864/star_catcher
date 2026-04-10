@@ -109,6 +109,29 @@ type MockHelpRequest = {
   createdAt: Date;
 };
 
+type MockErrorQuestion = {
+  id: string;
+  studentId: string;
+  sessionQuestionId: string | null;
+  subject: string;
+  contentType: string | null;
+  grade: string | null;
+  questionType: string | null;
+  content: string;
+  contentHash: string | null;
+  studentAnswer: string | null;
+  correctAnswer: string | null;
+  errorAnalysis: string | null;
+  aiKnowledgePoint: string | null;
+  imageUrl: string | null;
+  totalAttempts: number;
+  correctAttempts: number;
+  isMastered: boolean;
+  deletedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 type MockParentStudentConfig = {
   id: string;
   parentId: string;
@@ -134,6 +157,7 @@ export function createMockDb() {
   const roundQuestionResults: MockRoundQuestionResult[] = [];
   const helpRequests: MockHelpRequest[] = [];
   const parentStudentConfigs: MockParentStudentConfig[] = [];
+  const errorQuestions: MockErrorQuestion[] = [];
 
   return {
     user: {
@@ -655,6 +679,55 @@ export function createMockDb() {
         }) || null;
       },
     },
+    errorQuestion: {
+      findFirst: async ({ where }: { where?: Record<string, unknown> }) => {
+        return errorQuestions.find((eq) => {
+          if (eq.deletedAt !== null) return false;
+          if (where?.studentId && eq.studentId !== where.studentId) return false;
+          if (where?.contentHash && eq.contentHash !== where.contentHash) return false;
+          if (where?.id && eq.id !== where.id) return false;
+          return true;
+        }) || null;
+      },
+      findMany: async ({ where }: { where?: Record<string, unknown> }) => {
+        return errorQuestions.filter((eq) => {
+          if (eq.deletedAt !== null) return false;
+          if (where?.studentId && eq.studentId !== where.studentId) return false;
+          return true;
+        });
+      },
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        const eq: MockErrorQuestion = {
+          id: cuid(),
+          studentId: data.studentId as string,
+          sessionQuestionId: (data.sessionQuestionId as string) ?? null,
+          subject: (data.subject as string) ?? "OTHER",
+          contentType: (data.contentType as string) ?? null,
+          grade: (data.grade as string) ?? null,
+          questionType: (data.questionType as string) ?? null,
+          content: data.content as string,
+          contentHash: (data.contentHash as string) ?? null,
+          studentAnswer: (data.studentAnswer as string) ?? null,
+          correctAnswer: (data.correctAnswer as string) ?? null,
+          errorAnalysis: null,
+          aiKnowledgePoint: (data.aiKnowledgePoint as string) ?? null,
+          imageUrl: null,
+          totalAttempts: 1,
+          correctAttempts: 0,
+          isMastered: false,
+          deletedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        errorQuestions.push(eq);
+        return eq;
+      },
+      update: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        const eq = errorQuestions.find((e) => e.id === where.id);
+        if (eq) Object.assign(eq, data, { updatedAt: new Date() });
+        return eq || null;
+      },
+    },
     // Expose internals for test assertions
     _users: users,
     _families: families,
@@ -666,6 +739,7 @@ export function createMockDb() {
     _roundQuestionResults: roundQuestionResults,
     _helpRequests: helpRequests,
     _parentStudentConfigs: parentStudentConfigs,
+    _errorQuestions: errorQuestions,
   };
 }
 

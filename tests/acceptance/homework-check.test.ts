@@ -275,8 +275,60 @@ describe('US-018: Progressive Help', () => {
 });
 
 describe('US-019: Complete Check', () => {
-  test.todo('student can end check session')
-  test.todo('final score saved')
-  test.todo('wrong questions auto-added to error notebook')
-  test.todo('deduplication via contentHash')
+  test('student can end check session', async () => {
+    setup();
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.completeSession({ sessionId: "s1" });
+    expect(result.status).toBe("COMPLETED");
+  });
+
+  test('final score saved', async () => {
+    setup();
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.completeSession({ sessionId: "s1" });
+    expect(result.finalScore).toBe(0); // 0/1 correct
+  });
+
+  test('wrong questions auto-added to error notebook', async () => {
+    setup();
+    const caller = createCaller(createMockContext(db, studentSession));
+    await caller.homework.completeSession({ sessionId: "s1" });
+
+    expect(db._errorQuestions).toHaveLength(1);
+    expect(db._errorQuestions[0].content).toBe("25 + 38 = ?");
+    expect(db._errorQuestions[0].studentId).toBe("student1");
+  });
+
+  test('deduplication via contentHash', async () => {
+    setup();
+    const caller = createCaller(createMockContext(db, studentSession));
+    await caller.homework.completeSession({ sessionId: "s1" });
+    expect(db._errorQuestions).toHaveLength(1);
+    expect(db._errorQuestions[0].totalAttempts).toBe(1);
+
+    // Create another session with the same wrong question
+    db._homeworkSessions.push({
+      id: "s2", studentId: "student1", createdBy: "student1",
+      subject: "MATH", contentType: null, grade: "PRIMARY_3", title: null,
+      status: "CHECKING", finalScore: null, totalRounds: 1,
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+    db._sessionQuestions.push({
+      id: "q2", homeworkSessionId: "s2", questionNumber: 1,
+      questionType: "CALCULATION", content: "25 + 38 = ?",
+      studentAnswer: "53", correctAnswer: "63", isCorrect: false,
+      confidence: 0.9, needsReview: false, imageRegion: null,
+      aiKnowledgePoint: null, createdAt: new Date(), updatedAt: new Date(),
+    });
+    db._checkRounds.push({
+      id: "r2", homeworkSessionId: "s2", roundNumber: 1,
+      score: 0, totalQuestions: 1, correctCount: 0, createdAt: new Date(),
+    });
+
+    await caller.homework.completeSession({ sessionId: "s2" });
+
+    // Should NOT create a second record, just bump totalAttempts
+    expect(db._errorQuestions).toHaveLength(1);
+    expect(db._errorQuestions[0].totalAttempts).toBe(2);
+  });
 });

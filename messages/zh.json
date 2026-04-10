@@ -169,6 +169,43 @@
       "submitting": "提交中...",
       "recheckSuccess": "已提交，正在显示第 {round} 轮结果"
     },
+    "subjects": {
+      "MATH": "数学",
+      "CHINESE": "语文",
+      "ENGLISH": "英语",
+      "PHYSICS": "物理",
+      "CHEMISTRY": "化学",
+      "BIOLOGY": "生物",
+      "POLITICS": "政治",
+      "HISTORY": "历史",
+      "GEOGRAPHY": "地理",
+      "OTHER": "其他"
+    },
+    "manual": {
+      "button": "手动录入",
+      "title": "手动录入错题",
+      "formTitle": "填写错题信息",
+      "contentPlaceholder": "输入题目内容...",
+      "studentAnswerPlaceholder": "输入学生的错误答案（可选）",
+      "correctAnswerPlaceholder": "输入正确答案（可选）",
+      "questionType": "题目类型",
+      "selectQuestionType": "选择题目类型",
+      "subjectAutoDetect": "留空则 AI 自动识别",
+      "autoDetect": "AI 自动识别",
+      "save": "保存错题",
+      "saving": "保存中...",
+      "questionTypes": {
+        "CHOICE": "选择题",
+        "FILL_BLANK": "填空题",
+        "TRUE_FALSE": "判断题",
+        "SHORT_ANSWER": "简答题",
+        "CALCULATION": "计算题",
+        "ESSAY": "作文",
+        "DICTATION_ITEM": "听写",
+        "COPY_ITEM": "抄写",
+        "OTHER": "其他"
+      }
+    },
     "help": {
       "button": "求助",
       "title": "求助 — 第 {level} 级",

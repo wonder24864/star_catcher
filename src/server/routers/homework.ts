@@ -2,8 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, type Context } from "../trpc";
 import { deleteObject } from "@/lib/storage";
 import { calculateScore } from "@/lib/scoring";
+import { computeContentHash } from "@/lib/content-hash";
 import { gradeAnswer } from "@/lib/ai/operations/grade-answer";
 import { generateHelp } from "@/lib/ai/operations/help-generate";
+import { detectSubject } from "@/lib/ai/operations/subject-detect";
 import {
   createSessionSchema,
   getSessionSchema,
@@ -17,6 +19,7 @@ import {
   getCheckStatusSchema,
   completeSessionSchema,
   submitCorrectionsSchema,
+  createManualErrorSchema,
   requestHelpSchema,
   getHelpRequestsSchema,
 } from "@/lib/validations/homework";
@@ -432,6 +435,8 @@ export const homeworkRouter = router({
   /**
    * Complete the check session.
    * Transitions CHECKING → COMPLETED, sets finalScore to last round's score.
+   * Auto-records wrong questions to ErrorQuestion table (Task 25, US-019).
+   * Dedup: contentHash match → update totalAttempts; else create new.
    */
   completeSession: protectedProcedure
     .input(completeSessionSchema)
@@ -458,6 +463,51 @@ export const homeworkRouter = router({
           finalScore: lastRound?.score ?? null,
         },
       });
+
+      // --- Auto-record wrong questions to error notebook (Task 25) ---
+      const questions = await ctx.db.sessionQuestion.findMany({
+        where: { homeworkSessionId: input.sessionId },
+      });
+      const wrongQuestions = questions.filter(
+        (q: { isCorrect: boolean | null }) => q.isCorrect !== true
+      );
+
+      for (const q of wrongQuestions) {
+        const hash = computeContentHash(q.content);
+
+        // Check for existing ErrorQuestion with same content for this student
+        const existing = await ctx.db.errorQuestion.findFirst({
+          where: {
+            studentId: session.studentId,
+            contentHash: hash,
+          },
+        });
+
+        if (existing) {
+          // Dedup: bump totalAttempts
+          await ctx.db.errorQuestion.update({
+            where: { id: existing.id },
+            data: { totalAttempts: existing.totalAttempts + 1 },
+          });
+        } else {
+          // Create new ErrorQuestion
+          await ctx.db.errorQuestion.create({
+            data: {
+              studentId: session.studentId,
+              sessionQuestionId: q.id,
+              subject: session.subject ?? "OTHER",
+              contentType: session.contentType ?? undefined,
+              grade: session.grade ?? undefined,
+              questionType: q.questionType ?? undefined,
+              content: q.content,
+              contentHash: hash,
+              studentAnswer: q.studentAnswer ?? undefined,
+              correctAnswer: q.correctAnswer ?? undefined,
+              aiKnowledgePoint: q.aiKnowledgePoint ?? undefined,
+            },
+          });
+        }
+      }
 
       return updated;
     }),
@@ -574,6 +624,94 @@ export const homeworkRouter = router({
       }
 
       return { success: true, newRoundNumber, score };
+    }),
+
+  // --- Manual error input (Task 24, US-010) ---
+
+  /**
+   * Create a manual error question with AI subject auto-detection.
+   * Directly creates an ErrorQuestion (not via HomeworkSession flow).
+   * Subject detection: confidence >= 0.8 auto-accepted, < 0.8 user may override.
+   */
+  createManualError: protectedProcedure
+    .input(createManualErrorSchema)
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.userId;
+      const { studentId } = input;
+
+      // Student can create for themselves; parent needs family relationship
+      if (userId !== studentId) {
+        if (ctx.session.role === "PARENT") {
+          await verifyParentStudentAccess(ctx.db, userId, studentId);
+        } else {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+      }
+
+      // Detect subject via AI Harness (unless user explicitly provides one)
+      type ContentTypeEnum = "EXAM" | "HOMEWORK" | "DICTATION" | "COPYWRITING" | "ORAL_CALC" | "COMPOSITION" | "OTHER";
+      let subject = input.subject ?? "OTHER";
+      let contentType: ContentTypeEnum | undefined;
+
+      if (!input.subject) {
+        const detectResult = await detectSubject({
+          questionContent: input.content,
+          studentAnswer: input.studentAnswer,
+          context: {
+            userId,
+            locale: ctx.session.locale,
+            correlationId: `manual-${Date.now()}`,
+          },
+        });
+
+        if (detectResult.success && detectResult.data) {
+          // Auto-accept at >= 0.8 confidence; otherwise use as default
+          subject = detectResult.data.subject;
+          contentType = (detectResult.data.contentType as ContentTypeEnum) ?? undefined;
+        }
+        // On AI failure: fallback to OTHER (already set above)
+      }
+
+      // Compute content hash for dedup
+      const hash = computeContentHash(input.content);
+
+      // Check for existing ErrorQuestion with same content for this student
+      const existing = await ctx.db.errorQuestion.findFirst({
+        where: {
+          studentId,
+          contentHash: hash,
+        },
+      });
+
+      if (existing) {
+        // Dedup: bump totalAttempts, update fields
+        const updated = await ctx.db.errorQuestion.update({
+          where: { id: existing.id },
+          data: {
+            totalAttempts: existing.totalAttempts + 1,
+            studentAnswer: input.studentAnswer ?? existing.studentAnswer,
+            correctAnswer: input.correctAnswer ?? existing.correctAnswer,
+            subject,
+          },
+        });
+        return updated;
+      }
+
+      // Create new ErrorQuestion
+      const errorQuestion = await ctx.db.errorQuestion.create({
+        data: {
+          studentId,
+          subject,
+          contentType: contentType ?? undefined,
+          questionType: input.questionType ?? undefined,
+          content: input.content,
+          contentHash: hash,
+          studentAnswer: input.studentAnswer ?? undefined,
+          correctAnswer: input.correctAnswer ?? undefined,
+        },
+      });
+
+      return errorQuestion;
     }),
 
   // --- Help (progressive reveal) ---

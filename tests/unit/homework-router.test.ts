@@ -23,8 +23,15 @@ vi.mock("@/lib/ai/operations/help-generate", () => ({
     data: { helpText: "Here is a hint about the knowledge point.", level: 1, knowledgePoint: "Addition" },
   }),
 }));
+vi.mock("@/lib/ai/operations/subject-detect", () => ({
+  detectSubject: vi.fn().mockResolvedValue({
+    success: true,
+    data: { subject: "MATH", confidence: 0.95, contentType: "HOMEWORK" },
+  }),
+}));
 import { gradeAnswer } from "@/lib/ai/operations/grade-answer";
 import { generateHelp } from "@/lib/ai/operations/help-generate";
+import { detectSubject } from "@/lib/ai/operations/subject-detect";
 
 const createCaller = createCallerFactory(appRouter);
 
@@ -1034,5 +1041,182 @@ describe("homework.requestHelp", () => {
     await expect(
       caller.homework.requestHelp({ sessionId: "hw-session-1", questionId: q.id, level: 1 })
     ).rejects.toThrow("HELP_GENERATION_FAILED");
+  });
+});
+
+// --- Manual error input tests (Task 24, US-010) ---
+
+describe("homework.createManualError", () => {
+  beforeEach(() => {
+    vi.mocked(detectSubject).mockResolvedValue({
+      success: true,
+      data: { subject: "MATH", confidence: 0.95, contentType: "HOMEWORK" },
+    });
+  });
+
+  test("creates error question with AI subject auto-detection", async () => {
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.createManualError({
+      studentId: "student1",
+      content: "25 + 38 = ?",
+      studentAnswer: "53",
+    });
+
+    expect(result.content).toBe("25 + 38 = ?");
+    expect(result.subject).toBe("MATH");
+    expect(result.studentAnswer).toBe("53");
+    expect(db._errorQuestions).toHaveLength(1);
+    expect(detectSubject).toHaveBeenCalled();
+  });
+
+  test("uses user-provided subject instead of AI detection", async () => {
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.createManualError({
+      studentId: "student1",
+      content: "Translate: 你好",
+      subject: "CHINESE",
+    });
+
+    expect(result.subject).toBe("CHINESE");
+    expect(detectSubject).not.toHaveBeenCalled();
+  });
+
+  test("falls back to OTHER when AI detection fails", async () => {
+    vi.mocked(detectSubject).mockResolvedValueOnce({
+      success: false,
+      error: { message: "AI error", code: "AI_CALL_FAILED", retryable: false },
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.createManualError({
+      studentId: "student1",
+      content: "Some unclear question",
+    });
+
+    expect(result.subject).toBe("OTHER");
+  });
+
+  test("deduplicates by contentHash — bumps totalAttempts", async () => {
+    const caller = createCaller(createMockContext(db, studentSession));
+
+    // First entry
+    await caller.homework.createManualError({
+      studentId: "student1",
+      content: "25 + 38 = ?",
+    });
+    expect(db._errorQuestions).toHaveLength(1);
+    expect(db._errorQuestions[0].totalAttempts).toBe(1);
+
+    // Same content again → dedup
+    await caller.homework.createManualError({
+      studentId: "student1",
+      content: "25 + 38 = ?",
+    });
+    expect(db._errorQuestions).toHaveLength(1); // No new record
+    expect(db._errorQuestions[0].totalAttempts).toBe(2);
+  });
+
+  test("parent can create for family student", async () => {
+    seedFamily();
+    const caller = createCaller(createMockContext(db, parentSession));
+    const result = await caller.homework.createManualError({
+      studentId: "student1",
+      content: "3 × 7 = ?",
+    });
+
+    expect(result.studentId).toBe("student1");
+  });
+
+  test("rejects if parent has no family relationship", async () => {
+    const caller = createCaller(createMockContext(db, parentSession));
+    await expect(
+      caller.homework.createManualError({ studentId: "student1", content: "test" })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+
+  test("student cannot create for another student", async () => {
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.createManualError({ studentId: "other-student", content: "test" })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+});
+
+// --- Auto-record error questions on complete (Task 25, US-019) ---
+
+describe("homework.completeSession — error auto-record", () => {
+  test("creates ErrorQuestion for each wrong question", async () => {
+    seedSession({ status: "CHECKING" });
+    seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true, content: "1+1=?" });
+    seedQuestion("hw-session-1", { questionNumber: 2, isCorrect: false, content: "2+3=?" });
+    seedQuestion("hw-session-1", { questionNumber: 3, isCorrect: false, content: "5×6=?" });
+    db._checkRounds.push({
+      id: "round-1", homeworkSessionId: "hw-session-1", roundNumber: 1,
+      score: 33, totalQuestions: 3, correctCount: 1, createdAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await caller.homework.completeSession({ sessionId: "hw-session-1" });
+
+    // Only wrong questions should be recorded
+    expect(db._errorQuestions).toHaveLength(2);
+    expect(db._errorQuestions.map((eq) => eq.content).sort()).toEqual(["2+3=?", "5×6=?"]);
+  });
+
+  test("deduplicates: same content bumps totalAttempts", async () => {
+    // Pre-seed an existing error question
+    db._errorQuestions.push({
+      id: "eq-existing",
+      studentId: "student1",
+      sessionQuestionId: null,
+      subject: "MATH",
+      contentType: null,
+      grade: null,
+      questionType: null,
+      content: "2+3=?",
+      contentHash: null, // Will be set by the test below
+      studentAnswer: "4",
+      correctAnswer: "5",
+      errorAnalysis: null,
+      aiKnowledgePoint: null,
+      imageUrl: null,
+      totalAttempts: 1,
+      correctAttempts: 0,
+      isMastered: false,
+      deletedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    // Compute the same hash the code will use
+    const { computeContentHash } = await import("@/lib/content-hash");
+    db._errorQuestions[0].contentHash = computeContentHash("2+3=?");
+
+    seedSession({ status: "CHECKING" });
+    seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: false, content: "2+3=?" });
+    db._checkRounds.push({
+      id: "round-1", homeworkSessionId: "hw-session-1", roundNumber: 1,
+      score: 0, totalQuestions: 1, correctCount: 0, createdAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await caller.homework.completeSession({ sessionId: "hw-session-1" });
+
+    // Should not create a new record, just bump totalAttempts
+    expect(db._errorQuestions).toHaveLength(1);
+    expect(db._errorQuestions[0].totalAttempts).toBe(2);
+  });
+
+  test("does not create ErrorQuestion for correct questions", async () => {
+    seedSession({ status: "CHECKING" });
+    seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+    db._checkRounds.push({
+      id: "round-1", homeworkSessionId: "hw-session-1", roundNumber: 1,
+      score: 100, totalQuestions: 1, correctCount: 1, createdAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await caller.homework.completeSession({ sessionId: "hw-session-1" });
+
+    expect(db._errorQuestions).toHaveLength(0);
   });
 });

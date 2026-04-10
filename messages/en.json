@@ -169,6 +169,43 @@
       "submitting": "Submitting...",
       "recheckSuccess": "Submitted — showing Round {round} results"
     },
+    "subjects": {
+      "MATH": "Math",
+      "CHINESE": "Chinese",
+      "ENGLISH": "English",
+      "PHYSICS": "Physics",
+      "CHEMISTRY": "Chemistry",
+      "BIOLOGY": "Biology",
+      "POLITICS": "Politics",
+      "HISTORY": "History",
+      "GEOGRAPHY": "Geography",
+      "OTHER": "Other"
+    },
+    "manual": {
+      "button": "Manual Input",
+      "title": "Manual Error Entry",
+      "formTitle": "Enter Error Question",
+      "contentPlaceholder": "Enter question content...",
+      "studentAnswerPlaceholder": "Enter student's wrong answer (optional)",
+      "correctAnswerPlaceholder": "Enter correct answer (optional)",
+      "questionType": "Question Type",
+      "selectQuestionType": "Select question type",
+      "subjectAutoDetect": "Leave empty for AI auto-detection",
+      "autoDetect": "AI Auto-detect",
+      "save": "Save Error",
+      "saving": "Saving...",
+      "questionTypes": {
+        "CHOICE": "Multiple Choice",
+        "FILL_BLANK": "Fill in the Blank",
+        "TRUE_FALSE": "True/False",
+        "SHORT_ANSWER": "Short Answer",
+        "CALCULATION": "Calculation",
+        "ESSAY": "Essay",
+        "DICTATION_ITEM": "Dictation",
+        "COPY_ITEM": "Copywriting",
+        "OTHER": "Other"
+      }
+    },
     "help": {
       "button": "Help",
       "title": "Help — Level {level}",

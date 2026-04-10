@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { Plus, FileText } from "lucide-react";
+import { Plus, FileText, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -55,10 +55,19 @@ export default function CheckPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("homework.title")}</h1>
-        <Button onClick={handleNewCheck} disabled={createSession.isPending}>
-          <Plus className="h-4 w-4 mr-2" />
-          {t("homework.newCheck")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.push("/check/manual")}
+          >
+            <PenLine className="h-4 w-4 mr-2" />
+            {t("homework.manual.button")}
+          </Button>
+          <Button onClick={handleNewCheck} disabled={createSession.isPending}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t("homework.newCheck")}
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
