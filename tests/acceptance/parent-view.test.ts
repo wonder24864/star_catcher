@@ -242,8 +242,26 @@ describe("US-025: Statistics", () => {
     expect(todayScore?.avgScore).toBe(90);
   });
 
-  test.todo("correction success rate")
-  test.todo("help frequency analysis")
+  test("help frequency analysis by subject", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    addSession("hw1", today, { status: "COMPLETED", subject: "MATH" });
+    addSession("hw2", today, { status: "COMPLETED", subject: "CHINESE" });
+    db._helpRequests.push(
+      { id: "hr1", homeworkSessionId: "hw1", sessionQuestionId: "q1", level: 1, aiResponse: "L1", createdAt: new Date() },
+      { id: "hr2", homeworkSessionId: "hw1", sessionQuestionId: "q2", level: 1, aiResponse: "L1", createdAt: new Date() },
+      { id: "hr3", homeworkSessionId: "hw1", sessionQuestionId: "q3", level: 2, aiResponse: "L2", createdAt: new Date() },
+      { id: "hr4", homeworkSessionId: "hw2", sessionQuestionId: "q4", level: 1, aiResponse: "L1", createdAt: new Date() },
+    );
+
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const stats = await caller.parent.stats({ studentId: "student1", period: "7d" });
+
+    expect(stats.helpFreqBySubject).toBeDefined();
+    const mathHelp = stats.helpFreqBySubject.find((h) => h.subject === "MATH");
+    expect(mathHelp?.count).toBe(3);
+    const chineseHelp = stats.helpFreqBySubject.find((h) => h.subject === "CHINESE");
+    expect(chineseHelp?.count).toBe(1);
+  })
 })
 
 describe("US-026: Parent Settings", () => {

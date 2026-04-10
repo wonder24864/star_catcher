@@ -22,6 +22,7 @@ vi.mock("@/lib/ai/operations/help-generate", () => ({
   }),
 }));
 import { generateHelp } from "@/lib/ai/operations/help-generate";
+import { gradeAnswer } from "@/lib/ai/operations/grade-answer";
 
 const createCaller = createCallerFactory(appRouter);
 let db: MockDb;
@@ -88,10 +89,85 @@ describe('US-016: First Round Check Result', () => {
 });
 
 describe('US-017: Correction & Re-check', () => {
-  test.todo('student can correct wrong answers and resubmit')
-  test.todo('AI re-checks corrected answers')
-  test.todo('updated score displayed')
-  test.todo('multi-round history preserved')
+  test('student can correct wrong answers and resubmit', async () => {
+    setup();
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.submitCorrections({
+      sessionId: "s1",
+      corrections: [{ questionId: "q1", newAnswer: "63" }],
+    });
+    expect(result.success).toBe(true);
+    expect(result.newRoundNumber).toBe(2);
+  });
+
+  test('AI re-checks corrected answers', async () => {
+    setup();
+    vi.mocked(gradeAnswer).mockResolvedValueOnce({
+      success: true,
+      data: { isCorrect: true, confidence: 0.99 },
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await caller.homework.submitCorrections({
+      sessionId: "s1",
+      corrections: [{ questionId: "q1", newAnswer: "63" }],
+    });
+
+    expect(gradeAnswer).toHaveBeenCalledWith(
+      expect.objectContaining({ studentAnswer: "63" })
+    );
+    // Question should be updated to correct
+    const q = db._sessionQuestions.find((sq) => sq.id === "q1");
+    expect(q?.isCorrect).toBe(true);
+  });
+
+  test('updated score displayed', async () => {
+    setup();
+    vi.mocked(gradeAnswer).mockResolvedValueOnce({
+      success: true,
+      data: { isCorrect: true, confidence: 0.99 },
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.submitCorrections({
+      sessionId: "s1",
+      corrections: [{ questionId: "q1", newAnswer: "63" }],
+    });
+
+    expect(result.score).toBe(100); // 1/1 correct = 100
+  });
+
+  test('multi-round history preserved', async () => {
+    setup();
+    // Round 1 already seeded (score 0). Submit correction for round 2.
+    vi.mocked(gradeAnswer).mockResolvedValueOnce({
+      success: true,
+      data: { isCorrect: false, confidence: 0.8 },
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await caller.homework.submitCorrections({
+      sessionId: "s1",
+      corrections: [{ questionId: "q1", newAnswer: "55" }],
+    });
+
+    // Now submit round 3
+    vi.mocked(gradeAnswer).mockResolvedValueOnce({
+      success: true,
+      data: { isCorrect: true, confidence: 0.95 },
+    });
+    await caller.homework.submitCorrections({
+      sessionId: "s1",
+      corrections: [{ questionId: "q1", newAnswer: "63" }],
+    });
+
+    const checkStatus = await caller.homework.getCheckStatus({ sessionId: "s1" });
+    // Should have 3 rounds total (1 original + 2 corrections)
+    expect(checkStatus.checkRounds).toHaveLength(3);
+    expect(checkStatus.checkRounds[0].roundNumber).toBe(1);
+    expect(checkStatus.checkRounds[1].roundNumber).toBe(2);
+    expect(checkStatus.checkRounds[2].roundNumber).toBe(3);
+  });
 });
 
 describe('US-018: Progressive Help', () => {

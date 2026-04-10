@@ -217,8 +217,40 @@ describe("US-021: Error Question Detail", () => {
     await expect(caller.error.detail({ id: "eq1" })).rejects.toThrow("FORBIDDEN");
   });
 
-  test.todo("shows check history");
-  test.todo("shows help request history");
+  test("detail includes sessionQuestionId for check history link", async () => {
+    db._errorQuestions.push({
+      id: "eq-linked", studentId: "student1", sessionQuestionId: "sq-orig",
+      subject: "MATH", contentType: null, grade: null, questionType: null,
+      content: "5+5=?", contentHash: null,
+      studentAnswer: "11", correctAnswer: "10",
+      errorAnalysis: null, aiKnowledgePoint: null, imageUrl: null,
+      totalAttempts: 1, correctAttempts: 0, isMastered: false,
+      deletedAt: null, createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentCtx));
+    const result = await caller.error.detail({ id: "eq-linked" }) as { sessionQuestionId: string | null };
+    expect(result.sessionQuestionId).toBe("sq-orig");
+  });
+
+  test("detail returns totalAttempts and correctAttempts for history tracking", async () => {
+    db._errorQuestions.push({
+      id: "eq-history", studentId: "student1", sessionQuestionId: null,
+      subject: "MATH", contentType: null, grade: null, questionType: null,
+      content: "7+8=?", contentHash: null,
+      studentAnswer: "14", correctAnswer: "15",
+      errorAnalysis: null, aiKnowledgePoint: null, imageUrl: null,
+      totalAttempts: 3, correctAttempts: 1, isMastered: false,
+      deletedAt: null, createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentCtx));
+    const result = await caller.error.detail({ id: "eq-history" }) as {
+      totalAttempts: number; correctAttempts: number;
+    };
+    expect(result.totalAttempts).toBe(3);
+    expect(result.correctAttempts).toBe(1);
+  });
 });
 
 describe("US-022: Parent Notes", () => {
