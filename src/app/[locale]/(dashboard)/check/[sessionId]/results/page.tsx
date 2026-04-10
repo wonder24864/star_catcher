@@ -110,8 +110,14 @@ function QuestionHelpPanel({
   );
 
   const requestHelp = trpc.homework.requestHelp.useMutation({
-    onSuccess: () => {
-      setPendingHelp(true);
+    onSuccess: (data) => {
+      if ("status" in data && data.status === "processing") {
+        // Job enqueued, wait for SSE notification
+        setPendingHelp(true);
+      } else {
+        // Cache hit — help already exists, just refresh
+        utils.homework.getHelpRequests.invalidate({ sessionId, questionId });
+      }
     },
     onError: (err) => {
       const msg = err.message;

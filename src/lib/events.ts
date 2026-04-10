@@ -101,9 +101,11 @@ export async function* subscribeToChannel(
       }
 
       // Wait for next message or abort
+      if (signal.aborted) break;
       await new Promise<void>((r) => {
         resolve = r;
         // Also resolve on abort so we can exit the loop
+        if (signal.aborted) { r(); return; }
         signal.addEventListener("abort", () => r(), { once: true });
       });
     }
