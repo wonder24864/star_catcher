@@ -79,6 +79,120 @@ export const parentRouter = router({
     }),
 
   /**
+   * Basic statistics for a student over the last 7 or 30 days.
+   * Returns pre-aggregated data for rendering charts on the frontend.
+   */
+  stats: protectedProcedure
+    .input(
+      z.object({
+        studentId: z.string(),
+        period: z.enum(["7d", "30d"]).default("7d"),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.role !== "PARENT") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      await verifyParentStudentAccess(ctx.db, ctx.session.userId, input.studentId);
+
+      const days = input.period === "7d" ? 7 : 30;
+      const since = new Date();
+      since.setUTCDate(since.getUTCDate() - days);
+      since.setUTCHours(0, 0, 0, 0);
+
+      // Fetch raw data
+      const [errorQuestions, sessions] = await Promise.all([
+        ctx.db.errorQuestion.findMany({
+          where: { studentId: input.studentId, deletedAt: null, createdAt: { gte: since } },
+        }),
+        ctx.db.homeworkSession.findMany({
+          where: { studentId: input.studentId, status: "COMPLETED", createdAt: { gte: since } },
+        }),
+      ]);
+
+      // Get help requests for these sessions
+      const sessionIds = (sessions as unknown as { id: string }[]).map((s) => s.id);
+      const helpRequests = sessionIds.length
+        ? await ctx.db.helpRequest.findMany({
+            where: { homeworkSessionId: { in: sessionIds } },
+          })
+        : [];
+
+      // Build day keys for the period
+      const dayKeys: string[] = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setUTCDate(d.getUTCDate() - i);
+        dayKeys.push(d.toISOString().slice(0, 10));
+      }
+
+      // errors by day
+      const errorsByDay = dayKeys.map((date) => ({
+        date,
+        count: errorQuestions.filter(
+          (e) => e.createdAt.toISOString().slice(0, 10) === date
+        ).length,
+      }));
+
+      // subject distribution
+      const subjectMap = new Map<string, number>();
+      for (const e of errorQuestions) {
+        subjectMap.set(e.subject, (subjectMap.get(e.subject) ?? 0) + 1);
+      }
+      const subjectDistribution = Array.from(subjectMap.entries())
+        .map(([subject, count]) => ({ subject, count }))
+        .sort((a, b) => b.count - a.count);
+
+      // avg score by day
+      const avgScoreByDay = dayKeys.map((date) => {
+        const daySessions = sessions.filter(
+          (s) => s.createdAt.toISOString().slice(0, 10) === date && s.finalScore != null
+        );
+        const avg =
+          daySessions.length === 0
+            ? null
+            : daySessions.reduce((sum, s) => sum + (s.finalScore ?? 0), 0) / daySessions.length;
+        return { date, avgScore: avg == null ? null : Math.round(avg) };
+      });
+
+      // check count by day
+      const checkCountByDay = dayKeys.map((date) => ({
+        date,
+        count: sessions.filter(
+          (s) => s.createdAt.toISOString().slice(0, 10) === date
+        ).length,
+      }));
+
+      // help frequency by subject (via sessions)
+      const sessionSubjectMap = new Map<string, string>();
+      for (const s of sessions) {
+        const id = (s as unknown as { id: string }).id;
+        if (id && s.subject) sessionSubjectMap.set(id, s.subject);
+      }
+      const helpSubjectMap = new Map<string, number>();
+      for (const hr of helpRequests) {
+        const subj = sessionSubjectMap.get(
+          (hr as unknown as { homeworkSessionId: string }).homeworkSessionId
+        );
+        if (subj) helpSubjectMap.set(subj, (helpSubjectMap.get(subj) ?? 0) + 1);
+      }
+      const helpFreqBySubject = Array.from(helpSubjectMap.entries())
+        .map(([subject, count]) => ({ subject, count }))
+        .sort((a, b) => b.count - a.count);
+
+      return {
+        period: input.period,
+        errorsByDay,
+        subjectDistribution,
+        avgScoreByDay,
+        checkCountByDay,
+        helpFreqBySubject,
+        totalErrors: errorQuestions.length,
+        totalChecks: sessions.length,
+      };
+    }),
+
+  /**
    * Session detail for parent read-only view.
    * Includes checkRounds (with per-question results) and helpRequests.
    */

@@ -24,6 +24,7 @@ export function Sidebar() {
   const navItems: NavItem[] = [
     { label: t("nav.home"), href: "/", roles: ["STUDENT", "PARENT", "ADMIN"] },
     { label: t("nav.parentOverview"), href: "/parent/overview", roles: ["PARENT"] },
+    { label: t("nav.parentStats"), href: "/parent/stats", roles: ["PARENT"] },
     { label: t("nav.check"), href: "/check", roles: ["STUDENT", "PARENT"] },
     { label: t("nav.errors"), href: "/errors", roles: ["STUDENT", "PARENT"] },
     { label: t("nav.family"), href: "/family", roles: ["STUDENT", "PARENT"] },

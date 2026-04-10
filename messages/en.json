@@ -12,7 +12,8 @@
     "overview": "Overview",
     "students": "Students",
     "admin": "Admin",
-    "parentOverview": "Today's Overview"
+    "parentOverview": "Today's Overview",
+    "parentStats": "Learning Stats"
   },
   "auth": {
     "login": "Login",
@@ -238,6 +239,24 @@
     "progress": "{progress}% uploaded"
   },
   "parent": {
+    "stats": {
+      "title": "Learning Stats",
+      "totalErrors": "Total Errors",
+      "totalChecks": "Total Checks",
+      "errorTrend": "Error Trend",
+      "subjectDist": "Subject Distribution",
+      "avgScore": "Average Score Trend",
+      "checkCount": "Daily Check Count",
+      "helpFreq": "Help Frequency by Subject",
+      "errors": "errors",
+      "checks": "checks",
+      "score": "pts",
+      "helpCount": "times",
+      "period": {
+        "7d": "Last 7 days",
+        "30d": "Last 30 days"
+      }
+    },
     "session": {
       "corrected": "{count} corrected",
       "helpRecords": "Help Records",

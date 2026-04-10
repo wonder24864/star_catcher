@@ -371,6 +371,7 @@ export function createMockDb() {
       findMany: async ({ where, orderBy, take, include }: { where?: Record<string, unknown>; orderBy?: any; take?: number; include?: any }) => {
         let result = [...homeworkSessions];
         if (where?.studentId) result = result.filter((s) => s.studentId === where.studentId);
+        if (where?.status) result = result.filter((s) => s.status === where.status);
         // Date range filter
         if (where?.createdAt && typeof where.createdAt === "object") {
           const df = where.createdAt as { gte?: Date; lte?: Date; lt?: Date };
@@ -684,7 +685,12 @@ export function createMockDb() {
       findMany: async ({ where, orderBy }: { where?: Record<string, unknown>; orderBy?: Record<string, unknown> }) => {
         let result = [...helpRequests];
         if (where?.homeworkSessionId) {
-          result = result.filter((h) => h.homeworkSessionId === where.homeworkSessionId);
+          const hid = where.homeworkSessionId;
+          if (typeof hid === "object" && hid !== null && "in" in hid) {
+            result = result.filter((h) => (hid as { in: string[] }).in.includes(h.homeworkSessionId));
+          } else {
+            result = result.filter((h) => h.homeworkSessionId === hid);
+          }
         }
         if (where?.sessionQuestionId) {
           result = result.filter((h) => h.sessionQuestionId === where.sessionQuestionId);
@@ -726,12 +732,46 @@ export function createMockDb() {
           return true;
         }) || null;
       },
-      findMany: async ({ where }: { where?: Record<string, unknown> }) => {
+      findMany: async ({ where, orderBy, skip, take }: { where?: Record<string, unknown>; orderBy?: Record<string, unknown>; skip?: number; take?: number }) => {
+        let result = errorQuestions.filter((eq) => {
+          if (where?.deletedAt !== undefined ? eq.deletedAt !== null : eq.deletedAt !== null) return false;
+          if (where?.studentId && eq.studentId !== where.studentId) return false;
+          if (where?.subject && eq.subject !== where.subject) return false;
+          if (where?.contentType && eq.contentType !== where.contentType) return false;
+          if (where?.createdAt && typeof where.createdAt === "object") {
+            const df = where.createdAt as { gte?: Date; lte?: Date; lt?: Date };
+            if (df.gte && eq.createdAt < df.gte) return false;
+            if (df.lte && eq.createdAt > df.lte) return false;
+            if (df.lt && eq.createdAt >= df.lt) return false;
+          }
+          if (where?.content && typeof where.content === "object") {
+            const cf = where.content as { contains?: string };
+            if (cf.contains && !eq.content.toLowerCase().includes(cf.contains.toLowerCase())) return false;
+          }
+          return true;
+        });
+        if (orderBy?.createdAt === "desc") result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        if (skip != null) result = result.slice(skip);
+        if (take != null) result = result.slice(0, take);
+        return result;
+      },
+      count: async ({ where }: { where?: Record<string, unknown> }) => {
         return errorQuestions.filter((eq) => {
           if (eq.deletedAt !== null) return false;
           if (where?.studentId && eq.studentId !== where.studentId) return false;
+          if (where?.subject && eq.subject !== where.subject) return false;
+          if (where?.contentType && eq.contentType !== where.contentType) return false;
+          if (where?.createdAt && typeof where.createdAt === "object") {
+            const df = where.createdAt as { gte?: Date; lte?: Date; lt?: Date };
+            if (df.gte && eq.createdAt < df.gte) return false;
+            if (df.lte && eq.createdAt > df.lte) return false;
+          }
+          if (where?.content && typeof where.content === "object") {
+            const cf = where.content as { contains?: string };
+            if (cf.contains && !eq.content.toLowerCase().includes(cf.contains.toLowerCase())) return false;
+          }
           return true;
-        });
+        }).length;
       },
       create: async ({ data }: { data: Record<string, unknown> }) => {
         const eq: MockErrorQuestion = {

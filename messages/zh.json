@@ -12,7 +12,8 @@
     "overview": "概览",
     "students": "学生",
     "admin": "管理",
-    "parentOverview": "今日概览"
+    "parentOverview": "今日概览",
+    "parentStats": "学习统计"
   },
   "auth": {
     "login": "登录",
@@ -238,6 +239,24 @@
     "progress": "已上传 {progress}%"
   },
   "parent": {
+    "stats": {
+      "title": "学习统计",
+      "totalErrors": "错题总数",
+      "totalChecks": "检查次数",
+      "errorTrend": "错题趋势",
+      "subjectDist": "学科分布",
+      "avgScore": "平均得分趋势",
+      "checkCount": "每日检查次数",
+      "helpFreq": "求助频率（按学科）",
+      "errors": "错题",
+      "checks": "次",
+      "score": "分",
+      "helpCount": "次",
+      "period": {
+        "7d": "近 7 天",
+        "30d": "近 30 天"
+      }
+    },
     "session": {
       "corrected": "改正 {count} 题",
       "helpRecords": "求助记录",

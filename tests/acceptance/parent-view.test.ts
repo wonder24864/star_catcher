@@ -191,13 +191,59 @@ describe("US-024: Session Detail Timeline", () => {
 })
 
 describe("US-025: Statistics", () => {
-  test.todo("error quantity trends (daily/weekly/monthly)")
-  test.todo("subject distribution pie chart")
-  test.todo("average score trends")
+  beforeEach(setup);
+
+  test("error quantity trends grouped by day", async () => {
+    // 2 errors today, 1 error yesterday
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    db._errorQuestions.push(
+      { id: "eq1", studentId: "student1", sessionQuestionId: null, subject: "MATH", contentType: null, grade: null, questionType: null, content: "q1", contentHash: null, studentAnswer: null, correctAnswer: null, errorAnalysis: null, aiKnowledgePoint: null, imageUrl: null, totalAttempts: 1, correctAttempts: 0, isMastered: false, deletedAt: null, createdAt: new Date(`${today}T08:00:00Z`), updatedAt: new Date() },
+      { id: "eq2", studentId: "student1", sessionQuestionId: null, subject: "MATH", contentType: null, grade: null, questionType: null, content: "q2", contentHash: null, studentAnswer: null, correctAnswer: null, errorAnalysis: null, aiKnowledgePoint: null, imageUrl: null, totalAttempts: 1, correctAttempts: 0, isMastered: false, deletedAt: null, createdAt: new Date(`${today}T09:00:00Z`), updatedAt: new Date() },
+      { id: "eq3", studentId: "student1", sessionQuestionId: null, subject: "CHINESE", contentType: null, grade: null, questionType: null, content: "q3", contentHash: null, studentAnswer: null, correctAnswer: null, errorAnalysis: null, aiKnowledgePoint: null, imageUrl: null, totalAttempts: 1, correctAttempts: 0, isMastered: false, deletedAt: null, createdAt: new Date(`${yesterday}T08:00:00Z`), updatedAt: new Date() },
+    );
+
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const stats = await caller.parent.stats({ studentId: "student1", period: "7d" });
+
+    expect(stats.totalErrors).toBe(3);
+    const todayEntry = stats.errorsByDay.find((d) => d.date === today);
+    expect(todayEntry?.count).toBe(2);
+    const yestEntry = stats.errorsByDay.find((d) => d.date === yesterday);
+    expect(yestEntry?.count).toBe(1);
+  });
+
+  test("subject distribution pie chart data", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    db._errorQuestions.push(
+      { id: "eq1", studentId: "student1", sessionQuestionId: null, subject: "MATH", contentType: null, grade: null, questionType: null, content: "q1", contentHash: null, studentAnswer: null, correctAnswer: null, errorAnalysis: null, aiKnowledgePoint: null, imageUrl: null, totalAttempts: 1, correctAttempts: 0, isMastered: false, deletedAt: null, createdAt: new Date(`${today}T08:00:00Z`), updatedAt: new Date() },
+      { id: "eq2", studentId: "student1", sessionQuestionId: null, subject: "MATH", contentType: null, grade: null, questionType: null, content: "q2", contentHash: null, studentAnswer: null, correctAnswer: null, errorAnalysis: null, aiKnowledgePoint: null, imageUrl: null, totalAttempts: 1, correctAttempts: 0, isMastered: false, deletedAt: null, createdAt: new Date(`${today}T09:00:00Z`), updatedAt: new Date() },
+      { id: "eq3", studentId: "student1", sessionQuestionId: null, subject: "CHINESE", contentType: null, grade: null, questionType: null, content: "q3", contentHash: null, studentAnswer: null, correctAnswer: null, errorAnalysis: null, aiKnowledgePoint: null, imageUrl: null, totalAttempts: 1, correctAttempts: 0, isMastered: false, deletedAt: null, createdAt: new Date(`${today}T10:00:00Z`), updatedAt: new Date() },
+    );
+
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const stats = await caller.parent.stats({ studentId: "student1", period: "7d" });
+
+    expect(stats.subjectDistribution[0]).toEqual({ subject: "MATH", count: 2 });
+    expect(stats.subjectDistribution[1]).toEqual({ subject: "CHINESE", count: 1 });
+  });
+
+  test("daily check count and average score trends", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    addSession("hw1", today, { status: "COMPLETED", finalScore: 80 });
+    addSession("hw2", today, { status: "COMPLETED", finalScore: 100 });
+
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const stats = await caller.parent.stats({ studentId: "student1", period: "7d" });
+
+    const todayCheck = stats.checkCountByDay.find((d) => d.date === today);
+    expect(todayCheck?.count).toBe(2);
+    const todayScore = stats.avgScoreByDay.find((d) => d.date === today);
+    expect(todayScore?.avgScore).toBe(90);
+  });
+
   test.todo("correction success rate")
   test.todo("help frequency analysis")
-  test.todo("renders trend chart with correct data points")
-  test.todo("renders subject distribution pie chart")
 })
 
 describe("US-026: Parent Settings", () => {
