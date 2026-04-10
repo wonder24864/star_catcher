@@ -12,6 +12,8 @@
     "overview": "概览",
     "students": "学生",
     "admin": "管理",
+    "adminUsers": "用户管理",
+    "adminSettings": "系统配置",
     "parentOverview": "今日概览",
     "parentStats": "学习统计"
   },
@@ -274,6 +276,59 @@
       "noSessions": "今天还没有检查作业哦",
       "rounds": "共 {count} 轮",
       "helpStats": "求助"
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "用户管理",
+      "searchPlaceholder": "搜索用户名或昵称...",
+      "total": "共 {count} 位用户",
+      "status": "状态",
+      "active": "正常",
+      "disabled": "禁用",
+      "enable": "启用",
+      "disable": "禁用账号",
+      "resetPassword": "重置密码",
+      "resetPasswordTitle": "重置密码",
+      "resetPasswordDesc": "将为 {name} 生成一个随机临时密码，请将临时密码安全地告知该用户。",
+      "newTempPassword": "临时密码",
+      "copyPassword": "复制",
+      "copied": "已复制",
+      "confirmDisable": "确认禁用 {name} 的账号？禁用后该用户将无法登录。",
+      "confirmEnable": "确认启用 {name} 的账号？",
+      "errorCount": "错题",
+      "sessionCount": "检查次数",
+      "families": "家庭组",
+      "createdAt": "注册时间",
+      "detail": "用户详情",
+      "accountStatus": "账号状态",
+      "loginFailCount": "登录失败次数",
+      "lockedUntil": "锁定至",
+      "roles": {
+        "STUDENT": "学生",
+        "PARENT": "家长",
+        "ADMIN": "管理员"
+      },
+      "filterRole": "按角色筛选",
+      "allRoles": "全部角色"
+    },
+    "settings": {
+      "title": "系统配置",
+      "statsTitle": "系统统计",
+      "totalUsers": "用户总数",
+      "studentCount": "学生",
+      "parentCount": "家长",
+      "adminCount": "管理员",
+      "totalErrors": "错题总数",
+      "totalSessions": "检查总次数",
+      "totalAiCalls": "AI 调用次数",
+      "configTitle": "AI 与上传配置",
+      "aiModel": "AI 模型",
+      "aiTemperature": "AI 温度（0-1）",
+      "maxFileSizeMb": "最大上传文件大小（MB）",
+      "defaultMaxHelpLevel": "默认最高求助级别（1-3）",
+      "saveConfig": "保存配置",
+      "saved": "配置已保存"
     }
   },
   "validation": {

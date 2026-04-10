@@ -12,6 +12,8 @@
     "overview": "Overview",
     "students": "Students",
     "admin": "Admin",
+    "adminUsers": "Users",
+    "adminSettings": "System Config",
     "parentOverview": "Today's Overview",
     "parentStats": "Learning Stats"
   },
@@ -274,6 +276,59 @@
       "noSessions": "No homework checks today",
       "rounds": "{count} rounds",
       "helpStats": "Help"
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "User Management",
+      "searchPlaceholder": "Search username or nickname...",
+      "total": "{count} users total",
+      "status": "Status",
+      "active": "Active",
+      "disabled": "Disabled",
+      "enable": "Enable",
+      "disable": "Disable Account",
+      "resetPassword": "Reset Password",
+      "resetPasswordTitle": "Reset Password",
+      "resetPasswordDesc": "A random temporary password will be generated for {name}. Please securely communicate this to the user.",
+      "newTempPassword": "Temporary Password",
+      "copyPassword": "Copy",
+      "copied": "Copied",
+      "confirmDisable": "Disable {name}'s account? They will no longer be able to log in.",
+      "confirmEnable": "Enable {name}'s account?",
+      "errorCount": "Errors",
+      "sessionCount": "Sessions",
+      "families": "Family Groups",
+      "createdAt": "Registered",
+      "detail": "User Detail",
+      "accountStatus": "Account Status",
+      "loginFailCount": "Login Failures",
+      "lockedUntil": "Locked Until",
+      "roles": {
+        "STUDENT": "Student",
+        "PARENT": "Parent",
+        "ADMIN": "Admin"
+      },
+      "filterRole": "Filter by role",
+      "allRoles": "All Roles"
+    },
+    "settings": {
+      "title": "System Configuration",
+      "statsTitle": "System Stats",
+      "totalUsers": "Total Users",
+      "studentCount": "Students",
+      "parentCount": "Parents",
+      "adminCount": "Admins",
+      "totalErrors": "Total Errors",
+      "totalSessions": "Total Sessions",
+      "totalAiCalls": "AI Calls",
+      "configTitle": "AI & Upload Config",
+      "aiModel": "AI Model",
+      "aiTemperature": "AI Temperature (0-1)",
+      "maxFileSizeMb": "Max Upload File Size (MB)",
+      "defaultMaxHelpLevel": "Default Max Help Level (1-3)",
+      "saveConfig": "Save Config",
+      "saved": "Config saved"
     }
   },
   "validation": {

@@ -6,6 +6,7 @@ import { uploadRouter } from "./upload";
 import { homeworkRouter } from "./homework";
 import { parentRouter } from "./parent";
 import { errorRouter } from "./error";
+import { adminRouter } from "./admin";
 
 export const appRouter = router({
   auth: authRouter,
@@ -15,6 +16,7 @@ export const appRouter = router({
   homework: homeworkRouter,
   parent: parentRouter,
   error: errorRouter,
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;

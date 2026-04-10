@@ -29,7 +29,8 @@ export function Sidebar() {
     { label: t("nav.errors"), href: "/errors", roles: ["STUDENT", "PARENT"] },
     { label: t("nav.family"), href: "/family", roles: ["STUDENT", "PARENT"] },
     { label: t("nav.settings"), href: "/settings", roles: ["STUDENT", "PARENT", "ADMIN"] },
-    { label: t("nav.overview"), href: "/admin", roles: ["ADMIN"] },
+    { label: t("nav.adminUsers"), href: "/admin/users", roles: ["ADMIN"] },
+    { label: t("nav.adminSettings"), href: "/admin/settings", roles: ["ADMIN"] },
   ];
 
   const filtered = navItems.filter((item) => role && item.roles.includes(role));
