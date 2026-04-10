@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/nav/sidebar";
+import { BottomNav } from "@/components/nav/bottom-nav";
 import { OfflineBanner } from "@/components/offline-banner";
 
 export default async function DashboardLayout({
@@ -16,8 +17,16 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-screen">
       <OfflineBanner />
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto p-6">{children}</main>
+      {/* Sidebar: hidden on mobile, shown on md+ */}
+      <div className="hidden md:flex">
+        <Sidebar />
+      </div>
+      {/* Main content: full-width on mobile, padded bottom for bottom nav */}
+      <main className="flex-1 overflow-y-auto p-4 pb-20 md:p-6 md:pb-6">
+        {children}
+      </main>
+      {/* Bottom nav: shown on mobile, hidden on md+ */}
+      <BottomNav />
     </div>
   );
 }

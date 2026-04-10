@@ -39,7 +39,7 @@ export function Sidebar() {
   const pathWithoutLocale = pathname.replace(/^\/(zh|en)/, "") || "/";
 
   return (
-    <aside className="flex h-full w-56 flex-col border-r bg-sidebar-background">
+    <aside className="flex h-full w-56 shrink-0 flex-col border-r bg-sidebar-background">
       <div className="flex items-center gap-2 px-4 py-5">
         <span className="text-lg font-bold text-sidebar-primary">
           {t("app.name")}
