@@ -118,8 +118,8 @@ export default function ParentStatsPage() {
                   />
                   <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
                   <Tooltip
-                    labelFormatter={(d: string) => d}
-                    formatter={(v: number) => [v, t("parent.stats.errors")]}
+                    labelFormatter={(d) => String(d)}
+                    formatter={(v) => [Number(v), t("parent.stats.errors")]}
                   />
                   <Bar dataKey="count" fill="#ef4444" radius={[2, 2, 0, 0]} />
                 </BarChart>
@@ -145,9 +145,10 @@ export default function ParentStatsPage() {
                       cx="50%"
                       cy="50%"
                       outerRadius={70}
-                      label={({ subject, percent }: { subject: string; percent: number }) =>
-                        `${t(`homework.subjects.${subject}`)} ${(percent * 100).toFixed(0)}%`
-                      }
+                      label={(props) => {
+                        const p = props as unknown as { subject?: string; percent?: number };
+                        return `${t(`homework.subjects.${p.subject ?? ""}`)} ${((p.percent ?? 0) * 100).toFixed(0)}%`;
+                      }}
                       labelLine={false}
                     >
                       {stats.subjectDistribution.map((entry) => (
@@ -158,7 +159,7 @@ export default function ParentStatsPage() {
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(v: number, name: string) => [v, t(`homework.subjects.${name}`)]}
+                      formatter={(v, name) => [Number(v), t(`homework.subjects.${String(name)}`)]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -181,8 +182,8 @@ export default function ParentStatsPage() {
                   />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
                   <Tooltip
-                    labelFormatter={(d: string) => d}
-                    formatter={(v: number | null) => [v ?? "-", t("parent.stats.score")]}
+                    labelFormatter={(d) => String(d)}
+                    formatter={(v) => [v ?? "-", t("parent.stats.score")]}
                   />
                   <Line
                     type="monotone"
@@ -212,8 +213,8 @@ export default function ParentStatsPage() {
                   />
                   <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
                   <Tooltip
-                    labelFormatter={(d: string) => d}
-                    formatter={(v: number) => [v, t("parent.stats.checks")]}
+                    labelFormatter={(d) => String(d)}
+                    formatter={(v) => [Number(v), t("parent.stats.checks")]}
                   />
                   <Bar dataKey="count" fill="#10b981" radius={[2, 2, 0, 0]} />
                 </BarChart>
@@ -239,7 +240,7 @@ export default function ParentStatsPage() {
                   >
                     <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} />
                     <YAxis type="category" dataKey="label" tick={{ fontSize: 10 }} width={52} />
-                    <Tooltip formatter={(v: number) => [v, t("parent.stats.helpCount")]} />
+                    <Tooltip formatter={(v) => [Number(v), t("parent.stats.helpCount")]} />
                     <Bar dataKey="count" fill="#8b5cf6" radius={[0, 2, 2, 0]} />
                   </BarChart>
                 </ResponsiveContainer>

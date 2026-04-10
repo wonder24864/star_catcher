@@ -152,11 +152,11 @@ describe('US-030: Internationalization', () => {
   })
 
   test('URL includes locale prefix (/zh/... or /en/...)', () => {
-    // next-intl config defines zh and en locales; middleware enforces the prefix
-    const middlewareSrc = fs.readFileSync(path.join(ROOT, 'src/middleware.ts'), 'utf-8')
+    // next-intl config defines zh and en locales; proxy.ts enforces the prefix
+    const proxySrc = fs.readFileSync(path.join(ROOT, 'src/proxy.ts'), 'utf-8')
     const i18nConfig = fs.readFileSync(path.join(ROOT, 'src/i18n/config.ts'), 'utf-8')
-    // middleware imports from i18n/config; config defines both locales
-    expect(middlewareSrc).toContain('locales')
+    // proxy imports from i18n/config; config defines both locales
+    expect(proxySrc).toContain('locales')
     expect(i18nConfig).toContain('"zh"')
     expect(i18nConfig).toContain('"en"')
   })

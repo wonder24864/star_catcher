@@ -338,7 +338,8 @@ export function createMockDb() {
       },
     },
     homeworkSession: {
-      findUnique: async ({ where, include }: { where: Record<string, unknown>; include?: Record<string, unknown> }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      findUnique: async ({ where, include }: { where: Record<string, unknown>; include?: any }) => {
         const session = homeworkSessions.find((s) => s.id === where.id) || null;
         if (!session) return null;
         let result: Record<string, unknown> = { ...session };
