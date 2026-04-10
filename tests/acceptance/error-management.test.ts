@@ -3,28 +3,179 @@
  * User Stories: US-020 ~ US-022
  * Sprint: 3
  */
-import { describe, test } from 'vitest'
+import { describe, test, expect, beforeEach } from "vitest";
+import { appRouter } from "@/server/routers/_app";
+import { createCallerFactory } from "@/server/trpc";
+import { createMockDb, createMockContext, type MockDb } from "../helpers/mock-db";
 
-describe('US-020: Error Question List', () => {
-  test.todo('lists error questions with subject color coding')
-  test.todo('filter by subject')
-  test.todo('filter by date range')
-  test.todo('pagination shows 20 questions per page')
-  test.todo('next/previous page navigation works')
-  test.todo('search by content keyword')
-})
+const createCaller = createCallerFactory(appRouter);
 
-describe('US-021: Error Question Detail', () => {
-  test.todo('shows full question with student/correct answers')
-  test.todo('shows AI knowledge point annotation')
-  test.todo('shows check history')
-  test.todo('shows help request history')
-})
+let db: MockDb;
+const studentCtx = { userId: "student1", role: "STUDENT", grade: "PRIMARY_3", locale: "zh" };
+const parentCtx = { userId: "parent1", role: "PARENT", grade: null, locale: "zh" };
 
-describe('US-022: Parent Notes', () => {
-  test.todo('parent can add note to error question')
-  test.todo('parent can edit own note')
-  test.todo('parent can delete own note')
-  test.todo('note input enforces 500 character limit')
-  test.todo('notes display author and timestamp')
-})
+function setup() {
+  db = createMockDb();
+  db._families.push({
+    id: "fam1", name: "家庭", inviteCode: null, inviteCodeExpiresAt: null,
+    deletedAt: null, createdAt: new Date(), updatedAt: new Date(),
+  });
+  db._familyMembers.push(
+    { id: "fm1", userId: "parent1", familyId: "fam1", role: "OWNER", joinedAt: new Date() },
+    { id: "fm2", userId: "student1", familyId: "fam1", role: "MEMBER", joinedAt: new Date() },
+  );
+  db._users.push({
+    id: "student1", username: "s1", password: "x", nickname: "小明",
+    role: "STUDENT", grade: "PRIMARY_3", locale: "zh", isActive: true,
+    deletedAt: null, loginFailCount: 0, lockedUntil: null,
+    createdAt: new Date(), updatedAt: new Date(),
+  });
+}
+
+function addError(id: string, overrides: Partial<{
+  subject: string; contentType: string | null; content: string;
+  createdAt: Date; isMastered: boolean; totalAttempts: number;
+}> = {}) {
+  db._errorQuestions.push({
+    id,
+    studentId: "student1",
+    sessionQuestionId: null,
+    subject: overrides.subject ?? "MATH",
+    contentType: overrides.contentType ?? null,
+    grade: null,
+    questionType: null,
+    content: overrides.content ?? `错题内容-${id}`,
+    contentHash: null,
+    studentAnswer: "wrong",
+    correctAnswer: "right",
+    errorAnalysis: null,
+    aiKnowledgePoint: null,
+    imageUrl: null,
+    totalAttempts: overrides.totalAttempts ?? 1,
+    correctAttempts: 0,
+    isMastered: overrides.isMastered ?? false,
+    deletedAt: null,
+    createdAt: overrides.createdAt ?? new Date(),
+    updatedAt: new Date(),
+  });
+}
+
+describe("US-020: Error Question List", () => {
+  beforeEach(setup);
+
+  test("lists error questions with subject color coding (returns subject field)", async () => {
+    addError("eq1", { subject: "MATH" });
+    addError("eq2", { subject: "CHINESE" });
+
+    const caller = createCaller(createMockContext(db, studentCtx));
+    const result = await caller.error.list({ page: 1 });
+
+    expect(result.items).toHaveLength(2);
+    const subjects = result.items.map((e) => e.subject);
+    expect(subjects).toContain("MATH");
+    expect(subjects).toContain("CHINESE");
+  });
+
+  test("filter by subject", async () => {
+    addError("eq1", { subject: "MATH" });
+    addError("eq2", { subject: "CHINESE" });
+    addError("eq3", { subject: "MATH" });
+
+    const caller = createCaller(createMockContext(db, studentCtx));
+    const result = await caller.error.list({ subject: "MATH", page: 1 });
+
+    expect(result.items).toHaveLength(2);
+    expect(result.items.every((e) => e.subject === "MATH")).toBe(true);
+  });
+
+  test("filter by date range", async () => {
+    addError("eq1", { createdAt: new Date("2026-04-01T08:00:00Z") });
+    addError("eq2", { createdAt: new Date("2026-04-05T08:00:00Z") });
+    addError("eq3", { createdAt: new Date("2026-04-10T08:00:00Z") });
+
+    const caller = createCaller(createMockContext(db, studentCtx));
+    const result = await caller.error.list({
+      dateFrom: "2026-04-03",
+      dateTo: "2026-04-07",
+      page: 1,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].id).toBe("eq2");
+  });
+
+  test("pagination shows 20 questions per page", async () => {
+    for (let i = 1; i <= 25; i++) {
+      addError(`eq${i}`);
+    }
+
+    const caller = createCaller(createMockContext(db, studentCtx));
+    const page1 = await caller.error.list({ page: 1 });
+
+    expect(page1.items).toHaveLength(20);
+    expect(page1.total).toBe(25);
+    expect(page1.totalPages).toBe(2);
+  });
+
+  test("next/previous page navigation works", async () => {
+    for (let i = 1; i <= 25; i++) {
+      addError(`eq${i}`);
+    }
+
+    const caller = createCaller(createMockContext(db, studentCtx));
+    const page2 = await caller.error.list({ page: 2 });
+
+    expect(page2.items).toHaveLength(5);
+    expect(page2.page).toBe(2);
+  });
+
+  test("search by content keyword", async () => {
+    addError("eq1", { content: "分数加减法" });
+    addError("eq2", { content: "三角函数求值" });
+    addError("eq3", { content: "分数乘法" });
+
+    const caller = createCaller(createMockContext(db, studentCtx));
+    const result = await caller.error.list({ search: "分数", page: 1 });
+
+    expect(result.items).toHaveLength(2);
+    const ids = result.items.map((e) => e.id);
+    expect(ids).toContain("eq1");
+    expect(ids).toContain("eq3");
+  });
+
+  test("parent can list student errors via studentId", async () => {
+    addError("eq1", { subject: "MATH" });
+    addError("eq2", { subject: "CHINESE" });
+
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const result = await caller.error.list({ studentId: "student1", page: 1 });
+
+    expect(result.items).toHaveLength(2);
+  });
+
+  test("parent FORBIDDEN for non-family student", async () => {
+    const caller = createCaller(createMockContext(db, parentCtx));
+    await expect(
+      caller.error.list({ studentId: "other-student", page: 1 })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+});
+
+describe("US-021: Error Question Detail", () => {
+  beforeEach(setup);
+
+  test.todo("shows full question with student/correct answers");
+  test.todo("shows AI knowledge point annotation");
+  test.todo("shows check history");
+  test.todo("shows help request history");
+});
+
+describe("US-022: Parent Notes", () => {
+  beforeEach(setup);
+
+  test.todo("parent can add note to error question");
+  test.todo("parent can edit own note");
+  test.todo("parent can delete own note");
+  test.todo("note input enforces 500 character limit");
+  test.todo("notes display author and timestamp");
+});
