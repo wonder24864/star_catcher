@@ -16,6 +16,7 @@ Core flow: Photo -> AI recognize -> score (no answers) -> student corrects -> re
 | User Stories | `docs/user-stories/` | Per-module acceptance criteria (9 files) |
 | ADRs | `docs/adr/` | Architecture Decision Records (7 files) |
 | Sprint Plans | `docs/sprints/` | Sprint-scoped task lists + acceptance criteria |
+| Roadmap | `docs/ROADMAP.md` | Phase/Sprint status tracking, acceptance summaries |
 | Original PRD | `docs/archive/PRD-Phase1-original.md` | Archived monolithic PRD (reference only) |
 
 > **When working on a feature**: Read the relevant user story file + sprint file + any referenced ADRs or business rules. You should NOT need to read all docs at once.
@@ -155,8 +156,9 @@ git status
 1. **必须 commit**，消息格式：用户故事用 `feat(US-NNN): 简短描述`，基础设施任务用 `feat(sprint-N/task-N): 简短描述`
 2. **必须勾选** `docs/sprints/sprint-N.md` 中对应的 checkbox
 3. **必须把 test.todo() 变成真正的测试**，确保通过
+4. **必须同步文档**：新增/删除/移动文件时更新 `README.md` 目录树（中文）；Sprint 完成时更新 `docs/ROADMAP.md` 状态
 
-这 3 步是质量锁定机制 — commit 锁定代码、checkbox 锁定进度、测试锁定行为。任何一步都不可跳过。
+这 4 步是质量锁定机制 — commit 锁定代码、checkbox 锁定进度、测试锁定行为、文档锁定认知。任何一步都不可跳过。
 
 ## Container Names
 
