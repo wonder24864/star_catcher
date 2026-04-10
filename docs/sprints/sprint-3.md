@@ -25,7 +25,7 @@
 ### Week 6
 
 - [x] 32. 管理员后台（用户管理、系统配置）
-- [ ] 33. PWA 配置（manifest、Service Worker、离线支持）
+- [x] 33. PWA 配置（manifest、Service Worker、离线支持）
 - [ ] 34. 儿童友好 UI 适配（大字体大按钮主题）
 - [ ] 35. 响应式适配（PC + 手机）
 - [ ] 36. Docker 镜像构建 + 部署测试

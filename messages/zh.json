@@ -278,6 +278,10 @@
       "helpStats": "求助"
     }
   },
+  "pwa": {
+    "offline": "您当前处于离线状态，部分功能不可用",
+    "offlineWrite": "请连接网络后再执行此操作"
+  },
   "admin": {
     "users": {
       "title": "用户管理",
