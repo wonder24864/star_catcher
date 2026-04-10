@@ -1,10 +1,13 @@
 /**
  * Error Question Router
  * US-020: Browse error question list (filter, search, pagination)
+ * US-021: Error question detail
+ * US-022: Parent notes
  */
 import { z } from "zod";
 import { router, protectedProcedure } from "@/server/trpc";
 import { TRPCError } from "@trpc/server";
+import type { Context } from "@/server/trpc";
 
 const PAGE_SIZE = 20;
 
@@ -16,6 +19,29 @@ const SubjectEnum = z.enum([
 const ContentTypeEnum = z.enum([
   "HOMEWORK", "EXERCISE", "DICTATION", "COPY", "ORAL", "OTHER",
 ]);
+
+async function verifyStudentAccess(
+  db: Context["db"],
+  requesterId: string,
+  requesterRole: string,
+  studentId: string
+): Promise<void> {
+  if (requesterRole === "STUDENT") {
+    if (requesterId !== studentId) throw new TRPCError({ code: "FORBIDDEN" });
+    return;
+  }
+  if (requesterRole === "PARENT") {
+    const parentFamilies = await db.familyMember.findMany({ where: { userId: requesterId } });
+    const familyIds = (parentFamilies as { familyId: string }[]).map((m) => m.familyId);
+    if (familyIds.length === 0) throw new TRPCError({ code: "FORBIDDEN" });
+    const studentInFamily = await db.familyMember.findFirst({
+      where: { userId: studentId, familyId: { in: familyIds } },
+    });
+    if (!studentInFamily) throw new TRPCError({ code: "FORBIDDEN" });
+    return;
+  }
+  throw new TRPCError({ code: "FORBIDDEN" });
+}
 
 export const errorRouter = router({
   /**
@@ -46,17 +72,7 @@ export const errorRouter = router({
         if (!input.studentId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "studentId required for PARENT" });
         }
-        // Verify parent-student family relationship
-        const parentFamilies = await ctx.db.familyMember.findMany({
-          where: { userId },
-        });
-        const familyIds = (parentFamilies as { familyId: string }[]).map((m) => m.familyId);
-        const studentInFamily = await ctx.db.familyMember.findFirst({
-          where: { userId: input.studentId, familyId: { in: familyIds } },
-        });
-        if (!studentInFamily) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "FORBIDDEN" });
-        }
+        await verifyStudentAccess(ctx.db, userId, role, input.studentId);
         targetStudentId = input.studentId;
       } else {
         throw new TRPCError({ code: "FORBIDDEN", message: "FORBIDDEN" });
@@ -95,5 +111,103 @@ export const errorRouter = router({
         pageSize: PAGE_SIZE,
         totalPages: Math.ceil(total / PAGE_SIZE),
       };
+    }),
+
+  /**
+   * Detail view: error question + parentNotes (with author info).
+   * Accessible by the owning student or any family parent.
+   */
+  detail: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const { userId, role } = ctx.session!;
+
+      const eq = await ctx.db.errorQuestion.findUnique({
+        where: { id: input.id },
+        include: { parentNotes: { include: { parent: true }, orderBy: { createdAt: "asc" } } },
+      });
+
+      if (!eq) throw new TRPCError({ code: "NOT_FOUND" });
+
+      await verifyStudentAccess(ctx.db, userId, role, (eq as { studentId: string }).studentId);
+
+      return eq;
+    }),
+
+  /**
+   * Parent adds a note (max 500 chars). PARENT only.
+   */
+  addNote: protectedProcedure
+    .input(z.object({
+      errorQuestionId: z.string(),
+      content: z.string().min(1).max(500),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session!.role !== "PARENT") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const { userId } = ctx.session!;
+
+      // Verify the parent has access to this student's data
+      const eq = await ctx.db.errorQuestion.findUnique({ where: { id: input.errorQuestionId } });
+      if (!eq) throw new TRPCError({ code: "NOT_FOUND" });
+      await verifyStudentAccess(ctx.db, userId, "PARENT", (eq as { studentId: string }).studentId);
+
+      const note = await ctx.db.parentNote.create({
+        data: {
+          parentId: userId,
+          errorQuestionId: input.errorQuestionId,
+          content: input.content,
+        },
+        include: { parent: true },
+      });
+      return note;
+    }),
+
+  /**
+   * Parent edits own note.
+   */
+  editNote: protectedProcedure
+    .input(z.object({
+      noteId: z.string(),
+      content: z.string().min(1).max(500),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session!.role !== "PARENT") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const { userId } = ctx.session!;
+
+      const note = await ctx.db.parentNote.findUnique({ where: { id: input.noteId } });
+      if (!note) throw new TRPCError({ code: "NOT_FOUND" });
+      if ((note as { parentId: string }).parentId !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      return ctx.db.parentNote.update({
+        where: { id: input.noteId },
+        data: { content: input.content },
+      });
+    }),
+
+  /**
+   * Parent deletes own note.
+   */
+  deleteNote: protectedProcedure
+    .input(z.object({ noteId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session!.role !== "PARENT") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const { userId } = ctx.session!;
+
+      const note = await ctx.db.parentNote.findUnique({ where: { id: input.noteId } });
+      if (!note) throw new TRPCError({ code: "NOT_FOUND" });
+      if ((note as { parentId: string }).parentId !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      await ctx.db.parentNote.delete({ where: { id: input.noteId } });
+      return { success: true };
     }),
 });

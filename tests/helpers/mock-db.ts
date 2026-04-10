@@ -141,6 +141,15 @@ type MockParentStudentConfig = {
   updatedAt: Date;
 };
 
+type MockParentNote = {
+  id: string;
+  parentId: string;
+  errorQuestionId: string;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 let counter = 0;
 function cuid() {
   return `test_${++counter}_${Date.now()}`;
@@ -158,6 +167,7 @@ export function createMockDb() {
   const helpRequests: MockHelpRequest[] = [];
   const parentStudentConfigs: MockParentStudentConfig[] = [];
   const errorQuestions: MockErrorQuestion[] = [];
+  const parentNotes: MockParentNote[] = [];
 
   return {
     user: {
@@ -750,6 +760,22 @@ export function createMockDb() {
       },
     },
     errorQuestion: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      findUnique: async ({ where, include }: { where: Record<string, unknown>; include?: any }) => {
+        const eq = errorQuestions.find((e) => e.id === where.id && e.deletedAt === null) || null;
+        if (!eq || !include) return eq;
+        let result: Record<string, unknown> = { ...eq };
+        if (include.parentNotes) {
+          let notes = parentNotes.filter((n) => n.errorQuestionId === eq.id);
+          if (include.parentNotes.orderBy?.createdAt === "asc") {
+            notes = notes.slice().sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+          }
+          result.parentNotes = include.parentNotes.include?.parent
+            ? notes.map((n) => ({ ...n, parent: users.find((u) => u.id === n.parentId) || null }))
+            : notes;
+        }
+        return result;
+      },
       findFirst: async ({ where }: { where?: Record<string, unknown> }) => {
         return errorQuestions.find((eq) => {
           if (eq.deletedAt !== null) return false;
@@ -832,6 +858,36 @@ export function createMockDb() {
         return eq || null;
       },
     },
+    parentNote: {
+      findUnique: async ({ where }: { where: Record<string, unknown> }) => {
+        return parentNotes.find((n) => n.id === where.id) || null;
+      },
+      create: async ({ data, include }: { data: Record<string, unknown>; include?: Record<string, unknown> }) => {
+        const note: MockParentNote = {
+          id: cuid(),
+          parentId: data.parentId as string,
+          errorQuestionId: data.errorQuestionId as string,
+          content: data.content as string,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        parentNotes.push(note);
+        if (include?.parent) {
+          return { ...note, parent: users.find((u) => u.id === note.parentId) || null };
+        }
+        return note;
+      },
+      update: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        const note = parentNotes.find((n) => n.id === where.id);
+        if (note) Object.assign(note, data, { updatedAt: new Date() });
+        return note || null;
+      },
+      delete: async ({ where }: { where: Record<string, unknown> }) => {
+        const idx = parentNotes.findIndex((n) => n.id === where.id);
+        if (idx >= 0) return parentNotes.splice(idx, 1)[0];
+        return null;
+      },
+    },
     // Expose internals for test assertions
     _users: users,
     _families: families,
@@ -844,6 +900,7 @@ export function createMockDb() {
     _helpRequests: helpRequests,
     _parentStudentConfigs: parentStudentConfigs,
     _errorQuestions: errorQuestions,
+    _parentNotes: parentNotes,
   };
 }
 

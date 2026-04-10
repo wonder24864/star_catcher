@@ -164,18 +164,143 @@ describe("US-020: Error Question List", () => {
 describe("US-021: Error Question Detail", () => {
   beforeEach(setup);
 
-  test.todo("shows full question with student/correct answers");
-  test.todo("shows AI knowledge point annotation");
+  test("shows full question with student/correct answers", async () => {
+    db._errorQuestions.push({
+      id: "eq1", studentId: "student1", sessionQuestionId: null,
+      subject: "MATH", contentType: null, grade: null, questionType: null,
+      content: "3+4=?", contentHash: null,
+      studentAnswer: "8", correctAnswer: "7",
+      errorAnalysis: null, aiKnowledgePoint: "加法", imageUrl: null,
+      totalAttempts: 2, correctAttempts: 0, isMastered: false,
+      deletedAt: null, createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentCtx));
+    const result = await caller.error.detail({ id: "eq1" }) as {
+      content: string; studentAnswer: string; correctAnswer: string; aiKnowledgePoint: string;
+    };
+
+    expect(result.content).toBe("3+4=?");
+    expect(result.studentAnswer).toBe("8");
+    expect(result.correctAnswer).toBe("7");
+    expect(result.aiKnowledgePoint).toBe("加法");
+  });
+
+  test("shows AI knowledge point annotation", async () => {
+    db._errorQuestions.push({
+      id: "eq1", studentId: "student1", sessionQuestionId: null,
+      subject: "CHINESE", contentType: null, grade: null, questionType: null,
+      content: "默写题", contentHash: null,
+      studentAnswer: null, correctAnswer: null,
+      errorAnalysis: null, aiKnowledgePoint: "汉字书写", imageUrl: null,
+      totalAttempts: 1, correctAttempts: 0, isMastered: false,
+      deletedAt: null, createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentCtx));
+    const result = await caller.error.detail({ id: "eq1" }) as { aiKnowledgePoint: string };
+    expect(result.aiKnowledgePoint).toBe("汉字书写");
+  });
+
+  test("FORBIDDEN for wrong student", async () => {
+    db._errorQuestions.push({
+      id: "eq1", studentId: "other-student", sessionQuestionId: null,
+      subject: "MATH", contentType: null, grade: null, questionType: null,
+      content: "题目", contentHash: null,
+      studentAnswer: null, correctAnswer: null,
+      errorAnalysis: null, aiKnowledgePoint: null, imageUrl: null,
+      totalAttempts: 1, correctAttempts: 0, isMastered: false,
+      deletedAt: null, createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentCtx));
+    await expect(caller.error.detail({ id: "eq1" })).rejects.toThrow("FORBIDDEN");
+  });
+
   test.todo("shows check history");
   test.todo("shows help request history");
 });
 
 describe("US-022: Parent Notes", () => {
-  beforeEach(setup);
+  beforeEach(() => {
+    setup();
+    // Seed a parent user
+    db._users.push({
+      id: "parent1", username: "p1", password: "x", nickname: "父母",
+      role: "PARENT", grade: null, locale: "zh", isActive: true,
+      deletedAt: null, loginFailCount: 0, lockedUntil: null,
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+    // Seed an error question
+    db._errorQuestions.push({
+      id: "eq1", studentId: "student1", sessionQuestionId: null,
+      subject: "MATH", contentType: null, grade: null, questionType: null,
+      content: "2+2=?", contentHash: null,
+      studentAnswer: "5", correctAnswer: "4",
+      errorAnalysis: null, aiKnowledgePoint: null, imageUrl: null,
+      totalAttempts: 1, correctAttempts: 0, isMastered: false,
+      deletedAt: null, createdAt: new Date(), updatedAt: new Date(),
+    });
+  });
 
-  test.todo("parent can add note to error question");
-  test.todo("parent can edit own note");
-  test.todo("parent can delete own note");
-  test.todo("note input enforces 500 character limit");
-  test.todo("notes display author and timestamp");
+  test("parent can add note to error question", async () => {
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const note = await caller.error.addNote({
+      errorQuestionId: "eq1",
+      content: "这道题需要多加练习",
+    }) as { content: string; parentId: string };
+
+    expect(note.content).toBe("这道题需要多加练习");
+    expect(note.parentId).toBe("parent1");
+  });
+
+  test("parent can edit own note", async () => {
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const note = await caller.error.addNote({
+      errorQuestionId: "eq1",
+      content: "原始备注",
+    }) as { id: string };
+
+    const updated = await caller.error.editNote({
+      noteId: note.id,
+      content: "修改后的备注",
+    }) as { content: string };
+    expect(updated.content).toBe("修改后的备注");
+  });
+
+  test("parent can delete own note", async () => {
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const note = await caller.error.addNote({
+      errorQuestionId: "eq1",
+      content: "将被删除的备注",
+    }) as { id: string };
+
+    const result = await caller.error.deleteNote({ noteId: note.id });
+    expect(result).toEqual({ success: true });
+
+    // Note should no longer appear in detail
+    const detail = await caller.error.detail({ id: "eq1" }) as { parentNotes: unknown[] };
+    expect(detail.parentNotes).toHaveLength(0);
+  });
+
+  test("note input enforces 500 character limit", async () => {
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const tooLong = "a".repeat(501);
+    await expect(
+      caller.error.addNote({ errorQuestionId: "eq1", content: tooLong })
+    ).rejects.toThrow();
+  });
+
+  test("notes display author and timestamp", async () => {
+    const caller = createCaller(createMockContext(db, parentCtx));
+    await caller.error.addNote({ errorQuestionId: "eq1", content: "备注内容" });
+
+    const detail = await caller.error.detail({ id: "eq1" }) as {
+      parentNotes: Array<{ content: string; parent: { nickname: string } | null; createdAt: unknown }>;
+    };
+    expect(detail.parentNotes).toHaveLength(1);
+    expect(detail.parentNotes[0].content).toBe("备注内容");
+    expect(detail.parentNotes[0].parent?.nickname).toBe("父母");
+    expect(detail.parentNotes[0].createdAt).toBeDefined();
+  });
 });
