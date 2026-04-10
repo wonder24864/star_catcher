@@ -239,6 +239,11 @@
     "progress": "已上传 {progress}%"
   },
   "parent": {
+    "settings": {
+      "title": "答案揭示策略",
+      "desc": "为每个孩子单独设置求助上限，限制孩子能获取到的提示级别。",
+      "maxLevel": "最高求助级别"
+    },
     "stats": {
       "title": "学习统计",
       "totalErrors": "错题总数",

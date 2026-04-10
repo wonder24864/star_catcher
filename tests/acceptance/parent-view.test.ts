@@ -247,6 +247,43 @@ describe("US-025: Statistics", () => {
 })
 
 describe("US-026: Parent Settings", () => {
-  test.todo("set answer reveal strategy per student")
-  test.todo("maxHelpLevel setting per student")
+  beforeEach(setup);
+
+  test("set maxHelpLevel for a specific student", async () => {
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const result = await caller.parent.setMaxHelpLevel({ studentId: "student1", maxHelpLevel: 1 });
+    expect(result.maxHelpLevel).toBe(1);
+  });
+
+  test("getStudentConfigs returns default level based on grade", async () => {
+    db._users.push({
+      id: "student1", username: "s1", password: "x", nickname: "小明",
+      role: "STUDENT", grade: "PRIMARY_3", locale: "zh", isActive: true,
+      deletedAt: null, loginFailCount: 0, lockedUntil: null,
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const configs = await caller.parent.getStudentConfigs();
+
+    expect(configs).toHaveLength(1);
+    expect(configs[0].studentId).toBe("student1");
+    // PRIMARY grade → default 2
+    expect(configs[0].maxHelpLevel).toBe(2);
+  });
+
+  test("setMaxHelpLevel then getStudentConfigs returns updated value", async () => {
+    db._users.push({
+      id: "student1", username: "s1", password: "x", nickname: "小明",
+      role: "STUDENT", grade: "JUNIOR_1", locale: "zh", isActive: true,
+      deletedAt: null, loginFailCount: 0, lockedUntil: null,
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, parentCtx));
+    await caller.parent.setMaxHelpLevel({ studentId: "student1", maxHelpLevel: 1 });
+
+    const configs = await caller.parent.getStudentConfigs();
+    expect(configs[0].maxHelpLevel).toBe(1);
+  });
 })

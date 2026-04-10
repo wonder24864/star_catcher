@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc/client";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,8 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
-
 const GRADES = [
   "PRIMARY_1", "PRIMARY_2", "PRIMARY_3", "PRIMARY_4", "PRIMARY_5", "PRIMARY_6",
   "JUNIOR_1", "JUNIOR_2", "JUNIOR_3",
@@ -220,6 +219,62 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Parent: answer reveal strategy */}
+      {session?.user?.role === "PARENT" && <ParentHelpSettings />}
     </div>
+  );
+}
+
+function ParentHelpSettings() {
+  const t = useTranslations();
+  const utils = trpc.useUtils();
+  const { data: configs } = trpc.parent.getStudentConfigs.useQuery();
+  const setLevel = trpc.parent.setMaxHelpLevel.useMutation({
+    onSuccess: () => {
+      toast.success(t("common.success"));
+      utils.parent.getStudentConfigs.invalidate();
+    },
+  });
+
+  if (!configs || configs.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("parent.settings.title")}</CardTitle>
+        <p className="text-sm text-muted-foreground">{t("parent.settings.desc")}</p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {configs.map((cfg) => (
+          <div key={cfg.studentId} className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium">{cfg.nickname}</p>
+              {cfg.grade && (
+                <p className="text-xs text-muted-foreground">{t(`grades.${cfg.grade}`)}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{t("parent.settings.maxLevel")}:</span>
+              <Select
+                value={String(cfg.maxHelpLevel)}
+                onValueChange={(v) =>
+                  setLevel.mutate({ studentId: cfg.studentId, maxHelpLevel: Number(v) })
+                }
+              >
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">L1 — {t("homework.help.level1")}</SelectItem>
+                  <SelectItem value="2">L2 — {t("homework.help.level2")}</SelectItem>
+                  <SelectItem value="3">L3 — {t("homework.help.level3")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }

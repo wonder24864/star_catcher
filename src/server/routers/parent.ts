@@ -79,6 +79,77 @@ export const parentRouter = router({
     }),
 
   /**
+   * Get maxHelpLevel config for all students under this parent.
+   */
+  getStudentConfigs: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.session.role !== "PARENT") {
+      throw new TRPCError({ code: "FORBIDDEN" });
+    }
+    const myFamilies = await ctx.db.familyMember.findMany({
+      where: { userId: ctx.session.userId },
+      select: { familyId: true },
+    });
+    const familyIds = myFamilies.map((f) => f.familyId);
+    if (familyIds.length === 0) return [];
+
+    const studentMembers = await ctx.db.familyMember.findMany({
+      where: { familyId: { in: familyIds }, user: { role: "STUDENT" } },
+      include: { user: { select: { id: true, nickname: true, grade: true } } },
+    });
+    const seen = new Set<string>();
+    const students = studentMembers
+      .filter((m) => {
+        if (seen.has(m.user.id)) return false;
+        seen.add(m.user.id);
+        return true;
+      })
+      .map((m) => m.user);
+
+    const configs = await ctx.db.parentStudentConfig.findMany({
+      where: { parentId: ctx.session.userId },
+    });
+    const configMap = new Map(configs.map((c) => [c.studentId, c.maxHelpLevel]));
+
+    return students.map((s) => ({
+      studentId: s.id,
+      nickname: s.nickname,
+      grade: s.grade,
+      maxHelpLevel: configMap.get(s.id) ?? (s.grade?.startsWith("PRIMARY_") ? 2 : 3),
+    }));
+  }),
+
+  /**
+   * Set maxHelpLevel for a specific student (upsert ParentStudentConfig).
+   */
+  setMaxHelpLevel: protectedProcedure
+    .input(
+      z.object({
+        studentId: z.string(),
+        maxHelpLevel: z.number().int().min(1).max(3),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.role !== "PARENT") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      await verifyParentStudentAccess(ctx.db, ctx.session.userId, input.studentId);
+      return ctx.db.parentStudentConfig.upsert({
+        where: {
+          parentId_studentId: {
+            parentId: ctx.session.userId,
+            studentId: input.studentId,
+          },
+        },
+        create: {
+          parentId: ctx.session.userId,
+          studentId: input.studentId,
+          maxHelpLevel: input.maxHelpLevel,
+        },
+        update: { maxHelpLevel: input.maxHelpLevel },
+      });
+    }),
+
+  /**
    * Basic statistics for a student over the last 7 or 30 days.
    * Returns pre-aggregated data for rendering charts on the frontend.
    */

@@ -721,6 +721,33 @@ export function createMockDb() {
           return true;
         }) || null;
       },
+      findMany: async ({ where }: { where?: Record<string, unknown> }) => {
+        return parentStudentConfigs.filter((c) => {
+          if (where?.parentId && c.parentId !== where.parentId) return false;
+          if (where?.studentId && c.studentId !== where.studentId) return false;
+          return true;
+        });
+      },
+      upsert: async ({ where, create, update }: { where: Record<string, unknown>; create: Record<string, unknown>; update: Record<string, unknown> }) => {
+        const key = where.parentId_studentId as { parentId: string; studentId: string } | undefined;
+        const existing = parentStudentConfigs.find(
+          (c) => c.parentId === (key?.parentId ?? where.parentId) && c.studentId === (key?.studentId ?? where.studentId)
+        );
+        if (existing) {
+          Object.assign(existing, update, { updatedAt: new Date() });
+          return existing;
+        }
+        const newConfig: MockParentStudentConfig = {
+          id: cuid(),
+          parentId: create.parentId as string,
+          studentId: create.studentId as string,
+          maxHelpLevel: create.maxHelpLevel as number,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        parentStudentConfigs.push(newConfig);
+        return newConfig;
+      },
     },
     errorQuestion: {
       findFirst: async ({ where }: { where?: Record<string, unknown> }) => {

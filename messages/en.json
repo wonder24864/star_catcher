@@ -239,6 +239,11 @@
     "progress": "{progress}% uploaded"
   },
   "parent": {
+    "settings": {
+      "title": "Answer Reveal Strategy",
+      "desc": "Set the maximum help level individually for each child.",
+      "maxLevel": "Max help level"
+    },
     "stats": {
       "title": "Learning Stats",
       "totalErrors": "Total Errors",
