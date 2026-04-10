@@ -79,6 +79,32 @@ export const parentRouter = router({
     }),
 
   /**
+   * Session detail for parent read-only view.
+   * Includes checkRounds (with per-question results) and helpRequests.
+   */
+  sessionDetail: protectedProcedure
+    .input(z.object({ sessionId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.role !== "PARENT") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const session = await ctx.db.homeworkSession.findUnique({
+        where: { id: input.sessionId },
+        include: {
+          questions: { orderBy: { questionNumber: "asc" } },
+          checkRounds: {
+            orderBy: { roundNumber: "asc" },
+            include: { results: true },
+          },
+          helpRequests: { orderBy: { level: "asc" } },
+        },
+      });
+      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+      await verifyParentStudentAccess(ctx.db, ctx.session.userId, session.studentId);
+      return session;
+    }),
+
+  /**
    * Weekly check-in: which days in a 7-day window had homework sessions.
    * weekStart: "YYYY-MM-DD" (Monday of the week, UTC)
    */

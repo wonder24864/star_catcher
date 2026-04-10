@@ -238,6 +238,12 @@
     "progress": "{progress}% uploaded"
   },
   "parent": {
+    "session": {
+      "corrected": "{count} corrected",
+      "helpRecords": "Help Records",
+      "questionList": "Questions",
+      "wrongRemaining": "{count} questions still incorrect"
+    },
     "overview": {
       "title": "Today's Overview",
       "weeklyCheckin": "Weekly Check-in",

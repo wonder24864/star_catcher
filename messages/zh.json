@@ -238,6 +238,12 @@
     "progress": "已上传 {progress}%"
   },
   "parent": {
+    "session": {
+      "corrected": "改正 {count} 题",
+      "helpRecords": "求助记录",
+      "questionList": "题目列表",
+      "wrongRemaining": "仍有 {count} 题未改正"
+    },
     "overview": {
       "title": "今日概览",
       "weeklyCheckin": "本周打卡",

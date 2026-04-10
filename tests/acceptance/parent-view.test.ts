@@ -141,8 +141,53 @@ describe("US-023: Daily Overview", () => {
 });
 
 describe("US-024: Session Detail Timeline", () => {
-  test.todo("shows upload → recognition → check → correction timeline")
-  test.todo("shows each round score change")
+  beforeEach(setup);
+
+  test("shows each round score change via sessionDetail", async () => {
+    addSession("hw1", "2026-04-10", { status: "COMPLETED", finalScore: 90 });
+    // Seed two check rounds
+    db._checkRounds.push(
+      { id: "r1", homeworkSessionId: "hw1", roundNumber: 1, score: 70, totalQuestions: 5, correctCount: 3, createdAt: new Date() },
+      { id: "r2", homeworkSessionId: "hw1", roundNumber: 2, score: 90, totalQuestions: 5, correctCount: 4, createdAt: new Date() }
+    );
+
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const result = await caller.parent.sessionDetail({ sessionId: "hw1" });
+
+    const rounds = (result as unknown as { checkRounds: { roundNumber: number; score: number | null }[] }).checkRounds;
+    expect(rounds).toHaveLength(2);
+    expect(rounds[0].roundNumber).toBe(1);
+    expect(rounds[0].score).toBe(70);
+    expect(rounds[1].roundNumber).toBe(2);
+    expect(rounds[1].score).toBe(90);
+  });
+
+  test("shows help records attached to session", async () => {
+    addSession("hw1", "2026-04-10");
+    db._sessionQuestions.push({
+      id: "q1", homeworkSessionId: "hw1", questionNumber: 1, questionType: null,
+      content: "2+2=?", studentAnswer: "3", correctAnswer: null, isCorrect: false,
+      confidence: null, needsReview: false, imageRegion: null, aiKnowledgePoint: null,
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+    addHelp("hw1", "q1", 1);
+    addHelp("hw1", "q1", 2);
+
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const result = await caller.parent.sessionDetail({ sessionId: "hw1" });
+
+    const helpReqs = (result as unknown as { helpRequests: { level: number }[] }).helpRequests;
+    expect(helpReqs).toHaveLength(2);
+    expect(helpReqs.map((h) => h.level)).toEqual([1, 2]);
+  });
+
+  test("forbidden for STUDENT role", async () => {
+    setup();
+    const studentCtx = { userId: "student1", role: "STUDENT", grade: null, locale: "zh" };
+    const caller = createCaller(createMockContext(db, studentCtx));
+    addSession("hw1", "2026-04-10");
+    await expect(caller.parent.sessionDetail({ sessionId: "hw1" })).rejects.toThrow("FORBIDDEN");
+  });
 })
 
 describe("US-025: Statistics", () => {

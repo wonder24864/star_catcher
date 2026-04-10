@@ -129,6 +129,43 @@ describe("parent.overview", () => {
   });
 });
 
+describe("parent.sessionDetail", () => {
+  test("STUDENT role is forbidden", async () => {
+    seedFamily();
+    seedSession({ id: "hw1", createdAt: new Date("2026-04-10T08:00:00.000Z") });
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(caller.parent.sessionDetail({ sessionId: "hw1" })).rejects.toThrow("FORBIDDEN");
+  });
+
+  test("returns session with checkRounds and helpRequests", async () => {
+    seedFamily();
+    seedSession({ id: "hw1", createdAt: new Date("2026-04-10T08:00:00.000Z") });
+    db._checkRounds.push({
+      id: "r1", homeworkSessionId: "hw1", roundNumber: 1, score: 80,
+      totalQuestions: 4, correctCount: 3, createdAt: new Date(),
+    });
+    seedHelpRequest("hw1", "q1", 1);
+
+    const caller = createCaller(createMockContext(db, parentSession));
+    const result = await caller.parent.sessionDetail({ sessionId: "hw1" });
+
+    const data = result as unknown as {
+      checkRounds: { roundNumber: number; score: number | null }[];
+      helpRequests: { level: number }[];
+    };
+    expect(data.checkRounds).toHaveLength(1);
+    expect(data.checkRounds[0].score).toBe(80);
+    expect(data.helpRequests).toHaveLength(1);
+    expect(data.helpRequests[0].level).toBe(1);
+  });
+
+  test("returns 404 for non-existent session", async () => {
+    seedFamily();
+    const caller = createCaller(createMockContext(db, parentSession));
+    await expect(caller.parent.sessionDetail({ sessionId: "nope" })).rejects.toThrow("NOT_FOUND");
+  });
+});
+
 describe("parent.weeklyCheckin", () => {
   test("STUDENT role is forbidden", async () => {
     seedFamily();

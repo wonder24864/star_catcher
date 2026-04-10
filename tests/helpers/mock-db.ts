@@ -358,6 +358,13 @@ export function createMockDb() {
               }))
             : rounds;
         }
+        if (include?.helpRequests) {
+          let hrs = helpRequests.filter((h) => h.homeworkSessionId === session.id);
+          if (include.helpRequests.orderBy?.level === "asc") {
+            hrs = hrs.slice().sort((a, b) => a.level - b.level);
+          }
+          result.helpRequests = hrs;
+        }
         return result;
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

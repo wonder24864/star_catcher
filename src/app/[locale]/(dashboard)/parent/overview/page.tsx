@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
 import { Badge } from "@/components/ui/badge";
@@ -129,7 +130,8 @@ export default function ParentOverviewPage() {
               (l) => session.helpByLevel[l] != null
             );
             return (
-              <Card key={session.id}>
+              <Link key={session.id} href={`/parent/sessions/${session.id}`}>
+              <Card className="hover:bg-accent/30 transition-colors cursor-pointer">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 space-y-1.5">
@@ -198,6 +200,7 @@ export default function ParentOverviewPage() {
                   </div>
                 </CardContent>
               </Card>
+              </Link>
             );
           })}
         </div>
