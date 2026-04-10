@@ -364,15 +364,45 @@ export function createMockDb() {
       findMany: async ({ where, orderBy, take, include }: { where?: Record<string, unknown>; orderBy?: any; take?: number; include?: any }) => {
         let result = [...homeworkSessions];
         if (where?.studentId) result = result.filter((s) => s.studentId === where.studentId);
-        if (orderBy?.createdAt === "desc") result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-        if (take) result = result.slice(0, take);
-        if (include?._count?.select?.images) {
-          return result.map((s) => ({
-            ...s,
-            _count: { images: homeworkImages.filter((i) => i.homeworkSessionId === s.id).length },
-          }));
+        // Date range filter
+        if (where?.createdAt && typeof where.createdAt === "object") {
+          const df = where.createdAt as { gte?: Date; lte?: Date; lt?: Date };
+          if (df.gte) result = result.filter((s) => s.createdAt >= df.gte!);
+          if (df.lte) result = result.filter((s) => s.createdAt <= df.lte!);
+          if (df.lt) result = result.filter((s) => s.createdAt < df.lt!);
         }
-        return result;
+        if (orderBy?.createdAt === "desc") result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        else if (orderBy?.createdAt === "asc") result.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        if (take) result = result.slice(0, take);
+        if (!include) return result;
+        return result.map((s) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const extra: Record<string, any> = {};
+          if (include._count?.select?.images) {
+            extra._count = { images: homeworkImages.filter((i) => i.homeworkSessionId === s.id).length };
+          }
+          if (include.helpRequests !== undefined) {
+            const hrs = helpRequests.filter((h) => h.homeworkSessionId === s.id);
+            extra.helpRequests = include.helpRequests?.select?.level
+              ? hrs.map((h) => ({ level: h.level }))
+              : hrs;
+          }
+          if (include.checkRounds !== undefined) {
+            let rounds = checkRounds.filter((r) => r.homeworkSessionId === s.id);
+            if (include.checkRounds?.orderBy?.roundNumber === "asc") {
+              rounds = rounds.slice().sort((a, b) => a.roundNumber - b.roundNumber);
+            }
+            extra.checkRounds = include.checkRounds?.select
+              ? rounds.map((r) => ({ roundNumber: r.roundNumber, score: r.score }))
+              : rounds;
+          }
+          if (include.images) {
+            extra.images = homeworkImages
+              .filter((i) => i.homeworkSessionId === s.id)
+              .sort((a, b) => a.sortOrder - b.sortOrder);
+          }
+          return { ...s, ...extra };
+        });
       },
       create: async ({ data }: { data: Record<string, unknown> }) => {
         const session: MockHomeworkSession = {

@@ -11,7 +11,8 @@
     "family": "家庭",
     "overview": "概览",
     "students": "学生",
-    "admin": "管理"
+    "admin": "管理",
+    "parentOverview": "今日概览"
   },
   "auth": {
     "login": "登录",
@@ -235,6 +236,15 @@
     "networkError": "网络错误，请检查连接后重试",
     "sessionNotFound": "作业会话不存在",
     "progress": "已上传 {progress}%"
+  },
+  "parent": {
+    "overview": {
+      "title": "今日概览",
+      "weeklyCheckin": "本周打卡",
+      "noSessions": "今天还没有检查作业哦",
+      "rounds": "共 {count} 轮",
+      "helpStats": "求助"
+    }
   },
   "validation": {
     "usernameLength": "用户名长度需为 4-32 个字符",

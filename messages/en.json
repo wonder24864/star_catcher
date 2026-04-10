@@ -11,7 +11,8 @@
     "family": "Family",
     "overview": "Overview",
     "students": "Students",
-    "admin": "Admin"
+    "admin": "Admin",
+    "parentOverview": "Today's Overview"
   },
   "auth": {
     "login": "Login",
@@ -235,6 +236,15 @@
     "networkError": "Network error, please check connection and retry",
     "sessionNotFound": "Homework session not found",
     "progress": "{progress}% uploaded"
+  },
+  "parent": {
+    "overview": {
+      "title": "Today's Overview",
+      "weeklyCheckin": "Weekly Check-in",
+      "noSessions": "No homework checks today",
+      "rounds": "{count} rounds",
+      "helpStats": "Help"
+    }
   },
   "validation": {
     "usernameLength": "Username must be 4-32 characters",
