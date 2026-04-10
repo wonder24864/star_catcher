@@ -1,0 +1,32 @@
+# Development
+node_modules
+.next
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Tooling
+.eslintrc*
+*.md
+!prisma/schema.prisma
+!prisma/migrations
+
+# IDE
+.vscode
+.idea
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
