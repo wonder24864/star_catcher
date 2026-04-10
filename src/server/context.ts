@@ -1,5 +1,5 @@
-import { db } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { db } from "@/lib/infra/db";
+import { auth } from "@/lib/domain/auth";
 import type { Context } from "./trpc";
 
 export async function createContext(): Promise<Context> {

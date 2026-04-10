@@ -7,11 +7,11 @@
  */
 
 import type { Job } from "bullmq";
-import type { OcrRecognizeJobData } from "@/lib/queue/types";
-import { db } from "@/lib/db";
-import { getObjectAsBase64DataUrl } from "@/lib/storage";
-import { recognizeHomework } from "@/lib/ai/operations/recognize-homework";
-import { publishJobResult, sessionChannel } from "@/lib/events";
+import type { OcrRecognizeJobData } from "@/lib/infra/queue/types";
+import { db } from "@/lib/infra/db";
+import { getObjectAsBase64DataUrl } from "@/lib/infra/storage";
+import { recognizeHomework } from "@/lib/domain/ai/operations/recognize-homework";
+import { publishJobResult, sessionChannel } from "@/lib/infra/events";
 
 export async function handleOcrRecognize(
   job: Job<OcrRecognizeJobData>,

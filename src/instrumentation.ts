@@ -1,6 +1,6 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { ensureBucket } = await import("@/lib/storage");
+    const { ensureBucket } = await import("@/lib/infra/storage");
     try {
       await ensureBucket();
     } catch (e) {

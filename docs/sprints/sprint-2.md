@@ -61,7 +61,7 @@
 
 - [x] AI 返回的 JSON 经过 Zod schema 校验
 - [x] 畸形 JSON 自动修复或触发重试
-- [x] Prompt 模板集中管理（`src/lib/ai/prompts/`）
+- [x] Prompt 模板集中管理（`src/lib/domain/ai/prompts/`）
 - [x] 学生输入经 PromptInjectionGuard 净化
 - [x] 高风险注入被拦截
 - [x] AI 求助内容经 ContentGuardrail 过滤

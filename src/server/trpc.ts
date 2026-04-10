@@ -1,6 +1,6 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import type { db } from "@/lib/db";
+import type { db } from "@/lib/infra/db";
 
 export type Context = {
   db: typeof db;

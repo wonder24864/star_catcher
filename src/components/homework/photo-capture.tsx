@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Camera, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { validateImageFile } from "@/lib/upload/compress";
-import { ALLOWED_IMAGE_TYPES } from "@/lib/validations/upload";
+import { ALLOWED_IMAGE_TYPES } from "@/lib/domain/validations/upload";
 import { toast } from "sonner";
 
 interface PhotoCaptureProps {

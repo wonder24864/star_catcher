@@ -80,162 +80,107 @@ Phase 3: Agentic Loop         Learning Brain 全局编排，自主循环决策
 
 ```
 star_catcher/
-├── CLAUDE.md                  # AI 助手开发指南（规则、文档地图、自审清单）
-├── README.md                  # 本文件
-├── Dockerfile                 # 多阶段 Docker 镜像构建
-├── docker-compose.yml         # Docker Compose 部署配置
+│
+│── 配置 ──────────────────────────────────────────────────
+├── package.json               # 依赖 + scripts
+├── tsconfig.json              # TypeScript 配置（@/ → src/）
+├── next.config.ts             # Next.js 配置（i18n + PWA）
+├── vitest.config.ts           # 测试框架配置
+├── components.json            # shadcn/ui 组件路径
 ├── .env.example               # 环境变量模板
 │
-├── prisma/
-│   └── schema.prisma          # 数据库模型定义（Prisma Schema，数据层唯一真相源）
+│── 部署 ──────────────────────────────────────────────────
+├── Dockerfile                 # 多阶段构建（App + Worker）
+├── docker-compose.yml         # 一键部署（App + Worker + PG + Redis + MinIO）
+├── scripts/docker-entrypoint.sh
 │
-├── public/
-│   └── manifest.json          # PWA 清单（图标、主题色、standalone 模式）
+│── 数据 ──────────────────────────────────────────────────
+├── prisma/schema.prisma       # 数据模型（唯一真相源）
+├── public/manifest.json       # PWA 清单 + 图标
 │
-├── messages/                  # 国际化翻译文件
-│   ├── zh.json                # 中文翻译
-│   └── en.json                # 英文翻译
+│── 文档 ──────────────────────────────────────────────────
+├── docs/
+│   ├── REQUIREMENTS.md        # 全阶段需求
+│   ├── ARCHITECTURE.md        # 架构设计（AI Harness + 异步队列 + SSE）
+│   ├── DESIGN-SYSTEM.md       # 设计系统（3 套主题 + 响应式）
+│   ├── BUSINESS-RULES.md      # 业务规则
+│   ├── ROADMAP.md             # 路线图
+│   ├── adr/                   # 架构决策记录（7 个）
+│   ├── user-stories/          # 用户故事（9 个模块）
+│   └── sprints/               # Sprint 计划（3 个）
 │
-├── docs/                      # 项目文档
-│   ├── REQUIREMENTS.md        # 全阶段系统需求
-│   ├── ARCHITECTURE.md        # 架构设计：AI Harness 管道、异步任务、路由
-│   ├── DESIGN-SYSTEM.md       # UI/UX 设计系统：3 套年龄段主题、响应式断点
-│   ├── BUSINESS-RULES.md      # 业务规则：得分计算、去重、并发锁、帮助等级
-│   ├── ROADMAP.md             # 开发路线图（Phase/Sprint 状态追踪）
-│   ├── user-stories/          # 用户故事（按模块拆分，9 个文件）
-│   ├── adr/                   # 架构决策记录（7 个 ADR）
-│   ├── sprints/               # Sprint 工作文档
-│   │   ├── sprint-1.md        # Week 1-2: 基础架构 + 用户系统 + 家庭组
-│   │   ├── sprint-2.md        # Week 3-4: 作业录入 + AI Harness + 多轮检查
-│   │   └── sprint-3.md        # Week 5-6: 家长视图 + 错题管理 + PWA + 部署
-│   └── archive/               # 归档文档
-│
-├── src/
-│   ├── app/                   # Next.js App Router 页面
-│   │   ├── sw.ts              # Service Worker（Serwist，离线缓存策略）
-│   │   ├── [locale]/(auth)/   # 认证页面
-│   │   │   ├── login/page.tsx
-│   │   │   └── register/page.tsx
-│   │   ├── [locale]/(dashboard)/  # 主功能页面（需登录）
-│   │   │   ├── page.tsx           # 首页（按角色重定向）
-│   │   │   ├── check/             # 作业检查
-│   │   │   │   ├── page.tsx       # 检查列表
-│   │   │   │   ├── new/page.tsx   # 新建检查（上传）
-│   │   │   │   ├── manual/page.tsx # 手动录入
-│   │   │   │   └── [sessionId]/   # 检查详情 + 结果
-│   │   │   ├── errors/            # 错题管理
-│   │   │   │   ├── page.tsx       # 错题列表（筛选、搜索、分页）
-│   │   │   │   └── [id]/page.tsx  # 错题详情 + 家长备注
-│   │   │   ├── parent/            # 家长视图
-│   │   │   │   ├── overview/page.tsx      # 今日概览 + 打卡日历
-│   │   │   │   ├── stats/page.tsx         # 统计图表（趋势+分布）
-│   │   │   │   └── sessions/[sessionId]/  # 作业检查详情时间线
-│   │   │   ├── admin/             # 管理员后台
-│   │   │   │   ├── page.tsx       # 管理首页
-│   │   │   │   ├── users/page.tsx # 用户管理列表
-│   │   │   │   ├── users/[id]/page.tsx # 用户详情
-│   │   │   │   └── settings/page.tsx   # 系统配置
-│   │   │   ├── family/page.tsx    # 家庭组管理
-│   │   │   └── settings/page.tsx  # 个人设置
-│   │   └── api/                   # API 路由
-│   │       ├── auth/[...nextauth]/route.ts  # NextAuth 认证端点
-│   │       └── trpc/[trpc]/route.ts         # tRPC HTTP 端点
-│   │
-│   ├── components/            # 可复用组件
-│   │   ├── homework/          # 作业相关
-│   │   │   ├── photo-capture.tsx  # 拍照/相册输入
-│   │   │   └── photo-grid.tsx     # 照片网格（拖拽排序）
-│   │   ├── nav/               # 导航
-│   │   │   ├── bottom-nav.tsx     # 手机端底部 Tab 导航
-│   │   │   ├── sidebar.tsx        # 桌面端侧边栏
-│   │   │   └── student-selector.tsx # 家长切换孩子选择器
-│   │   ├── providers/         # React Context Providers
-│   │   │   ├── session-provider.tsx # NextAuth Session
-│   │   │   └── theme-provider.tsx   # 儿童友好主题切换
-│   │   ├── offline-banner.tsx # 离线状态提示横幅
-│   │   └── ui/                # shadcn/ui 基础组件（button、card、input、dialog 等）
-│   │
-│   ├── hooks/
-│   │   └── use-upload.ts      # 上传编排 Hook（压缩→预签名→上传→确认）
-│   │
-│   ├── i18n/                  # 国际化配置
-│   │   ├── config.ts          # 支持语言列表 + 默认语言
-│   │   └── request.ts         # next-intl 请求配置
-│   │
-│   ├── lib/                   # 核心库
-│   │   ├── ai/                # AI Harness 管道（所有 AI 调用的唯一入口）
-│   │   │   ├── harness/       # 管道组件
-│   │   │   │   ├── index.ts           # 管道执行入口（executeOperation）
-│   │   │   │   ├── types.ts           # 类型定义
-│   │   │   │   ├── call-logger.ts     # 调用日志记录
-│   │   │   │   ├── content-guardrail.ts # K-12 内容安全检查
-│   │   │   │   ├── fallback-handler.ts  # 降级处理（优雅退化）
-│   │   │   │   ├── output-validator.ts  # Zod 输出校验
-│   │   │   │   ├── prompt-injection-guard.ts # 注入防御
-│   │   │   │   ├── prompt-manager.ts    # Prompt 模板管理
-│   │   │   │   ├── rate-limiter.ts      # 调用限流
-│   │   │   │   └── schemas/             # 每个 AI 操作的 Zod 输出 Schema
-│   │   │   ├── operations/    # 业务层 AI 操作（业务代码唯一调用入口）
-│   │   │   │   ├── recognize-homework.ts # OCR 识别
-│   │   │   │   ├── grade-answer.ts      # 答案评分
-│   │   │   │   ├── help-generate.ts     # 渐进式求助
-│   │   │   │   └── subject-detect.ts    # 学科检测
-│   │   │   ├── prompts/       # Prompt 模板（英文 + locale 变量）
-│   │   │   ├── providers/     # AI 提供商实现
-│   │   │   │   └── azure-openai.ts  # Azure OpenAI GPT-5.4
-│   │   │   ├── provider-factory.ts  # 提供商工厂
-│   │   │   ├── singleton.ts         # 全局 AI 单例
-│   │   │   └── types.ts             # AI 接口类型定义
-│   │   ├── auth.ts            # NextAuth 认证配置
-│   │   ├── content-hash.ts    # SHA256 内容哈希（错题去重）
-│   │   ├── db/index.ts        # Prisma 客户端（含软删除扩展）
-│   │   ├── events.ts          # Redis Pub/Sub 事件桥（Worker → tRPC SSE）
-│   │   ├── queue/             # BullMQ 异步队列
-│   │   │   ├── connection.ts  # BullMQ Redis 连接工厂
-│   │   │   ├── types.ts       # Job payload 类型定义
-│   │   │   └── index.ts       # 队列实例 + 入队函数
-│   │   ├── redis.ts           # Redis 客户端
-│   │   ├── scoring.ts         # 得分计算
-│   │   ├── storage/           # MinIO 文件存储服务
-│   │   ├── stores/            # Zustand 状态管理
-│   │   ├── trpc/              # tRPC React 客户端（含 SSE splitLink）
-│   │   ├── upload/compress.ts # 图片压缩（EXIF 校正、隐私剥离）
-│   │   ├── utils.ts           # 通用工具函数
-│   │   └── validations/       # Zod 校验 Schema（auth、upload、homework）
-│   │
-│   ├── server/                # tRPC 服务端
-│   │   ├── trpc.ts            # tRPC 初始化 + 角色中间件（public/protected/admin）
-│   │   ├── context.ts         # tRPC 上下文工厂
-│   │   └── routers/           # tRPC 路由器
-│   │       ├── _app.ts        # 根路由（聚合所有子路由）
-│   │       ├── auth.ts        # 认证（注册）
-│   │       ├── user.ts        # 用户（个人信息、密码、语言）
-│   │       ├── family.ts      # 家庭组（创建、邀请、加入、管理、学生列表）
-│   │       ├── upload.ts      # 上传（预签名 URL、确认、下载、删除）
-│   │       ├── homework.ts    # 作业（会话、题目 CRUD、判分、纠正、求助）
-│   │       ├── error.ts       # 错题（列表、详情、家长备注 CRUD）
-│   │       ├── parent.ts      # 家长（概览、统计、设置、详情时间线、打卡）
-│   │       ├── admin.ts       # 管理员（用户管理、系统配置、统计）
-│   │       └── subscription.ts # SSE 订阅（异步任务完成推送）
-│   │
-│   ├── worker/                # BullMQ Worker（独立进程，Docker 服务）
-│   │   ├── index.ts           # Worker 入口（监听 ai-jobs 队列）
-│   │   └── handlers/          # 任务处理器
-│   │       ├── ocr-recognize.ts       # OCR 识别
-│   │       ├── correction-photos.ts   # 改正照片（识别+重判）
-│   │       └── help-generate.ts       # 求助生成
-│   │
-│   ├── proxy.ts               # Next.js 16 代理（i18n 路由 + 认证守卫）
-│   ├── instrumentation.ts     # Next.js 启动钩子（MinIO 桶自动创建）
-│   └── types/                 # TypeScript 类型声明
-│
-└── tests/                     # 测试（23 文件，350+ 用例）
-    ├── acceptance/            # 验收测试（与用户故事一一对应，9 个文件）
-    ├── unit/                  # 单元测试（10 个文件）
-    ├── architecture/          # 架构守护测试
-    │   ├── harness-integrity.test.ts  # AI Harness 管道完整性
-    │   └── i18n-coverage.test.ts      # i18n 翻译覆盖率
-    └── helpers/               # 测试辅助（mock-db、mock-storage、mock-auth、mock-ai）
+│── 源码 ──────────────────────────────────────────────────
+└── src/
+    │
+    ├── app/                   # ── 页面层（Next.js App Router）──
+    │   ├── [locale]/(auth)/       # 登录 / 注册
+    │   ├── [locale]/(dashboard)/  # 受保护的功能页面
+    │   │   ├── check/                 # 作业检查（新建/详情/结果）
+    │   │   ├── errors/                # 错题管理（列表/详情）
+    │   │   ├── parent/                # 家长视图（概览/统计/时间线）
+    │   │   ├── admin/                 # 管理后台（用户/配置）
+    │   │   ├── family/                # 家庭组管理
+    │   │   └── settings/              # 个人设置
+    │   ├── api/trpc/[trpc]/       # tRPC 端点
+    │   └── sw.ts                  # Service Worker（PWA 离线缓存）
+    │
+    ├── components/            # ── UI 组件 ──
+    │   ├── homework/              # 拍照 / 照片网格
+    │   ├── nav/                   # 侧边栏 / 底部导航 / 学生切换
+    │   ├── providers/             # Session / Theme Provider
+    │   └── ui/                    # shadcn/ui 基础组件
+    │
+    ├── hooks/                 # ── React Hooks ──
+    │   └── use-upload.ts          # 上传编排（压缩→预签名→上传→确认）
+    │
+    ├── i18n/                  # ── 国际化 ──
+    │   ├── config.ts              # 语言列表 + 默认语言
+    │   ├── request.ts             # next-intl 请求配置
+    │   └── messages/              # 翻译文件
+    │       ├── zh.json
+    │       └── en.json
+    │
+    ├── lib/                   # ── 共享库（分层组织）──
+    │   │
+    │   ├── infra/             # 基础设施（外部服务连接）
+    │   │   ├── db/                # Prisma 客户端（含软删除扩展）
+    │   │   ├── redis.ts           # Redis 客户端
+    │   │   ├── storage/           # MinIO 文件存储
+    │   │   ├── queue/             # BullMQ 异步队列（连接/类型/入队）
+    │   │   └── events.ts          # Redis Pub/Sub 事件桥
+    │   │
+    │   ├── domain/            # 业务逻辑
+    │   │   ├── ai/                # AI Harness 管道
+    │   │   │   ├── harness/           # 管道组件（7 个）
+    │   │   │   ├── operations/        # 业务操作（OCR/判分/求助/学科检测）
+    │   │   │   ├── prompts/           # Prompt 模板
+    │   │   │   └── providers/         # AI 提供商（Azure OpenAI）
+    │   │   ├── auth.ts            # NextAuth 认证配置
+    │   │   ├── scoring.ts         # 得分计算
+    │   │   ├── content-hash.ts    # SHA256 去重哈希
+    │   │   └── validations/       # Zod 校验（auth/upload/homework）
+    │   │
+    │   ├── utils.ts           # cn() 工具函数
+    │   ├── stores/            # Zustand 客户端状态
+    │   ├── trpc/              # tRPC 客户端（含 SSE splitLink）
+    │   └── upload/            # 图片压缩（EXIF 校正）
+    │
+    ├── server/                # ── tRPC 服务端 ──
+    │   ├── trpc.ts                # 初始化 + 角色中间件 + SSE 配置
+    │   ├── context.ts             # 上下文工厂
+    │   └── routers/               # 路由器（9 个业务 + 1 个订阅）
+    │
+    ├── worker/                # ── BullMQ Worker（独立 Docker 服务）──
+    │   ├── index.ts               # 入口（监听 ai-jobs 队列）
+    │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成
+    │
+    ├── tests/                 # ── 测试（23 文件，350+ 用例）──
+    │   ├── acceptance/            # 验收测试（9 个用户故事模块）
+    │   ├── unit/                  # 单元测试
+    │   ├── architecture/          # 架构守护（Harness 完整性 + i18n 覆盖）
+    │   └── helpers/               # 测试辅助（mock-db/storage/auth/ai）
+    │
+    └── types/                 # TypeScript 类型声明
 ```
 
 ## 分阶段路线图

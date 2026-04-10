@@ -36,9 +36,9 @@ tRPC SSE subscription → Redis SUBSCRIBE → yield event → SSE push to fronte
 
 ### Key Components
 
-- **Queue**: `src/lib/queue/` — 单队列 `ai-jobs`，按 job name 路由
+- **Queue**: `src/lib/infra/queue/` — 单队列 `ai-jobs`，按 job name 路由
 - **Worker**: `src/worker/` — 独立进程，Docker 服务 `star-catcher-worker`
-- **Events**: `src/lib/events.ts` — Redis Pub/Sub 桥接 Worker ↔ tRPC
+- **Events**: `src/lib/infra/events.ts` — Redis Pub/Sub 桥接 Worker ↔ tRPC
 - **Subscriptions**: `src/server/routers/subscription.ts` — SSE 推送
 - **Client**: `splitLink` 分流 subscription → `httpSubscriptionLink`
 

@@ -7,7 +7,7 @@ import {
   ALLOWED_IMAGE_TYPES,
   MAX_PDF_SIZE,
   mimeToExtension,
-} from "@/lib/validations/upload";
+} from "@/lib/domain/validations/upload";
 
 export type UploadStatus = "idle" | "compressing" | "uploading" | "confirming" | "done" | "error";
 

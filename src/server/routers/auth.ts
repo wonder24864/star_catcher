@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { hash } from "bcryptjs";
 import { router, publicProcedure } from "../trpc";
-import { registerSchema } from "@/lib/validations/auth";
+import { registerSchema } from "@/lib/domain/validations/auth";
 
 export const authRouter = router({
   register: publicProcedure

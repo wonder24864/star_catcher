@@ -25,7 +25,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PhotoCapture } from "@/components/homework/photo-capture";
 import { useUpload, type UploadProgress } from "@/hooks/use-upload";
-import { MAX_IMAGES_PER_SESSION } from "@/lib/validations/upload";
+import { MAX_IMAGES_PER_SESSION } from "@/lib/domain/validations/upload";
 import {
   Dialog,
   DialogContent,

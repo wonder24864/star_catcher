@@ -7,13 +7,13 @@
  */
 
 import type { Job } from "bullmq";
-import type { CorrectionPhotosJobData } from "@/lib/queue/types";
-import { db } from "@/lib/db";
-import { getObjectAsBase64DataUrl } from "@/lib/storage";
-import { recognizeHomework } from "@/lib/ai/operations/recognize-homework";
-import { gradeAnswer } from "@/lib/ai/operations/grade-answer";
-import { calculateScore } from "@/lib/scoring";
-import { publishJobResult, sessionChannel } from "@/lib/events";
+import type { CorrectionPhotosJobData } from "@/lib/infra/queue/types";
+import { db } from "@/lib/infra/db";
+import { getObjectAsBase64DataUrl } from "@/lib/infra/storage";
+import { recognizeHomework } from "@/lib/domain/ai/operations/recognize-homework";
+import { gradeAnswer } from "@/lib/domain/ai/operations/grade-answer";
+import { calculateScore } from "@/lib/domain/scoring";
+import { publishJobResult, sessionChannel } from "@/lib/infra/events";
 
 export async function handleCorrectionPhotos(
   job: Job<CorrectionPhotosJobData>,

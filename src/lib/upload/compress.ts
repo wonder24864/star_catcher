@@ -4,7 +4,7 @@ import {
   MAX_IMAGE_WIDTH,
   MAX_IMAGE_SIZE,
   ALLOWED_IMAGE_TYPES,
-} from "@/lib/validations/upload";
+} from "@/lib/domain/validations/upload";
 
 export interface CompressResult {
   blob: Blob;

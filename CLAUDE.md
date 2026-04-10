@@ -36,9 +36,9 @@ Business Code -> Operations Layer -> AI Harness Pipeline -> AI Provider
 ```
 
 Every AI operation needs 3 files:
-1. `src/lib/ai/harness/schemas/<operation>.ts` — Zod output schema
-2. `src/lib/ai/prompts/<operation>.ts` — Versioned prompt template
-3. `src/lib/ai/operations/<operation>.ts` — Business-facing orchestration
+1. `src/lib/domain/ai/harness/schemas/<operation>.ts` — Zod output schema
+2. `src/lib/domain/ai/prompts/<operation>.ts` — Versioned prompt template
+3. `src/lib/domain/ai/operations/<operation>.ts` — Business-facing orchestration
 
 See: `docs/adr/001-ai-harness-pipeline.md`
 
@@ -46,7 +46,7 @@ See: `docs/adr/001-ai-harness-pipeline.md`
 
 - `prisma/schema.prisma` is the source of truth for data models (not docs)
 - `docker-compose.yml` and `.env.example` are the source of truth for infra config
-- TypeScript interfaces in `src/lib/ai/` are the source of truth for AI contracts
+- TypeScript interfaces in `src/lib/domain/ai/` are the source of truth for AI contracts
 - When code and docs diverge, update docs to match code
 
 See: `docs/adr/002-prisma-source-of-truth.md`
@@ -55,7 +55,7 @@ See: `docs/adr/002-prisma-source-of-truth.md`
 
 - All user-visible strings use next-intl i18n keys (never hardcoded)
 - AI prompts use English with `{{locale}}` variable for output language control
-- Translation files: `messages/zh.json` and `messages/en.json`
+- Translation files: `src/i18n/messages/zh.json` and `src/i18n/messages/en.json`
 
 See: `docs/adr/007-i18n-prompt-strategy.md`
 

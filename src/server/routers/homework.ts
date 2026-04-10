@@ -1,15 +1,15 @@
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, type Context } from "../trpc";
-import { deleteObject } from "@/lib/storage";
-import { calculateScore } from "@/lib/scoring";
-import { computeContentHash } from "@/lib/content-hash";
-import { gradeAnswer } from "@/lib/ai/operations/grade-answer";
-import { detectSubject } from "@/lib/ai/operations/subject-detect";
+import { deleteObject } from "@/lib/infra/storage";
+import { calculateScore } from "@/lib/domain/scoring";
+import { computeContentHash } from "@/lib/domain/content-hash";
+import { gradeAnswer } from "@/lib/domain/ai/operations/grade-answer";
+import { detectSubject } from "@/lib/domain/ai/operations/subject-detect";
 import {
   enqueueRecognition,
   enqueueCorrectionPhotos,
   enqueueHelpGeneration,
-} from "@/lib/queue";
+} from "@/lib/infra/queue";
 import {
   createSessionSchema,
   getSessionSchema,
@@ -28,7 +28,7 @@ import {
   createManualErrorSchema,
   requestHelpSchema,
   getHelpRequestsSchema,
-} from "@/lib/validations/homework";
+} from "@/lib/domain/validations/homework";
 
 /** Verify the caller owns or is the student of a session. Returns the session. */
 async function verifySessionAccess(

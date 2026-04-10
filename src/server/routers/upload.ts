@@ -5,7 +5,7 @@ import {
   getPresignedPutUrl,
   getPresignedGetUrl,
   deleteObject,
-} from "@/lib/storage";
+} from "@/lib/infra/storage";
 import {
   requestPresignedUploadUrlSchema,
   confirmUploadSchema,
@@ -16,7 +16,7 @@ import {
   MAX_PDF_SIZE,
   MAX_IMAGES_PER_SESSION,
   ALLOWED_IMAGE_TYPES,
-} from "@/lib/validations/upload";
+} from "@/lib/domain/validations/upload";
 
 /** Verify the caller owns or is the student of a session. Returns the session. */
 async function verifySessionAccess(

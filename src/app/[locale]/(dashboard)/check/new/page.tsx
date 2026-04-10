@@ -9,7 +9,7 @@ import { trpc } from "@/lib/trpc/client";
 import { useUpload, type UploadProgress } from "@/hooks/use-upload";
 import { PhotoCapture } from "@/components/homework/photo-capture";
 import { PhotoGrid } from "@/components/homework/photo-grid";
-import { MAX_IMAGES_PER_SESSION } from "@/lib/validations/upload";
+import { MAX_IMAGES_PER_SESSION } from "@/lib/domain/validations/upload";
 import { toast } from "sonner";
 
 interface QueueItem {

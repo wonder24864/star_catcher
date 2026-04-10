@@ -8,8 +8,8 @@
  */
 
 import { Worker, type Job } from "bullmq";
-import { createBullMQConnection } from "@/lib/queue/connection";
-import type { AIJobData, AIJobName } from "@/lib/queue/types";
+import { createBullMQConnection } from "@/lib/infra/queue/connection";
+import type { AIJobData, AIJobName } from "@/lib/infra/queue/types";
 import { handleOcrRecognize } from "./handlers/ocr-recognize";
 import { handleCorrectionPhotos } from "./handlers/correction-photos";
 import { handleHelpGenerate } from "./handlers/help-generate";

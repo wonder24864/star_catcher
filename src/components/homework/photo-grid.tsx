@@ -6,7 +6,7 @@ import { X, GripVertical, ImageOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc/client";
-import { MAX_IMAGES_PER_SESSION } from "@/lib/validations/upload";
+import { MAX_IMAGES_PER_SESSION } from "@/lib/domain/validations/upload";
 import type { UploadProgress } from "@/hooks/use-upload";
 import { cn } from "@/lib/utils";
 

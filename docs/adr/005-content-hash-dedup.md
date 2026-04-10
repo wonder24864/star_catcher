@@ -14,7 +14,7 @@ Use `SHA256(normalize(content))` as a content-based deduplication key, scoped pe
 3. **Unique constraint**: A composite unique index `@@unique([studentId, contentHash])` enforces dedup at the database level.
 4. **Upsert behavior**: When ending a homework session or manually inputting an error, if `(studentId, contentHash)` already exists, the system increments `totalAttempts` on the existing record rather than creating a new one. The `manualInput.create` endpoint returns a `deduplicated: boolean` flag so the UI can inform the user.
 
-### normalize() 算法（文件位置：`src/lib/utils/content-hash.ts`）
+### normalize() 算法（文件位置：`src/lib/domain/content-hash.ts`）
 
 ```typescript
 export function normalize(content: string): string {

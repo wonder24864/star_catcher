@@ -12,7 +12,7 @@ import {
   sessionChannel,
   helpChannel,
   type JobResultEvent,
-} from "@/lib/events";
+} from "@/lib/infra/events";
 
 const jobResultSchema = z.object({
   type: z.enum(["ocr-recognize", "correction-photos", "help-generate"]),

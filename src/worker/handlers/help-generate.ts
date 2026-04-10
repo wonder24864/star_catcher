@@ -6,10 +6,10 @@
  */
 
 import type { Job } from "bullmq";
-import type { HelpGenerateJobData } from "@/lib/queue/types";
-import { db } from "@/lib/db";
-import { generateHelp } from "@/lib/ai/operations/help-generate";
-import { publishJobResult, helpChannel } from "@/lib/events";
+import type { HelpGenerateJobData } from "@/lib/infra/queue/types";
+import { db } from "@/lib/infra/db";
+import { generateHelp } from "@/lib/domain/ai/operations/help-generate";
+import { publishJobResult, helpChannel } from "@/lib/infra/events";
 
 export async function handleHelpGenerate(
   job: Job<HelpGenerateJobData>,
