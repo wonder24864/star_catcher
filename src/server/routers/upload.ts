@@ -45,10 +45,10 @@ export const uploadRouter = router({
     .mutation(async ({ ctx, input }) => {
       const session = await verifySessionAccess(ctx.db, input.sessionId, ctx.session.userId);
 
-      if (session.status !== "CREATED") {
+      if (session.status !== "CREATED" && session.status !== "CHECKING") {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "SESSION_NOT_IN_CREATED_STATUS",
+          message: "SESSION_NOT_IN_UPLOADABLE_STATUS",
         });
       }
 
@@ -82,10 +82,10 @@ export const uploadRouter = router({
     .mutation(async ({ ctx, input }) => {
       const session = await verifySessionAccess(ctx.db, input.sessionId, ctx.session.userId);
 
-      if (session.status !== "CREATED") {
+      if (session.status !== "CREATED" && session.status !== "CHECKING") {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "SESSION_NOT_IN_CREATED_STATUS",
+          message: "SESSION_NOT_IN_UPLOADABLE_STATUS",
         });
       }
 
@@ -177,10 +177,10 @@ export const uploadRouter = router({
       if (session.createdBy !== ctx.session.userId && session.studentId !== ctx.session.userId) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      if (session.status !== "CREATED") {
+      if (session.status !== "CREATED" && session.status !== "CHECKING") {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "SESSION_NOT_IN_CREATED_STATUS",
+          message: "SESSION_NOT_IN_UPLOADABLE_STATUS",
         });
       }
 

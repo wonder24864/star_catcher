@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { getMinioClient } from "./minio";
+import { getMinioClient, getPublicMinioClient } from "./minio";
 
 const BUCKET = process.env.MINIO_BUCKET || "star-catcher";
 const UPLOAD_URL_EXPIRY = 3600; // 1 hour
@@ -18,20 +18,48 @@ export async function ensureBucket(): Promise<void> {
 
 /**
  * Generate a presigned PUT URL for direct client upload to MinIO.
+ * Uses the public MinIO client so the signature matches the browser's request host.
  */
 export async function getPresignedPutUrl(
   objectKey: string,
   _contentType: string
 ): Promise<{ url: string; objectKey: string }> {
-  const url = await getMinioClient().presignedPutObject(BUCKET, objectKey, UPLOAD_URL_EXPIRY);
+  const url = await getPublicMinioClient().presignedPutObject(BUCKET, objectKey, UPLOAD_URL_EXPIRY);
   return { url, objectKey };
 }
 
 /**
  * Generate a presigned GET URL for viewing/downloading an object.
+ * Uses the public MinIO client so the signature matches the browser's request host.
  */
 export async function getPresignedGetUrl(objectKey: string): Promise<string> {
-  return getMinioClient().presignedGetObject(BUCKET, objectKey, DOWNLOAD_URL_EXPIRY);
+  return getPublicMinioClient().presignedGetObject(BUCKET, objectKey, DOWNLOAD_URL_EXPIRY);
+}
+
+/**
+ * Read an object from MinIO and return it as a base64 data URL.
+ * Used for passing images to external AI APIs (e.g., Azure OpenAI)
+ * that cannot access MinIO directly.
+ */
+export async function getObjectAsBase64DataUrl(objectKey: string): Promise<string> {
+  const EXT_TO_MIME: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+  };
+
+  const ext = objectKey.split(".").pop()?.toLowerCase() ?? "";
+  const mime = EXT_TO_MIME[ext] ?? "image/jpeg";
+
+  const stream = await getMinioClient().getObject(BUCKET, objectKey);
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+  const buffer = Buffer.concat(chunks);
+  return `data:${mime};base64,${buffer.toString("base64")}`;
 }
 
 /**

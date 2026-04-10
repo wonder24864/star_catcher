@@ -87,7 +87,7 @@ export default function CheckPage() {
               key={s.id}
               className="cursor-pointer hover:bg-accent/50 transition-colors"
               onClick={() => {
-                if (s.status === "CREATED") {
+                if (s.status === "CREATED" || s.status === "RECOGNITION_FAILED" || s.status === "RECOGNIZING") {
                   router.push(`/check/new?sessionId=${s.id}`);
                 } else if (s.status === "RECOGNIZED") {
                   router.push(`/check/${s.id}`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
 import {
@@ -10,6 +10,10 @@ import {
   TrendingUp,
   CheckCircle2,
   RefreshCw,
+  Loader2,
+  Camera,
+  ImageIcon,
+  Trash2,
   HelpCircle,
   Lock,
   Lightbulb,
@@ -19,8 +23,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { PhotoCapture } from "@/components/homework/photo-capture";
+import { useUpload, type UploadProgress } from "@/hooks/use-upload";
+import { MAX_IMAGES_PER_SESSION } from "@/lib/validations/upload";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +37,7 @@ import {
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { MathText } from "@/components/ui/math-text";
 
 type CheckRound = {
   id: string;
@@ -199,8 +205,10 @@ export default function CheckResultsPage() {
 
   const [confirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
   const [correctionDialogOpen, setCorrectionDialogOpen] = useState(false);
-  // Map of questionId → new answer text
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  // Correction photo upload state
+  const [correctionImageIds, setCorrectionImageIds] = useState<string[]>([]);
+  const [uploadQueue, setUploadQueue] = useState<File[]>([]);
+  const [isUploadingCorrection, setIsUploadingCorrection] = useState(false);
 
   const utils = trpc.useUtils();
 
@@ -218,14 +226,14 @@ export default function CheckResultsPage() {
     onError: () => toast.error(t("error.serverError")),
   });
 
-  const submitCorrections = trpc.homework.submitCorrections.useMutation({
+  const submitCorrectionPhotos = trpc.homework.submitCorrectionPhotos.useMutation({
     onSuccess: (data) => {
       utils.homework.getCheckStatus.invalidate({ sessionId });
       toast.success(
         t("homework.check.recheckSuccess", { round: data.newRoundNumber })
       );
       setCorrectionDialogOpen(false);
-      setAnswers({});
+      setCorrectionImageIds([]);
     },
     onError: (err) => {
       if (err.message === "DATA_CONFLICT") {
@@ -235,6 +243,36 @@ export default function CheckResultsPage() {
       }
     },
   });
+
+  // Upload hook for correction photos
+  const { upload: uploadFile, uploadProgress: correctionUploadProgress, reset: resetUpload } = useUpload({
+    sessionId,
+    onSuccess: (image) => {
+      setCorrectionImageIds((prev) => [...prev, image.id]);
+      setIsUploadingCorrection(false);
+      // Process next file in queue
+      setUploadQueue((prev) => prev.slice(1));
+    },
+    onError: (errorKey) => {
+      toast.error(t(errorKey));
+      setIsUploadingCorrection(false);
+      setUploadQueue((prev) => prev.slice(1));
+    },
+  });
+
+  // Process upload queue
+  useEffect(() => {
+    if (uploadQueue.length > 0 && !isUploadingCorrection) {
+      setIsUploadingCorrection(true);
+      resetUpload();
+      const nextSortOrder = (session as unknown as { images?: unknown[] })?.images?.length ?? 0;
+      uploadFile(uploadQueue[0], nextSortOrder + correctionImageIds.length);
+    }
+  }, [uploadQueue, isUploadingCorrection, resetUpload, uploadFile, correctionImageIds.length, session]);
+
+  const handleCorrectionFilesSelected = useCallback((files: File[]) => {
+    setUploadQueue((prev) => [...prev, ...files]);
+  }, []);
 
   if (isLoading) {
     return (
@@ -264,22 +302,14 @@ export default function CheckResultsPage() {
   const isCompleted = sessionData.status === "COMPLETED";
 
   const handleRecheckClick = () => {
-    // Pre-fill answers with last known studentAnswer
-    const prefilled: Record<string, string> = {};
-    for (const q of wrongQuestions) {
-      prefilled[q.id] = q.studentAnswer ?? "";
-    }
-    setAnswers(prefilled);
+    setCorrectionImageIds([]);
+    setUploadQueue([]);
     setCorrectionDialogOpen(true);
   };
 
-  const handleSubmitCorrections = () => {
-    const corrections = wrongQuestions
-      .map((q) => ({ questionId: q.id, newAnswer: answers[q.id]?.trim() ?? "" }))
-      .filter((c) => c.newAnswer.length > 0);
-
-    if (corrections.length === 0) return;
-    submitCorrections.mutate({ sessionId, corrections });
+  const handleSubmitCorrectionPhotos = () => {
+    if (correctionImageIds.length === 0) return;
+    submitCorrectionPhotos.mutate({ sessionId, imageIds: correctionImageIds });
   };
 
   const handleCompleteClick = () => {
@@ -404,7 +434,7 @@ export default function CheckResultsPage() {
                       </Badge>
                     )}
                   </div>
-                  <p className="mt-1 text-sm">{q.content}</p>
+                  <p className="mt-1 text-sm"><MathText text={q.content} /></p>
                   {q.studentAnswer && (
                     <p
                       className={cn(
@@ -414,7 +444,7 @@ export default function CheckResultsPage() {
                           : "text-red-500"
                       )}
                     >
-                      {t("homework.studentAnswer")}: {q.studentAnswer}
+                      {t("homework.studentAnswer")}: <MathText text={q.studentAnswer} />
                     </p>
                   )}
                   {/* correctAnswer intentionally NOT shown per US-016 */}
@@ -471,53 +501,69 @@ export default function CheckResultsPage() {
         </div>
       )}
 
-      {/* Correction input dialog */}
-      <Dialog open={correctionDialogOpen} onOpenChange={setCorrectionDialogOpen}>
+      {/* Correction photo upload dialog */}
+      <Dialog open={correctionDialogOpen} onOpenChange={(open) => {
+        if (!submitCorrectionPhotos.isPending && !isUploadingCorrection) {
+          setCorrectionDialogOpen(open);
+        }
+      }}>
         <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("homework.check.correctionFormTitle")}</DialogTitle>
             <DialogDescription>
-              {t("homework.check.correctionFormDesc")}
+              {t("homework.check.uploadCorrectionPhotos")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {wrongQuestions.map((q) => (
-              <div key={q.id} className="space-y-1.5">
-                <Label className="text-sm font-medium">
-                  #{q.questionNumber} {q.content}
-                </Label>
-                <Input
-                  placeholder={t("homework.check.answerPlaceholder")}
-                  value={answers[q.id] ?? ""}
-                  onChange={(e) =>
-                    setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
-                  }
-                />
+            {/* Uploaded photo count */}
+            {correctionImageIds.length > 0 && (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <ImageIcon className="h-4 w-4" />
+                {t("homework.check.correctionPhotosUploaded", { count: correctionImageIds.length })}
               </div>
-            ))}
+            )}
+
+            {/* Upload progress */}
+            {isUploadingCorrection && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("homework.check.uploadingPhoto")}
+              </div>
+            )}
+
+            {/* Photo capture */}
+            <PhotoCapture
+              onFilesSelected={handleCorrectionFilesSelected}
+              disabled={isUploadingCorrection || submitCorrectionPhotos.isPending}
+              maxRemaining={MAX_IMAGES_PER_SESSION - correctionImageIds.length}
+            />
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => setCorrectionDialogOpen(false)}
-              disabled={submitCorrections.isPending}
+              disabled={submitCorrectionPhotos.isPending || isUploadingCorrection}
             >
               {t("common.cancel")}
             </Button>
             <Button
-              onClick={handleSubmitCorrections}
+              onClick={handleSubmitCorrectionPhotos}
               disabled={
-                submitCorrections.isPending ||
-                wrongQuestions.every(
-                  (q) => !answers[q.id]?.trim()
-                )
+                correctionImageIds.length === 0 ||
+                isUploadingCorrection ||
+                submitCorrectionPhotos.isPending
               }
             >
-              {submitCorrections.isPending
-                ? t("homework.check.submitting")
-                : t("homework.check.submitCorrections")}
+              {submitCorrectionPhotos.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t("homework.check.submittingCorrections")}
+                </>
+              ) : (
+                t("homework.check.submitCorrections")
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

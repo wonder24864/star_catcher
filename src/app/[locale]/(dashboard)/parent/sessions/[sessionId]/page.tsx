@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
+import { MathText } from "@/components/ui/math-text";
 
 export default function ParentSessionDetailPage() {
   const t = useTranslations();
@@ -133,8 +134,7 @@ export default function ParentSessionDetailPage() {
                 return (
                   <div key={q.id} className="space-y-1">
                     <p className="text-sm font-medium">
-                      #{q.questionNumber} {q.content.slice(0, 60)}
-                      {q.content.length > 60 ? "…" : ""}
+                      #{q.questionNumber} <MathText text={q.content.length > 60 ? q.content.slice(0, 60) + "…" : q.content} />
                     </p>
                     <div className="flex flex-wrap gap-1.5 pl-2">
                       {hrs.map((hr) => (
@@ -186,10 +186,10 @@ export default function ParentSessionDetailPage() {
                       <Badge variant="secondary" className="text-xs">{q.aiKnowledgePoint}</Badge>
                     )}
                   </div>
-                  <p className="mt-0.5 text-sm">{q.content}</p>
+                  <p className="mt-0.5 text-sm"><MathText text={q.content} /></p>
                   {q.studentAnswer && (
                     <p className={cn("mt-0.5 text-xs", q.isCorrect ? "text-green-600" : "text-red-500")}>
-                      {t("homework.studentAnswer")}: {q.studentAnswer}
+                      {t("homework.studentAnswer")}: <MathText text={q.studentAnswer} />
                     </p>
                   )}
                 </div>

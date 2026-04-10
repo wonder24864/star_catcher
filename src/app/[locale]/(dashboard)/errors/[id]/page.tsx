@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { MathText } from "@/components/ui/math-text";
 
 const SUBJECT_COLORS: Record<string, string> = {
   MATH: "bg-blue-100 text-blue-800",
@@ -111,20 +112,21 @@ export default function ErrorDetailPage() {
         <CardContent className="space-y-3">
           <div>
             <p className="text-xs text-muted-foreground mb-1">{t("homework.questionContent")}</p>
-            <p className="text-sm whitespace-pre-wrap">{question.content}</p>
+            <p className="text-sm whitespace-pre-wrap"><MathText text={question.content} /></p>
           </div>
 
           {question.studentAnswer && (
             <div>
               <p className="text-xs text-muted-foreground mb-1">{t("homework.studentAnswer")}</p>
-              <p className="text-sm text-red-600">{question.studentAnswer}</p>
+              <p className="text-sm text-red-600"><MathText text={question.studentAnswer} /></p>
             </div>
           )}
 
-          {question.correctAnswer && (
+          {/* Only parents can see correct answers; students should use the help system */}
+          {isParent && question.correctAnswer && (
             <div>
               <p className="text-xs text-muted-foreground mb-1">{t("homework.correctAnswer")}</p>
-              <p className="text-sm text-green-600">{question.correctAnswer}</p>
+              <p className="text-sm text-green-600"><MathText text={question.correctAnswer} /></p>
             </div>
           )}
 

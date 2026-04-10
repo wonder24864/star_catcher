@@ -8,6 +8,10 @@ export const getSessionSchema = z.object({
   sessionId: z.string().min(1),
 });
 
+export const startRecognitionSchema = z.object({
+  sessionId: z.string().min(1),
+});
+
 export const listSessionsSchema = z.object({
   studentId: z.string().min(1),
   limit: z.number().int().min(1).max(50).default(10),
@@ -84,6 +88,11 @@ export const submitCorrectionsSchema = z.object({
     )
     .min(1)
     .max(50),
+});
+
+export const submitCorrectionPhotosSchema = z.object({
+  sessionId: z.string().min(1),
+  imageIds: z.array(z.string().min(1)).min(1).max(10),
 });
 
 // --- Manual error input schemas ---

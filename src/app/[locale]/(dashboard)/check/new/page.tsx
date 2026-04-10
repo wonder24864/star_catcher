@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc/client";
 import { useUpload, type UploadProgress } from "@/hooks/use-upload";
@@ -55,6 +55,16 @@ export default function NewCheckPage() {
   const reorderMutation = trpc.homework.updateImageOrder.useMutation({
     onSuccess: () => {
       utils.homework.getSession.invalidate({ sessionId: sessionId! });
+    },
+  });
+
+  const startRecognition = trpc.homework.startRecognition.useMutation({
+    onSuccess: () => {
+      router.push(`/check/${sessionId}`);
+    },
+    onError: () => {
+      utils.homework.getSession.invalidate({ sessionId: sessionId! });
+      toast.error(t("homework.recognitionFailed"));
     },
   });
 
@@ -207,19 +217,41 @@ export default function NewCheckPage() {
           maxRemaining={maxRemaining}
         />
 
-        {/* Start Recognition button (placeholder for Task 17) */}
-        <Button
-          className="w-full"
-          size="lg"
-          disabled={images.length === 0 || isUploading}
-          onClick={() => {
-            // Will be wired to AI recognition in Task 17
-            toast.info(t("homework.startRecognition"));
-          }}
-        >
-          <Sparkles className="h-4 w-4 mr-2" />
-          {t("homework.startRecognition")}
-        </Button>
+        {/* Start Recognition / Retry button */}
+        {session?.status === "RECOGNITION_FAILED" ? (
+          <Button
+            className="w-full"
+            size="lg"
+            variant="destructive"
+            disabled={startRecognition.isPending}
+            onClick={() => startRecognition.mutate({ sessionId: sessionId! })}
+          >
+            {startRecognition.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            {startRecognition.isPending
+              ? t("homework.recognizing")
+              : t("homework.retryRecognition")}
+          </Button>
+        ) : (
+          <Button
+            className="w-full"
+            size="lg"
+            disabled={images.length === 0 || isUploading || startRecognition.isPending}
+            onClick={() => startRecognition.mutate({ sessionId: sessionId! })}
+          >
+            {startRecognition.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4 mr-2" />
+            )}
+            {startRecognition.isPending
+              ? t("homework.recognizing")
+              : t("homework.startRecognition")}
+          </Button>
+        )}
       </div>
     </div>
   );

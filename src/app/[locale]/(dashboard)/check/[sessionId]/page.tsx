@@ -27,6 +27,7 @@ import {
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { MathText } from "@/components/ui/math-text";
 
 export default function RecognitionResultsPage() {
   const t = useTranslations();
@@ -179,7 +180,7 @@ export default function RecognitionResultsPage() {
                         </Badge>
                       )}
                     </div>
-                    <p className="mt-1 text-sm">{q.content}</p>
+                    <p className="mt-1 text-sm"><MathText text={q.content} /></p>
                   </div>
 
                   {/* Correct/Incorrect toggle */}
@@ -208,12 +209,12 @@ export default function RecognitionResultsPage() {
                   <div>
                     <span className="text-muted-foreground">{t("homework.studentAnswer")}:</span>{" "}
                     <span className={cn(q.isCorrect === false && "text-red-600 font-medium")}>
-                      {q.studentAnswer || "—"}
+                      {q.studentAnswer ? <MathText text={q.studentAnswer} /> : "—"}
                     </span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t("homework.correctAnswer")}:</span>{" "}
-                    <span>{q.correctAnswer || "—"}</span>
+                    <span>{q.correctAnswer ? <MathText text={q.correctAnswer} /> : "—"}</span>
                   </div>
                 </div>
 

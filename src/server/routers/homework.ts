@@ -1,15 +1,17 @@
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, type Context } from "../trpc";
-import { deleteObject } from "@/lib/storage";
+import { deleteObject, getObjectAsBase64DataUrl } from "@/lib/storage";
 import { calculateScore } from "@/lib/scoring";
 import { computeContentHash } from "@/lib/content-hash";
 import { gradeAnswer } from "@/lib/ai/operations/grade-answer";
 import { generateHelp } from "@/lib/ai/operations/help-generate";
 import { detectSubject } from "@/lib/ai/operations/subject-detect";
+import { recognizeHomework } from "@/lib/ai/operations/recognize-homework";
 import {
   createSessionSchema,
   getSessionSchema,
   listSessionsSchema,
+  startRecognitionSchema,
   updateImageOrderSchema,
   deleteSessionSchema,
   updateQuestionSchema,
@@ -19,6 +21,7 @@ import {
   getCheckStatusSchema,
   completeSessionSchema,
   submitCorrectionsSchema,
+  submitCorrectionPhotosSchema,
   createManualErrorSchema,
   requestHelpSchema,
   getHelpRequestsSchema,
@@ -174,6 +177,112 @@ export const homeworkRouter = router({
       });
 
       return sessions;
+    }),
+
+  /**
+   * Start AI recognition on uploaded images.
+   * CREATED/RECOGNITION_FAILED → RECOGNIZING → RECOGNIZED/RECOGNITION_FAILED
+   */
+  startRecognition: protectedProcedure
+    .input(startRecognitionSchema)
+    .mutation(async ({ ctx, input }) => {
+      const session = await verifySessionAccess(ctx.db, input.sessionId, ctx.session.userId);
+
+      if (session.status !== "CREATED" && session.status !== "RECOGNITION_FAILED" && session.status !== "RECOGNIZING") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "SESSION_NOT_IN_CREATED_STATUS",
+        });
+      }
+
+      // Fetch images ordered by sortOrder
+      const images = await ctx.db.homeworkImage.findMany({
+        where: { homeworkSessionId: input.sessionId },
+        orderBy: { sortOrder: "asc" },
+      });
+
+      if (images.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "NO_IMAGES",
+        });
+      }
+
+      // If retrying, clean up previous partial results
+      if (session.status === "RECOGNITION_FAILED" || session.status === "RECOGNIZING") {
+        await ctx.db.sessionQuestion.deleteMany({
+          where: { homeworkSessionId: input.sessionId },
+        });
+      }
+
+      // Transition to RECOGNIZING
+      await ctx.db.homeworkSession.update({
+        where: { id: input.sessionId },
+        data: { status: "RECOGNIZING" },
+      });
+
+      // Read images from MinIO as base64 data URLs for the AI provider
+      const imageDataUrls = await Promise.all(
+        images.map((img) => getObjectAsBase64DataUrl(img.imageUrl))
+      );
+
+      // Call AI recognition through the Harness pipeline
+      const result = await recognizeHomework({
+        imageUrls: imageDataUrls,
+        context: {
+          userId: ctx.session.userId,
+          locale: ctx.session.locale,
+          grade: session.grade ?? undefined,
+          correlationId: `recognize-${input.sessionId}`,
+        },
+        hasExif: images.some((img) => img.exifRotation !== 0),
+      });
+
+      if (!result.success) {
+        await ctx.db.homeworkSession.update({
+          where: { id: input.sessionId },
+          data: { status: "RECOGNITION_FAILED" },
+        });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "RECOGNITION_FAILED",
+        });
+      }
+
+      const data = result.data!;
+
+      // Create SessionQuestion records from AI output
+      await ctx.db.sessionQuestion.createMany({
+        data: data.questions.map((q) => ({
+          homeworkSessionId: input.sessionId,
+          questionNumber: q.questionNumber,
+          questionType: q.questionType ?? undefined,
+          content: q.content,
+          studentAnswer: q.studentAnswer ?? null,
+          correctAnswer: q.correctAnswer ?? null,
+          isCorrect: q.isCorrect ?? null,
+          confidence: q.confidence ?? null,
+          needsReview: (q.confidence ?? 1) < 0.7,
+          imageRegion: q.imageRegion ?? undefined,
+          aiKnowledgePoint: q.knowledgePoint ?? null,
+        })),
+      });
+
+      // Update session with AI-detected metadata
+      // Note: AI-returned grade is free text and may not match the Grade enum,
+      // so we only use the existing session grade.
+      const updated = await ctx.db.homeworkSession.update({
+        where: { id: input.sessionId },
+        data: {
+          status: "RECOGNIZED",
+          subject: data.subject ?? undefined,
+          contentType: data.contentType ?? undefined,
+          grade: session.grade ?? undefined,
+          title: data.title ?? undefined,
+        },
+      });
+
+      return updated;
     }),
 
   /**
@@ -621,6 +730,165 @@ export const homeworkRouter = router({
           code: "CONFLICT",
           message: "DATA_CONFLICT",
         });
+      }
+
+      return { success: true, newRoundNumber, score };
+    }),
+
+  /**
+   * Submit corrections via re-photographed homework.
+   * Student re-photographs corrected homework → AI re-recognizes → matches & re-grades.
+   */
+  submitCorrectionPhotos: protectedProcedure
+    .input(submitCorrectionPhotosSchema)
+    .mutation(async ({ ctx, input }) => {
+      const session = await verifySessionAccess(ctx.db, input.sessionId, ctx.session.userId);
+
+      if (session.status !== "CHECKING") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "SESSION_NOT_IN_CHECKING_STATUS",
+        });
+      }
+
+      // Fetch correction images by ID
+      const correctionImages = await ctx.db.homeworkImage.findMany({
+        where: {
+          id: { in: input.imageIds },
+          homeworkSessionId: input.sessionId,
+        },
+        orderBy: { sortOrder: "asc" },
+      });
+
+      if (correctionImages.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "NO_IMAGES" });
+      }
+
+      // Read images from MinIO as base64
+      const imageDataUrls = await Promise.all(
+        correctionImages.map((img) => getObjectAsBase64DataUrl(img.imageUrl))
+      );
+
+      // Re-recognize homework from corrected photos
+      const recognitionResult = await recognizeHomework({
+        imageUrls: imageDataUrls,
+        context: {
+          userId: ctx.session.userId,
+          locale: ctx.session.locale,
+          grade: session.grade ?? undefined,
+          correlationId: `correction-${input.sessionId}`,
+        },
+        hasExif: correctionImages.some((img) => img.exifRotation !== 0),
+      });
+
+      if (!recognitionResult.success || !recognitionResult.data) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "RECOGNITION_FAILED",
+        });
+      }
+
+      const newRecognized = recognitionResult.data;
+
+      // Build map of newly recognized answers by questionNumber
+      const newAnswerMap = new Map(
+        newRecognized.questions.map((q) => [q.questionNumber, q])
+      );
+
+      // Fetch existing questions
+      const existingQuestions = await ctx.db.sessionQuestion.findMany({
+        where: { homeworkSessionId: input.sessionId },
+      });
+
+      // Match by questionNumber and detect changed answers
+      const correctedIds = new Set<string>();
+      const gradeJobs = existingQuestions
+        .filter((eq) => {
+          const newQ = newAnswerMap.get(eq.questionNumber);
+          if (!newQ) return false;
+          // Only re-grade if answer changed
+          const newAnswer = newQ.studentAnswer ?? "";
+          const oldAnswer = eq.studentAnswer ?? "";
+          return newAnswer !== oldAnswer && newAnswer.length > 0;
+        })
+        .map(async (eq) => {
+          const newQ = newAnswerMap.get(eq.questionNumber)!;
+          correctedIds.add(eq.id);
+
+          const result = await gradeAnswer({
+            questionContent: eq.content,
+            studentAnswer: newQ.studentAnswer!,
+            correctAnswer: eq.correctAnswer ?? null,
+            subject: session.subject ?? undefined,
+            grade: session.grade ?? undefined,
+            context: {
+              userId: ctx.session.userId,
+              locale: ctx.session.locale,
+              grade: session.grade ?? undefined,
+              correlationId: `correction-grade-${input.sessionId}`,
+            },
+          });
+
+          return {
+            questionId: eq.id,
+            newAnswer: newQ.studentAnswer!,
+            isCorrect: result.success ? (result.data?.isCorrect ?? false) : false,
+            confidence: result.success ? (result.data?.confidence ?? 0) : 0,
+            needsReview: !result.success,
+          };
+        });
+
+      const gradeResults = await Promise.all(gradeJobs);
+
+      // Update corrected SessionQuestions
+      for (const grade of gradeResults) {
+        await ctx.db.sessionQuestion.update({
+          where: { id: grade.questionId },
+          data: {
+            studentAnswer: grade.newAnswer,
+            isCorrect: grade.isCorrect,
+            confidence: grade.confidence,
+            needsReview: grade.needsReview,
+          },
+        });
+      }
+
+      // Recalculate score
+      const updatedQuestions = await ctx.db.sessionQuestion.findMany({
+        where: { homeworkSessionId: input.sessionId },
+      });
+      const totalQuestions = updatedQuestions.length;
+      const correctCount = updatedQuestions.filter((q) => q.isCorrect === true).length;
+      const score = calculateScore(correctCount, totalQuestions);
+      const newRoundNumber = session.totalRounds + 1;
+
+      // Create new CheckRound
+      await ctx.db.checkRound.create({
+        data: {
+          homeworkSessionId: input.sessionId,
+          roundNumber: newRoundNumber,
+          score,
+          totalQuestions,
+          correctCount,
+          results: {
+            create: updatedQuestions.map((q) => ({
+              sessionQuestionId: q.id,
+              studentAnswer: q.studentAnswer,
+              isCorrect: q.isCorrect ?? false,
+              correctedFromPrev: correctedIds.has(q.id),
+            })),
+          },
+        },
+      });
+
+      // Optimistic lock
+      const lockResult = await ctx.db.homeworkSession.updateMany({
+        where: { id: input.sessionId, updatedAt: session.updatedAt },
+        data: { totalRounds: newRoundNumber },
+      });
+
+      if (lockResult.count === 0) {
+        throw new TRPCError({ code: "CONFLICT", message: "DATA_CONFLICT" });
       }
 
       return { success: true, newRoundNumber, score };

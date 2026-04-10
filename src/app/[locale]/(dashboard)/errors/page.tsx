@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { MathText } from "@/components/ui/math-text";
 import {
   Select,
   SelectContent,
@@ -166,7 +167,7 @@ export default function ErrorsPage() {
                         )}
                       </div>
                       <p className="text-sm line-clamp-2 text-foreground">
-                        {eq.content}
+                        <MathText text={eq.content} />
                       </p>
                       {eq.aiKnowledgePoint && (
                         <p className="text-xs text-muted-foreground mt-1">
