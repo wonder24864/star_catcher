@@ -85,7 +85,7 @@ export class AzureOpenAIProvider implements AIProvider {
       {
         model: this.deployment,
         messages: toOpenAIMessages(messages) as Parameters<typeof this.client.chat.completions.create>[0]["messages"],
-        max_tokens: options?.maxTokens ?? 4096,
+        max_completion_tokens: options?.maxTokens ?? 4096,
         temperature: options?.temperature ?? 0.3,
         response_format: options?.responseFormat === "json_object"
           ? { type: "json_object" }
