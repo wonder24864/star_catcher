@@ -163,3 +163,20 @@ body {
   font-size: var(--font-size-base);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
 }
+
+/* ==================== Kid-friendly touch targets ==================== */
+/* Candy & Fresh themes enforce larger tap targets via CSS variable */
+[data-theme="candy"] button:not([data-size="xs"]):not([data-size="icon-xs"]),
+[data-theme="candy"] [role="button"],
+[data-theme="fresh"] button:not([data-size="xs"]):not([data-size="icon-xs"]),
+[data-theme="fresh"] [role="button"] {
+  min-height: var(--button-min-height);
+}
+
+[data-theme="candy"] input,
+[data-theme="candy"] select,
+[data-theme="fresh"] input,
+[data-theme="fresh"] select {
+  min-height: calc(var(--button-min-height) - 4px);
+  font-size: inherit;
+}
