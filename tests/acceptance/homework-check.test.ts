@@ -21,8 +21,15 @@ vi.mock("@/lib/ai/operations/help-generate", () => ({
     data: { helpText: "Help content", level: 1, knowledgePoint: "Test" },
   }),
 }));
+// Mock BullMQ queue
+vi.mock("@/lib/queue", () => ({
+  enqueueRecognition: vi.fn().mockResolvedValue("job-1"),
+  enqueueCorrectionPhotos: vi.fn().mockResolvedValue("job-2"),
+  enqueueHelpGeneration: vi.fn().mockResolvedValue("job-3"),
+}));
 import { generateHelp } from "@/lib/ai/operations/help-generate";
 import { gradeAnswer } from "@/lib/ai/operations/grade-answer";
+import { enqueueHelpGeneration } from "@/lib/queue";
 
 const createCaller = createCallerFactory(appRouter);
 let db: MockDb;
@@ -173,16 +180,15 @@ describe('US-017: Correction & Re-check', () => {
 describe('US-018: Progressive Help', () => {
   test('Level 1: thinking direction (knowledge point, approach)', async () => {
     setup();
-    vi.mocked(generateHelp).mockResolvedValueOnce({
-      success: true,
-      data: { helpText: "Think about what addition means.", level: 1, knowledgePoint: "Addition" },
-    });
 
     const caller = createCaller(createMockContext(db, studentSession));
     const result = await caller.homework.requestHelp({ sessionId: "s1", questionId: "q1", level: 1 });
 
-    expect(result.level).toBe(1);
-    expect(result.aiResponse).toContain("addition");
+    // Async: mutation enqueues job instead of calling AI directly
+    expect(result.status).toBe("processing");
+    expect(enqueueHelpGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: "s1", questionId: "q1", level: 1 }),
+    );
   });
 
   test('Level 2: key steps without final answer', async () => {
@@ -201,16 +207,14 @@ describe('US-018: Progressive Help', () => {
       studentAnswer: "55", isCorrect: false, correctedFromPrev: true,
     });
 
-    vi.mocked(generateHelp).mockResolvedValueOnce({
-      success: true,
-      data: { helpText: "Step 1: Add units. Step 2: Add tens.", level: 2, knowledgePoint: "Addition" },
-    });
-
     const caller = createCaller(createMockContext(db, studentSession));
     const result = await caller.homework.requestHelp({ sessionId: "s1", questionId: "q1", level: 2 });
 
-    expect(result.level).toBe(2);
-    expect(result.aiResponse).toContain("Step");
+    // Async: Level 2 gating passed, job enqueued
+    expect(result.status).toBe("processing");
+    expect(enqueueHelpGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({ level: 2 }),
+    );
   });
 
   test('Level 3: complete solution', async () => {
@@ -242,16 +246,14 @@ describe('US-018: Progressive Help', () => {
     db._checkRounds.push({ id: "r3j", homeworkSessionId: "s2", roundNumber: 3, score: 0, totalQuestions: 1, correctCount: 0, createdAt: new Date("2026-04-10T10:03:00Z") });
     db._roundQuestionResults.push({ id: "rr3j", checkRoundId: "r3j", sessionQuestionId: "q2", studentAnswer: "x=4", isCorrect: false, correctedFromPrev: true });
 
-    vi.mocked(generateHelp).mockResolvedValueOnce({
-      success: true,
-      data: { helpText: "3x = 15, so x = 5", level: 3, knowledgePoint: "Linear equations" },
-    });
-
     const caller = createCaller(createMockContext(db, studentSession));
     const result = await caller.homework.requestHelp({ sessionId: "s2", questionId: "q2", level: 3 });
 
-    expect(result.level).toBe(3);
-    expect(result.aiResponse).toContain("x = 5");
+    // Async: Level 3 gating passed, job enqueued
+    expect(result.status).toBe("processing");
+    expect(enqueueHelpGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({ level: 3 }),
+    );
   });
 
   test('each level requires new answer attempt to unlock next', async () => {
@@ -308,9 +310,9 @@ describe('US-018: Progressive Help', () => {
     });
 
     const caller = createCaller(createMockContext(db, studentSession));
-    // Level 1 should succeed for high school
+    // Level 1 should succeed for high school (enqueued)
     const result = await caller.homework.requestHelp({ sessionId: "s3", questionId: "q3", level: 1 });
-    expect(result.level).toBe(1);
+    expect(result.status).toBe("processing");
     // Level 3 should NOT be blocked by default for high school (only by gating rules)
   });
 

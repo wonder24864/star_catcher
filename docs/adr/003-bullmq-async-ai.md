@@ -1,39 +1,63 @@
-# ADR-003: BullMQ with Frontend Polling for Async AI Operations
+# ADR-003: BullMQ + tRPC SSE Subscriptions for Async AI Operations
 
 ## Status
-Accepted (2026-04-08)
+Implemented (2026-04-10)
 
 ## Context
-The OCR recognition operation (`ocr-recognize`) can take up to 30 seconds to complete. Subject detection takes up to 15 seconds and help generation up to 30 seconds. These durations far exceed acceptable HTTP response times. The system needs an async processing strategy. Three options were considered:
-
-1. **WebSocket**: Real-time push when the job completes. Low latency notification but adds a persistent connection layer, reconnection logic, and authentication over WebSocket -- significant complexity for a solo developer in Phase 1.
-2. **Server-Sent Events (SSE)**: Simpler than WebSocket (unidirectional push) but still requires holding an HTTP connection open for up to 60 seconds per recognition job, and Next.js SSE support has edge-case issues with middleware and load balancers.
-3. **BullMQ job queue with polling**: Jobs enqueued to Redis-backed BullMQ. Frontend polls a tRPC query at a fixed interval. No persistent connections, no special infrastructure.
+The OCR recognition operation (`ocr-recognize`) can take up to 30 seconds to complete. Subject detection takes up to 15 seconds and help generation up to 30 seconds. These durations far exceed acceptable HTTP response times. The system needs an async processing strategy.
 
 ## Decision
-Use BullMQ (Redis-backed) for all AI operations with frontend polling at a 2-second interval. The flow is:
+Use **BullMQ (Redis-backed) for job processing** with **tRPC SSE Subscriptions for real-time push notification**. No polling.
 
-- User action triggers a tRPC mutation that enqueues a BullMQ job and sets HomeworkSession status to `RECOGNIZING`.
-- A BullMQ worker picks up the job, calls the AI Harness pipeline, and updates the session status to `RECOGNIZED` or `RECOGNITION_FAILED`.
-- The frontend polls `homework.getSession` every 2 seconds, watching for the status transition. Polling stops when a terminal status is reached.
-- Job configuration with timeout rationale：
+### Architecture
 
-| 操作 | 超时 | 重试 | 依据 |
-|------|------|------|------|
-| `ocr-recognize` | 60s | 2次 | Vision + OCR 最慢，Azure GPT-5.4 p99 约 45s，60s 留 33% 余量 |
-| `subject-detect` | 15s | 1次 | 纯文本分类较快，p99 约 10s，15s 留 50% 余量 |
-| `help-generate` | 30s | 1次 | 年级适配的文本生成，p99 约 20s，30s 留 50% 余量 |
+```
+Frontend mutation → BullMQ enqueue → Worker processes AI → Redis PUBLISH
+tRPC SSE subscription → Redis SUBSCRIBE → yield event → SSE push to frontend
+```
+
+### Async vs Sync Operations
+
+| 操作 | 模式 | 依据 |
+|------|------|------|
+| `ocr-recognize` | 异步 (BullMQ) | Vision + OCR 最慢 (p99 ~45s) |
+| `correction-photos` | 异步 (BullMQ) | 识别 + 重判复合操作 |
+| `help-generate` | 异步 (BullMQ) | 文本生成 (p99 ~20s) |
+| `grade-answer` | 同步 | 单题判分快 (~2s)，用户期望即时反馈 |
+| `subject-detect` | 同步 | 纯文本分类快 (~5s)，有 fallback |
+
+### Job Configuration
+
+| 操作 | 重试 | 依据 |
+|------|------|------|
+| `ocr-recognize` | 3次 (指数退避) | Vision 调用偶有超时 |
+| `correction-photos` | 3次 (指数退避) | 同上 |
+| `help-generate` | 2次 (指数退避) | 文本生成较稳定 |
+
+### Key Components
+
+- **Queue**: `src/lib/queue/` — 单队列 `ai-jobs`，按 job name 路由
+- **Worker**: `src/worker/` — 独立进程，Docker 服务 `star-catcher-worker`
+- **Events**: `src/lib/events.ts` — Redis Pub/Sub 桥接 Worker ↔ tRPC
+- **Subscriptions**: `src/server/routers/subscription.ts` — SSE 推送
+- **Client**: `splitLink` 分流 subscription → `httpSubscriptionLink`
+
+### Redis Channels
+
+- `job:result:session:{sessionId}` — OCR / 改正照片结果
+- `job:result:help:{sessionId}:{questionId}` — 求助生成结果
 
 ## Consequences
 
 **Positive:**
-- No WebSocket infrastructure needed in Phase 1, reducing implementation and debugging effort significantly for a solo developer.
-- BullMQ provides built-in retry, timeout, backoff, and dead-letter queue semantics out of the box.
-- Redis is already in the stack (required for rate limiting and session management), so BullMQ adds no new infrastructure dependency.
-- Polling is stateless and survives page refreshes, browser tab switches, and network reconnections without special handling.
-- Easy to monitor: job status is visible in Redis and can be inspected with BullMQ dashboard tools.
+- 即时推送，无轮询延迟
+- tRPC 内置 SSE，无需额外 WebSocket 基础设施
+- BullMQ 提供重试、退避、死信队列
+- Redis 已在技术栈中，无新依赖
+- Worker 崩溃自动重启 (Docker restart policy)
+- SSE 自动重连 (tRPC httpSubscriptionLink 内置)
 
 **Negative:**
-- 2-second polling introduces up to 2 seconds of unnecessary delay between job completion and UI update. Users may wait slightly longer than with a push-based approach.
-- Polling generates additional server load: roughly 15 requests per 30-second OCR wait per user. Acceptable for personal/family use but may need optimization at scale.
-- Phase 2+ may still need WebSocket for real-time features (e.g., live mastery updates). At that point, polling can be replaced for latency-sensitive flows while BullMQ remains the job engine.
+- SSE 连接占用服务端资源（每个等待中的页面一个连接）
+- Worker 作为独立进程增加了部署复杂度（额外 Docker 服务）
+- Phase 2 如需双向通信可能仍需 WebSocket

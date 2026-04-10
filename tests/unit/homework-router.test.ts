@@ -29,9 +29,16 @@ vi.mock("@/lib/ai/operations/subject-detect", () => ({
     data: { subject: "MATH", confidence: 0.95, contentType: "HOMEWORK" },
   }),
 }));
+// Mock BullMQ queue enqueue functions (async AI calls)
+vi.mock("@/lib/queue", () => ({
+  enqueueRecognition: vi.fn().mockResolvedValue("job-recognize-1"),
+  enqueueCorrectionPhotos: vi.fn().mockResolvedValue("job-correction-1"),
+  enqueueHelpGeneration: vi.fn().mockResolvedValue("job-help-1"),
+}));
 import { gradeAnswer } from "@/lib/ai/operations/grade-answer";
 import { generateHelp } from "@/lib/ai/operations/help-generate";
 import { detectSubject } from "@/lib/ai/operations/subject-detect";
+import { enqueueRecognition, enqueueCorrectionPhotos, enqueueHelpGeneration } from "@/lib/queue";
 
 const createCaller = createCallerFactory(appRouter);
 
@@ -844,9 +851,16 @@ describe("homework.requestHelp", () => {
       level: 1,
     });
 
-    expect(result.level).toBe(1);
-    expect(result.aiResponse).toBe("Here is help content.");
-    expect(db._helpRequests).toHaveLength(1);
+    // Now async: mutation enqueues job instead of calling AI directly
+    expect(result.status).toBe("processing");
+    expect(result.jobId).toBe("job-help-1");
+    expect(enqueueHelpGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "hw-session-1",
+        questionId: q.id,
+        level: 1,
+      }),
+    );
   });
 
   test("returns cached help when same level requested again", async () => {
@@ -920,11 +934,6 @@ describe("homework.requestHelp", () => {
     db._checkRounds.push(round);
     seedRoundResult("round-2", q.id, { studentAnswer: "new attempt", isCorrect: false });
 
-    vi.mocked(generateHelp).mockResolvedValueOnce({
-      success: true,
-      data: { helpText: "Level 2 steps", level: 2, knowledgePoint: "Addition" },
-    });
-
     const caller = createCaller(createMockContext(db, studentSession));
     const result = await caller.homework.requestHelp({
       sessionId: "hw-session-1",
@@ -932,8 +941,11 @@ describe("homework.requestHelp", () => {
       level: 2,
     });
 
-    expect(result.level).toBe(2);
-    expect(result.aiResponse).toBe("Level 2 steps");
+    // Async: job enqueued for Level 2
+    expect(result.status).toBe("processing");
+    expect(enqueueHelpGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({ level: 2 }),
+    );
   });
 
   test("respects parent maxHelpLevel setting", async () => {
@@ -992,11 +1004,6 @@ describe("homework.requestHelp", () => {
     db._checkRounds.push(round3);
     seedRoundResult("r3", q.id, { studentAnswer: "try2" });
 
-    vi.mocked(generateHelp).mockResolvedValueOnce({
-      success: true,
-      data: { helpText: "Full solution", level: 3, knowledgePoint: "Fractions" },
-    });
-
     const caller = createCaller(createMockContext(db, studentSession));
     const result = await caller.homework.requestHelp({
       sessionId: "hw-session-1",
@@ -1004,8 +1011,11 @@ describe("homework.requestHelp", () => {
       level: 3,
     });
 
-    expect(result.level).toBe(3);
-    expect(result.aiResponse).toBe("Full solution");
+    // Async: job enqueued for Level 3
+    expect(result.status).toBe("processing");
+    expect(enqueueHelpGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({ level: 3 }),
+    );
   });
 
   test("rejects if session is not in CHECKING status", async () => {
@@ -1028,19 +1038,26 @@ describe("homework.requestHelp", () => {
     ).rejects.toThrow("FORBIDDEN");
   });
 
-  test("throws when AI generation fails and no fallback", async () => {
-    vi.mocked(generateHelp).mockResolvedValueOnce({
-      success: false,
-      error: { message: "AI error", code: "AI_CALL_FAILED", retryable: false },
-    });
-
+  test("enqueues job with correct parameters", async () => {
     seedSession({ status: "CHECKING" });
     const q = seedQuestion("hw-session-1", { isCorrect: false });
 
     const caller = createCaller(createMockContext(db, studentSession));
-    await expect(
-      caller.homework.requestHelp({ sessionId: "hw-session-1", questionId: q.id, level: 1 })
-    ).rejects.toThrow("HELP_GENERATION_FAILED");
+    await caller.homework.requestHelp({
+      sessionId: "hw-session-1",
+      questionId: q.id,
+      level: 1,
+    });
+
+    expect(enqueueHelpGeneration).toHaveBeenCalledWith({
+      sessionId: "hw-session-1",
+      questionId: q.id,
+      userId: "student1",
+      locale: "zh",
+      grade: undefined, // session.grade is null in mock
+      level: 1,
+      subject: undefined,
+    });
   });
 });
 

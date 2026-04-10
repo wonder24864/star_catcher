@@ -83,6 +83,7 @@ function QuestionHelpPanel({
 }) {
   const t = useTranslations();
   const [expanded, setExpanded] = useState(false);
+  const [pendingHelp, setPendingHelp] = useState(false);
 
   const utils = trpc.useUtils();
 
@@ -91,9 +92,26 @@ function QuestionHelpPanel({
     { enabled: expanded }
   );
 
+  // SSE subscription: listen for help generation completion
+  trpc.subscription.onHelpGenerated.useSubscription(
+    { sessionId, questionId },
+    {
+      enabled: pendingHelp,
+      onData: (event) => {
+        if (event.type === "help-generate") {
+          setPendingHelp(false);
+          utils.homework.getHelpRequests.invalidate({ sessionId, questionId });
+          if (event.status === "failed") {
+            toast.error(t("homework.help.generationFailed"));
+          }
+        }
+      },
+    }
+  );
+
   const requestHelp = trpc.homework.requestHelp.useMutation({
     onSuccess: () => {
-      utils.homework.getHelpRequests.invalidate({ sessionId, questionId });
+      setPendingHelp(true);
     },
     onError: (err) => {
       const msg = err.message;
@@ -209,12 +227,34 @@ export default function CheckResultsPage() {
   const [correctionImageIds, setCorrectionImageIds] = useState<string[]>([]);
   const [uploadQueue, setUploadQueue] = useState<File[]>([]);
   const [isUploadingCorrection, setIsUploadingCorrection] = useState(false);
+  const [pendingCorrection, setPendingCorrection] = useState(false);
 
   const utils = trpc.useUtils();
 
   const { data: session, isLoading } = trpc.homework.getCheckStatus.useQuery(
     { sessionId },
     { enabled: !!sessionId }
+  );
+
+  // SSE subscription: listen for correction photos job completion
+  trpc.subscription.onSessionJobComplete.useSubscription(
+    { sessionId },
+    {
+      enabled: pendingCorrection,
+      onData: (event) => {
+        if (event.type === "correction-photos") {
+          setPendingCorrection(false);
+          utils.homework.getCheckStatus.invalidate({ sessionId });
+          if (event.status === "completed") {
+            toast.success(t("homework.check.recheckSuccess", { round: "" }));
+          } else {
+            toast.error(t("error.serverError"));
+          }
+          setCorrectionDialogOpen(false);
+          setCorrectionImageIds([]);
+        }
+      },
+    }
   );
 
   const completeSession = trpc.homework.completeSession.useMutation({
@@ -227,13 +267,8 @@ export default function CheckResultsPage() {
   });
 
   const submitCorrectionPhotos = trpc.homework.submitCorrectionPhotos.useMutation({
-    onSuccess: (data) => {
-      utils.homework.getCheckStatus.invalidate({ sessionId });
-      toast.success(
-        t("homework.check.recheckSuccess", { round: data.newRoundNumber })
-      );
-      setCorrectionDialogOpen(false);
-      setCorrectionImageIds([]);
+    onSuccess: () => {
+      setPendingCorrection(true);
     },
     onError: (err) => {
       if (err.message === "DATA_CONFLICT") {

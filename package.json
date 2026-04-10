@@ -14,7 +14,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:acceptance": "vitest run --project acceptance",
-    "test:architecture": "vitest run --project architecture"
+    "test:architecture": "vitest run --project architecture",
+    "worker": "npx tsx src/worker/index.ts",
+    "build:worker": "npx esbuild src/worker/index.ts --bundle --platform=node --outfile=dist/worker.js --packages=external --tsconfig=tsconfig.json"
   },
   "dependencies": {
     "@prisma/client": "^6",
@@ -25,6 +27,7 @@
     "@trpc/react-query": "^11.13.0",
     "@trpc/server": "^11.13.0",
     "bcryptjs": "^3",
+    "bullmq": "^5.73.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "exifr": "^7.1.3",
@@ -58,6 +61,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "esbuild": "^0.28.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "prisma": "^6",

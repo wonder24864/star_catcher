@@ -7,6 +7,7 @@ import { homeworkRouter } from "./homework";
 import { parentRouter } from "./parent";
 import { errorRouter } from "./error";
 import { adminRouter } from "./admin";
+import { subscriptionRouter } from "./subscription";
 
 export const appRouter = router({
   auth: authRouter,
@@ -17,6 +18,7 @@ export const appRouter = router({
   parent: parentRouter,
   error: errorRouter,
   admin: adminRouter,
+  subscription: subscriptionRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -189,11 +189,16 @@ star_catcher/
 │   │   ├── auth.ts            # NextAuth 认证配置
 │   │   ├── content-hash.ts    # SHA256 内容哈希（错题去重）
 │   │   ├── db/index.ts        # Prisma 客户端（含软删除扩展）
+│   │   ├── events.ts          # Redis Pub/Sub 事件桥（Worker → tRPC SSE）
+│   │   ├── queue/             # BullMQ 异步队列
+│   │   │   ├── connection.ts  # BullMQ Redis 连接工厂
+│   │   │   ├── types.ts       # Job payload 类型定义
+│   │   │   └── index.ts       # 队列实例 + 入队函数
 │   │   ├── redis.ts           # Redis 客户端
 │   │   ├── scoring.ts         # 得分计算
 │   │   ├── storage/           # MinIO 文件存储服务
 │   │   ├── stores/            # Zustand 状态管理
-│   │   ├── trpc/              # tRPC React 客户端
+│   │   ├── trpc/              # tRPC React 客户端（含 SSE splitLink）
 │   │   ├── upload/compress.ts # 图片压缩（EXIF 校正、隐私剥离）
 │   │   ├── utils.ts           # 通用工具函数
 │   │   └── validations/       # Zod 校验 Schema（auth、upload、homework）
@@ -210,7 +215,15 @@ star_catcher/
 │   │       ├── homework.ts    # 作业（会话、题目 CRUD、判分、纠正、求助）
 │   │       ├── error.ts       # 错题（列表、详情、家长备注 CRUD）
 │   │       ├── parent.ts      # 家长（概览、统计、设置、详情时间线、打卡）
-│   │       └── admin.ts       # 管理员（用户管理、系统配置、统计）
+│   │       ├── admin.ts       # 管理员（用户管理、系统配置、统计）
+│   │       └── subscription.ts # SSE 订阅（异步任务完成推送）
+│   │
+│   ├── worker/                # BullMQ Worker（独立进程，Docker 服务）
+│   │   ├── index.ts           # Worker 入口（监听 ai-jobs 队列）
+│   │   └── handlers/          # 任务处理器
+│   │       ├── ocr-recognize.ts       # OCR 识别
+│   │       ├── correction-photos.ts   # 改正照片（识别+重判）
+│   │       └── help-generate.ts       # 求助生成
 │   │
 │   ├── proxy.ts               # Next.js 16 代理（i18n 路由 + 认证守卫）
 │   ├── instrumentation.ts     # Next.js 启动钩子（MinIO 桶自动创建）

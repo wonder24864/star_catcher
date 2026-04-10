@@ -49,6 +49,22 @@ export default function RecognitionResultsPage() {
     { enabled: !!sessionId }
   );
 
+  // SSE subscription: listen for async job completion (OCR recognition)
+  trpc.subscription.onSessionJobComplete.useSubscription(
+    { sessionId },
+    {
+      enabled: session?.status === "RECOGNIZING",
+      onData: (event) => {
+        if (event.type === "ocr-recognize") {
+          utils.homework.getSession.invalidate({ sessionId });
+          if (event.status === "failed") {
+            toast.error(t("homework.recognitionFailed"));
+          }
+        }
+      },
+    }
+  );
+
   const updateQuestion = trpc.homework.updateQuestion.useMutation({
     onSuccess: () => utils.homework.getSession.invalidate({ sessionId }),
     onError: () => toast.error(t("error.serverError")),
@@ -87,6 +103,16 @@ export default function RecognitionResultsPage() {
   if (!session) {
     router.push("/check");
     return null;
+  }
+
+  // Show recognizing spinner when AI is processing
+  if (session.status === "RECOGNIZING") {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+        <p className="text-muted-foreground">{t("homework.recognizing")}</p>
+      </div>
+    );
   }
 
   const questions = (session as Record<string, unknown>).questions as Array<{

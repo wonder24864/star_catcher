@@ -106,7 +106,7 @@ describe("upload.getPresignedUploadUrl", () => {
         contentType: "image/jpeg",
         fileSize: 1024,
       })
-    ).rejects.toThrow("SESSION_NOT_IN_CREATED_STATUS");
+    ).rejects.toThrow("SESSION_NOT_IN_UPLOADABLE_STATUS");
   });
 
   test("rejects files exceeding size limit", async () => {
@@ -188,8 +188,8 @@ describe("upload.confirmUpload", () => {
     expect(db._homeworkImages).toHaveLength(1);
   });
 
-  test("rejects when session is not in CREATED status", async () => {
-    seedSession({ status: "CHECKING" });
+  test("rejects when session is not in uploadable status", async () => {
+    seedSession({ status: "COMPLETED" });
     const caller = createCaller(createMockContext(db, studentSession));
     await expect(
       caller.upload.confirmUpload({
@@ -198,7 +198,7 @@ describe("upload.confirmUpload", () => {
         originalFilename: "photo.jpg",
         sortOrder: 0,
       })
-    ).rejects.toThrow("SESSION_NOT_IN_CREATED_STATUS");
+    ).rejects.toThrow("SESSION_NOT_IN_UPLOADABLE_STATUS");
   });
 });
 
@@ -260,7 +260,7 @@ describe("upload.deleteImage", () => {
     const caller = createCaller(createMockContext(db, studentSession));
     await expect(
       caller.upload.deleteImage({ imageId: img.id })
-    ).rejects.toThrow("SESSION_NOT_IN_CREATED_STATUS");
+    ).rejects.toThrow("SESSION_NOT_IN_UPLOADABLE_STATUS");
   });
 
   test("rejects for non-owner", async () => {

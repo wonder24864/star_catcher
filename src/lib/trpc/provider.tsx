@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchLink } from "@trpc/client";
+import { httpBatchLink, httpSubscriptionLink, splitLink } from "@trpc/client";
 import superjson from "superjson";
 import { trpc } from "./client";
 
@@ -24,9 +24,16 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
   const [trpcClient] = useState(() =>
     trpc.createClient({
       links: [
-        httpBatchLink({
-          url: `${getBaseUrl()}/api/trpc`,
-          transformer: superjson,
+        splitLink({
+          condition: (op) => op.type === "subscription",
+          true: httpSubscriptionLink({
+            url: `${getBaseUrl()}/api/trpc`,
+            transformer: superjson,
+          }),
+          false: httpBatchLink({
+            url: `${getBaseUrl()}/api/trpc`,
+            transformer: superjson,
+          }),
         }),
       ],
     })

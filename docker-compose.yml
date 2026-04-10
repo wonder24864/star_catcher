@@ -32,6 +32,30 @@ services:
       - star-catcher-minio
     restart: unless-stopped
 
+  star-catcher-worker:
+    build: .
+    container_name: star-catcher-worker
+    command: ["node", "worker.js"]
+    environment:
+      - DATABASE_URL=postgresql://star_catcher:${DB_PASSWORD}@star-catcher-db:5432/star_catcher
+      - REDIS_URL=redis://star-catcher-redis:6379
+      - MINIO_ENDPOINT=star-catcher-minio
+      - MINIO_PUBLIC_ENDPOINT=localhost
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=${MINIO_BUCKET:-star-catcher}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT}
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION:-2024-12-01-preview}
+      - AI_PROVIDER=azure
+    depends_on:
+      - star-catcher-db
+      - star-catcher-redis
+      - star-catcher-minio
+    restart: unless-stopped
+
   star-catcher-db:
     image: postgres:16-alpine
     container_name: star-catcher-db

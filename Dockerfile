@@ -33,6 +33,9 @@ ENV NODE_ENV=production
 
 RUN npm run build
 
+# Build worker (standalone Node.js bundle for BullMQ)
+RUN npx esbuild src/worker/index.ts --bundle --platform=node --outfile=dist/worker.js --packages=external --tsconfig=tsconfig.json
+
 # ─── Stage 4: Runner ─────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -56,7 +59,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# 4) Entrypoint
+# 4) Worker bundle (for star-catcher-worker service)
+COPY --from=builder --chown=nextjs:nodejs /app/dist/worker.js ./worker.js
+
+# 5) Entrypoint
 COPY scripts/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
