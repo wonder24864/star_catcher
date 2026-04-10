@@ -35,7 +35,7 @@
   - [x] ContentGuardrail（K-12 内容安全）
   - [x] FallbackHandler（降级策略）
   - [x] help-generate / subject-detect Prompt 模板 + Zod Schema
-- [ ] 23. 求助功能（渐进式揭示，经 Harness 管道）
+- [x] 23. 求助功能（渐进式揭示，经 Harness 管道）
 - [ ] 24. 手动录入页面 + 学科自动识别（经 Harness 管道）
 - [ ] 25. 错题自动录入错题库（含 contentHash 去重）
 

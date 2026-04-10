@@ -10,6 +10,11 @@ import {
   TrendingUp,
   CheckCircle2,
   RefreshCw,
+  HelpCircle,
+  Lock,
+  Lightbulb,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -50,6 +55,141 @@ type Question = {
   needsReview: boolean;
   aiKnowledgePoint: string | null;
 };
+
+type HelpRequest = {
+  id: string;
+  level: number;
+  aiResponse: string;
+  createdAt: Date;
+};
+
+/** Inline help panel for a single question */
+function QuestionHelpPanel({
+  sessionId,
+  questionId,
+  isCorrect,
+  isCompleted,
+}: {
+  sessionId: string;
+  questionId: string;
+  isCorrect: boolean | null;
+  isCompleted: boolean;
+}) {
+  const t = useTranslations();
+  const [expanded, setExpanded] = useState(false);
+
+  const utils = trpc.useUtils();
+
+  const { data: helpRequests = [] } = trpc.homework.getHelpRequests.useQuery(
+    { sessionId, questionId },
+    { enabled: expanded }
+  );
+
+  const requestHelp = trpc.homework.requestHelp.useMutation({
+    onSuccess: () => {
+      utils.homework.getHelpRequests.invalidate({ sessionId, questionId });
+    },
+    onError: (err) => {
+      const msg = err.message;
+      if (msg === "NEW_ANSWER_REQUIRED_TO_UNLOCK") {
+        toast.error(t("homework.help.locked"));
+      } else if (msg === "HELP_LEVEL_EXCEEDS_MAX") {
+        toast.error(t("homework.help.lockedByParent", { level: "" }));
+      } else if (msg === "HELP_GENERATION_FAILED") {
+        toast.error(t("homework.help.generationFailed"));
+      } else {
+        toast.error(t("error.serverError"));
+      }
+    },
+  });
+
+  if (isCorrect === true) return null;
+
+  const helpMap = new Map(helpRequests.map((h: HelpRequest) => [h.level, h]));
+  const maxRevealedLevel = helpRequests.length > 0
+    ? Math.max(...helpRequests.map((h: HelpRequest) => h.level))
+    : 0;
+  const nextLevel = (maxRevealedLevel + 1) as 1 | 2 | 3;
+
+  const levelLabels: Record<number, string> = {
+    1: t("homework.help.level1"),
+    2: t("homework.help.level2"),
+    3: t("homework.help.level3"),
+  };
+
+  const handleRequestHelp = (level: 1 | 2 | 3) => {
+    requestHelp.mutate({ sessionId, questionId, level });
+  };
+
+  return (
+    <div className="mt-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-blue-600 hover:text-blue-700 gap-1.5"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <HelpCircle className="h-3.5 w-3.5" />
+        {t("homework.help.button")}
+        {expanded ? (
+          <ChevronUp className="h-3 w-3" />
+        ) : (
+          <ChevronDown className="h-3 w-3" />
+        )}
+      </Button>
+
+      {expanded && (
+        <div className="mt-2 space-y-2 pl-2 border-l-2 border-blue-200">
+          {/* Show all revealed levels */}
+          {[1, 2, 3].map((level) => {
+            const help = helpMap.get(level);
+            if (!help) return null;
+            return (
+              <div key={level} className="bg-blue-50 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Lightbulb className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="text-xs font-semibold text-blue-700">
+                    {t("homework.help.title", { level })} — {levelLabels[level]}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                  {help.aiResponse}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Next level button or locked indicator */}
+          {!isCompleted && nextLevel <= 3 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={requestHelp.isPending}
+              onClick={() => handleRequestHelp(nextLevel)}
+            >
+              {requestHelp.isPending ? (
+                t("homework.help.loading")
+              ) : (
+                <>
+                  <Lightbulb className="h-3.5 w-3.5" />
+                  {t("homework.help.nextLevel", { level: nextLevel })}
+                </>
+              )}
+            </Button>
+          )}
+
+          {maxRevealedLevel >= 3 && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Lock className="h-3 w-3" />
+              {t("homework.help.maxLevelReached")}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CheckResultsPage() {
   const t = useTranslations();
@@ -278,6 +418,14 @@ export default function CheckResultsPage() {
                     </p>
                   )}
                   {/* correctAnswer intentionally NOT shown per US-016 */}
+
+                  {/* Help panel for wrong questions (US-018) */}
+                  <QuestionHelpPanel
+                    sessionId={sessionId}
+                    questionId={q.id}
+                    isCorrect={q.isCorrect}
+                    isCompleted={isCompleted}
+                  />
                 </div>
               </div>
             </CardContent>

@@ -168,6 +168,21 @@
       "submitCorrections": "提交改正",
       "submitting": "提交中...",
       "recheckSuccess": "已提交，正在显示第 {round} 轮结果"
+    },
+    "help": {
+      "button": "求助",
+      "title": "求助 — 第 {level} 级",
+      "level1": "思路方向",
+      "level2": "关键步骤",
+      "level3": "完整解析",
+      "loading": "正在生成提示...",
+      "locked": "需要先提交一次新答案才能解锁",
+      "lockedByParent": "家长已限制最高求助等级为 {level}",
+      "nextLevel": "获取第 {level} 级提示",
+      "maxLevelReached": "已到最高等级",
+      "knowledgePoint": "考查知识点",
+      "generationFailed": "提示生成失败，请稍后重试",
+      "alreadyCorrect": "这道题已经答对了"
     }
   },
   "upload": {

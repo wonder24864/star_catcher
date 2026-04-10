@@ -10,14 +10,21 @@ import { createMockDb, createMockContext, type MockDb } from "../helpers/mock-db
 vi.mock("@/lib/storage", () => import("../helpers/mock-storage"));
 import { storageCalls, resetStorageCalls } from "../helpers/mock-storage";
 
-// Mock AI operations used by submitCorrections
+// Mock AI operations used by submitCorrections and requestHelp
 vi.mock("@/lib/ai/operations/grade-answer", () => ({
   gradeAnswer: vi.fn().mockResolvedValue({
     success: true,
     data: { isCorrect: true, confidence: 0.95 },
   }),
 }));
+vi.mock("@/lib/ai/operations/help-generate", () => ({
+  generateHelp: vi.fn().mockResolvedValue({
+    success: true,
+    data: { helpText: "Here is a hint about the knowledge point.", level: 1, knowledgePoint: "Addition" },
+  }),
+}));
 import { gradeAnswer } from "@/lib/ai/operations/grade-answer";
+import { generateHelp } from "@/lib/ai/operations/help-generate";
 
 const createCaller = createCallerFactory(appRouter);
 
@@ -68,6 +75,7 @@ function seedImage(sessionId: string, objectKey: string, sortOrder: number = 0) 
 beforeEach(() => {
   db = createMockDb();
   resetStorageCalls();
+  vi.clearAllMocks();
 });
 
 describe("homework.createSession", () => {
@@ -739,5 +747,292 @@ describe("homework.submitCorrections", () => {
         corrections: [{ questionId: q.id, newAnswer: "x" }],
       })
     ).rejects.toThrow("FORBIDDEN");
+  });
+});
+
+// --- Help (progressive reveal) tests (Task 23, US-018) ---
+
+function seedHelpRequest(sessionId: string, questionId: string, level: number, response = "help text") {
+  const hr = {
+    id: `help-${db._helpRequests.length + 1}`,
+    homeworkSessionId: sessionId,
+    sessionQuestionId: questionId,
+    level,
+    aiResponse: response,
+    createdAt: new Date(),
+  };
+  db._helpRequests.push(hr);
+  return hr;
+}
+
+function seedRoundResult(roundId: string, questionId: string, overrides?: Partial<{ isCorrect: boolean; studentAnswer: string }>) {
+  const rr = {
+    id: `rr-${db._roundQuestionResults.length + 1}`,
+    checkRoundId: roundId,
+    sessionQuestionId: questionId,
+    studentAnswer: overrides?.studentAnswer ?? "some answer",
+    isCorrect: overrides?.isCorrect ?? false,
+    correctedFromPrev: false,
+  };
+  db._roundQuestionResults.push(rr);
+  return rr;
+}
+
+describe("homework.getHelpRequests", () => {
+  test("returns all help requests for a question ordered by level", async () => {
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+    seedHelpRequest("hw-session-1", q.id, 1, "Level 1 help");
+    seedHelpRequest("hw-session-1", q.id, 2, "Level 2 help");
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.getHelpRequests({
+      sessionId: "hw-session-1",
+      questionId: q.id,
+    });
+
+    expect(result).toHaveLength(2);
+    expect(result[0].level).toBe(1);
+    expect(result[1].level).toBe(2);
+  });
+
+  test("returns empty array when no help requested", async () => {
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.getHelpRequests({
+      sessionId: "hw-session-1",
+      questionId: q.id,
+    });
+
+    expect(result).toHaveLength(0);
+  });
+
+  test("rejects if session is not in check phase", async () => {
+    seedSession({ status: "CREATED" });
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.getHelpRequests({ sessionId: "hw-session-1", questionId: "q1" })
+    ).rejects.toThrow("SESSION_NOT_IN_CHECK_PHASE");
+  });
+});
+
+describe("homework.requestHelp", () => {
+  beforeEach(() => {
+    vi.mocked(generateHelp).mockResolvedValue({
+      success: true,
+      data: { helpText: "Here is help content.", level: 1, knowledgePoint: "Addition" },
+    });
+  });
+
+  test("Level 1: returns AI help for a wrong question", async () => {
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.requestHelp({
+      sessionId: "hw-session-1",
+      questionId: q.id,
+      level: 1,
+    });
+
+    expect(result.level).toBe(1);
+    expect(result.aiResponse).toBe("Here is help content.");
+    expect(db._helpRequests).toHaveLength(1);
+  });
+
+  test("returns cached help when same level requested again", async () => {
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+    seedHelpRequest("hw-session-1", q.id, 1, "Cached level 1 help");
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.requestHelp({
+      sessionId: "hw-session-1",
+      questionId: q.id,
+      level: 1,
+    });
+
+    expect(result.aiResponse).toBe("Cached level 1 help");
+    // generateHelp should NOT have been called
+    expect(generateHelp).not.toHaveBeenCalled();
+  });
+
+  test("rejects help for correct question", async () => {
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { isCorrect: true });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.requestHelp({ sessionId: "hw-session-1", questionId: q.id, level: 1 })
+    ).rejects.toThrow("QUESTION_ALREADY_CORRECT");
+  });
+
+  test("rejects Level 2 without previous Level 1", async () => {
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.requestHelp({ sessionId: "hw-session-1", questionId: q.id, level: 2 })
+    ).rejects.toThrow("PREVIOUS_LEVEL_NOT_REQUESTED");
+  });
+
+  test("rejects Level 2 without a new answer attempt after Level 1", async () => {
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+    seedHelpRequest("hw-session-1", q.id, 1, "Level 1 help");
+    // No new round/answer submitted after Level 1
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.requestHelp({ sessionId: "hw-session-1", questionId: q.id, level: 2 })
+    ).rejects.toThrow("NEW_ANSWER_REQUIRED_TO_UNLOCK");
+  });
+
+  test("allows Level 2 after new answer attempt", async () => {
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+
+    // Level 1 help was requested at time T
+    const helpTime = new Date("2026-04-10T10:00:00Z");
+    const hr = seedHelpRequest("hw-session-1", q.id, 1, "Level 1 help");
+    hr.createdAt = helpTime;
+
+    // Student submitted a new answer at T+1 (round created AFTER help)
+    const round = {
+      id: "round-2",
+      homeworkSessionId: "hw-session-1",
+      roundNumber: 2,
+      score: 0,
+      totalQuestions: 1,
+      correctCount: 0,
+      createdAt: new Date("2026-04-10T10:05:00Z"),
+    };
+    db._checkRounds.push(round);
+    seedRoundResult("round-2", q.id, { studentAnswer: "new attempt", isCorrect: false });
+
+    vi.mocked(generateHelp).mockResolvedValueOnce({
+      success: true,
+      data: { helpText: "Level 2 steps", level: 2, knowledgePoint: "Addition" },
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.requestHelp({
+      sessionId: "hw-session-1",
+      questionId: q.id,
+      level: 2,
+    });
+
+    expect(result.level).toBe(2);
+    expect(result.aiResponse).toBe("Level 2 steps");
+  });
+
+  test("respects parent maxHelpLevel setting", async () => {
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+    // Parent limits to Level 1
+    db._parentStudentConfigs.push({
+      id: "config-1",
+      parentId: "parent1",
+      studentId: "student1",
+      maxHelpLevel: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    // Level 1 should work
+    await caller.homework.requestHelp({
+      sessionId: "hw-session-1",
+      questionId: q.id,
+      level: 1,
+    });
+
+    // Level 2 should be rejected
+    await expect(
+      caller.homework.requestHelp({ sessionId: "hw-session-1", questionId: q.id, level: 2 })
+    ).rejects.toThrow("HELP_LEVEL_EXCEEDS_MAX");
+  });
+
+  test("elementary student defaults to max Level 2 when no parent config", async () => {
+    const session = seedSession({ status: "CHECKING" });
+    session.grade = "PRIMARY_3";
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.requestHelp({ sessionId: "hw-session-1", questionId: q.id, level: 3 })
+    ).rejects.toThrow("HELP_LEVEL_EXCEEDS_MAX");
+  });
+
+  test("middle/high school student defaults to max Level 3", async () => {
+    const session = seedSession({ status: "CHECKING" });
+    session.grade = "JUNIOR_2";
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+
+    // Setup Level 1 + answer attempt + Level 2 + answer attempt for Level 3 unlock
+    const hr1 = seedHelpRequest("hw-session-1", q.id, 1, "L1");
+    hr1.createdAt = new Date("2026-04-10T10:00:00Z");
+    const round2 = { id: "r2", homeworkSessionId: "hw-session-1", roundNumber: 2, score: 0, totalQuestions: 1, correctCount: 0, createdAt: new Date("2026-04-10T10:01:00Z") };
+    db._checkRounds.push(round2);
+    seedRoundResult("r2", q.id, { studentAnswer: "try1" });
+
+    const hr2 = seedHelpRequest("hw-session-1", q.id, 2, "L2");
+    hr2.createdAt = new Date("2026-04-10T10:02:00Z");
+    const round3 = { id: "r3", homeworkSessionId: "hw-session-1", roundNumber: 3, score: 0, totalQuestions: 1, correctCount: 0, createdAt: new Date("2026-04-10T10:03:00Z") };
+    db._checkRounds.push(round3);
+    seedRoundResult("r3", q.id, { studentAnswer: "try2" });
+
+    vi.mocked(generateHelp).mockResolvedValueOnce({
+      success: true,
+      data: { helpText: "Full solution", level: 3, knowledgePoint: "Fractions" },
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.requestHelp({
+      sessionId: "hw-session-1",
+      questionId: q.id,
+      level: 3,
+    });
+
+    expect(result.level).toBe(3);
+    expect(result.aiResponse).toBe("Full solution");
+  });
+
+  test("rejects if session is not in CHECKING status", async () => {
+    seedSession({ status: "COMPLETED" });
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.requestHelp({ sessionId: "hw-session-1", questionId: q.id, level: 1 })
+    ).rejects.toThrow("SESSION_NOT_IN_CHECKING_STATUS");
+  });
+
+  test("rejects for non-owner", async () => {
+    seedSession({ createdBy: "other", studentId: "other", status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.requestHelp({ sessionId: "hw-session-1", questionId: q.id, level: 1 })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+
+  test("throws when AI generation fails and no fallback", async () => {
+    vi.mocked(generateHelp).mockResolvedValueOnce({
+      success: false,
+      error: { message: "AI error", code: "AI_CALL_FAILED", retryable: false },
+    });
+
+    seedSession({ status: "CHECKING" });
+    const q = seedQuestion("hw-session-1", { isCorrect: false });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.requestHelp({ sessionId: "hw-session-1", questionId: q.id, level: 1 })
+    ).rejects.toThrow("HELP_GENERATION_FAILED");
   });
 });

@@ -86,9 +86,24 @@ export const submitCorrectionsSchema = z.object({
     .max(50),
 });
 
+// --- Help request schemas ---
+
+export const requestHelpSchema = z.object({
+  sessionId: z.string().min(1),
+  questionId: z.string().min(1),
+  level: z.number().int().min(1).max(3) as z.ZodType<1 | 2 | 3>,
+});
+
+export const getHelpRequestsSchema = z.object({
+  sessionId: z.string().min(1),
+  questionId: z.string().min(1),
+});
+
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
 export type GetSessionInput = z.infer<typeof getSessionSchema>;
 export type ListSessionsInput = z.infer<typeof listSessionsSchema>;
 export type UpdateImageOrderInput = z.infer<typeof updateImageOrderSchema>;
 export type GetCheckStatusInput = z.infer<typeof getCheckStatusSchema>;
 export type CompleteSessionInput = z.infer<typeof completeSessionSchema>;
+export type RequestHelpInput = z.infer<typeof requestHelpSchema>;
+export type GetHelpRequestsInput = z.infer<typeof getHelpRequestsSchema>;

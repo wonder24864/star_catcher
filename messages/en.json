@@ -168,6 +168,21 @@
       "submitCorrections": "Submit Corrections",
       "submitting": "Submitting...",
       "recheckSuccess": "Submitted — showing Round {round} results"
+    },
+    "help": {
+      "button": "Help",
+      "title": "Help — Level {level}",
+      "level1": "Thinking Direction",
+      "level2": "Key Steps",
+      "level3": "Full Solution",
+      "loading": "Generating hint...",
+      "locked": "Submit a new answer to unlock this level",
+      "lockedByParent": "Parent has limited max help to Level {level}",
+      "nextLevel": "Get Level {level} help",
+      "maxLevelReached": "Maximum level reached",
+      "knowledgePoint": "Knowledge Point",
+      "generationFailed": "Hint generation failed. Please try again later",
+      "alreadyCorrect": "This question is already correct"
     }
   },
   "upload": {

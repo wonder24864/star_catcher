@@ -3,6 +3,7 @@ import { router, protectedProcedure, type Context } from "../trpc";
 import { deleteObject } from "@/lib/storage";
 import { calculateScore } from "@/lib/scoring";
 import { gradeAnswer } from "@/lib/ai/operations/grade-answer";
+import { generateHelp } from "@/lib/ai/operations/help-generate";
 import {
   createSessionSchema,
   getSessionSchema,
@@ -16,6 +17,8 @@ import {
   getCheckStatusSchema,
   completeSessionSchema,
   submitCorrectionsSchema,
+  requestHelpSchema,
+  getHelpRequestsSchema,
 } from "@/lib/validations/homework";
 
 /** Verify the caller owns or is the student of a session. Returns the session. */
@@ -60,6 +63,17 @@ async function verifyParentStudentAccess(
   if (!studentInFamily) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
+}
+
+/**
+ * Default max help level by grade band (ADR-004):
+ * - Elementary (PRIMARY_*): 2
+ * - Middle/High school: 3
+ */
+function getDefaultMaxHelpLevel(grade: string | null | undefined): number {
+  if (!grade) return 2;
+  if (grade.startsWith("PRIMARY_")) return 2;
+  return 3;
 }
 
 export const homeworkRouter = router({
@@ -560,5 +574,188 @@ export const homeworkRouter = router({
       }
 
       return { success: true, newRoundNumber, score };
+    }),
+
+  // --- Help (progressive reveal) ---
+
+  /**
+   * Get all help requests for a specific question.
+   * Returns cached AI help responses for display.
+   */
+  getHelpRequests: protectedProcedure
+    .input(getHelpRequestsSchema)
+    .query(async ({ ctx, input }) => {
+      const session = await verifySessionAccess(ctx.db, input.sessionId, ctx.session.userId);
+
+      if (session.status !== "CHECKING" && session.status !== "COMPLETED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "SESSION_NOT_IN_CHECK_PHASE",
+        });
+      }
+
+      const helpRequests = await ctx.db.helpRequest.findMany({
+        where: {
+          homeworkSessionId: input.sessionId,
+          sessionQuestionId: input.questionId,
+        },
+        orderBy: { level: "asc" },
+      });
+
+      return helpRequests;
+    }),
+
+  /**
+   * Request help for a wrong question (progressive reveal).
+   *
+   * Business rules (BUSINESS-RULES.md §7):
+   * - Level 1 available immediately for wrong questions
+   * - Level N+1 requires a new answer attempt after viewing Level N
+   * - Empty string doesn't count as a valid answer
+   * - Parent maxHelpLevel setting caps available levels
+   * - Same question+level returns cached response (no duplicate AI calls)
+   * - Optimistic locking via session updatedAt
+   */
+  requestHelp: protectedProcedure
+    .input(requestHelpSchema)
+    .mutation(async ({ ctx, input }) => {
+      const session = await verifySessionAccess(ctx.db, input.sessionId, ctx.session.userId);
+
+      if (session.status !== "CHECKING") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "SESSION_NOT_IN_CHECKING_STATUS",
+        });
+      }
+
+      // Verify question belongs to this session
+      const question = await ctx.db.sessionQuestion.findFirst({
+        where: {
+          id: input.questionId,
+          homeworkSessionId: input.sessionId,
+        },
+      });
+      if (!question) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "QUESTION_NOT_FOUND" });
+      }
+
+      // Only wrong questions can request help
+      if (question.isCorrect === true) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "QUESTION_ALREADY_CORRECT",
+        });
+      }
+
+      // --- Parent maxHelpLevel enforcement ---
+      const parentConfig = await ctx.db.parentStudentConfig.findFirst({
+        where: { studentId: session.studentId },
+      });
+      const maxHelpLevel = parentConfig?.maxHelpLevel ?? getDefaultMaxHelpLevel(session.grade);
+      if (input.level > maxHelpLevel) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "HELP_LEVEL_EXCEEDS_MAX",
+        });
+      }
+
+      // --- Cache check: return existing help if already generated ---
+      const existing = await ctx.db.helpRequest.findFirst({
+        where: {
+          sessionQuestionId: input.questionId,
+          level: input.level,
+        },
+      });
+      if (existing) {
+        return existing;
+      }
+
+      // --- Level gating: Level 2+ requires a new answer after previous level ---
+      if (input.level > 1) {
+        const prevLevel = input.level - 1;
+        const prevHelp = await ctx.db.helpRequest.findFirst({
+          where: {
+            sessionQuestionId: input.questionId,
+            level: prevLevel,
+          },
+        });
+        if (!prevHelp) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "PREVIOUS_LEVEL_NOT_REQUESTED",
+          });
+        }
+
+        // Check that student submitted a new (different, non-empty) answer
+        // since the previous help was requested.
+        // We check RoundQuestionResults created AFTER the previous help request.
+        const answersAfterPrevHelp = await ctx.db.roundQuestionResult.findMany({
+          where: {
+            sessionQuestionId: input.questionId,
+            checkRound: {
+              homeworkSessionId: input.sessionId,
+              createdAt: { gt: prevHelp.createdAt },
+            },
+          },
+          orderBy: { checkRound: { createdAt: "desc" } },
+        });
+
+        if (answersAfterPrevHelp.length === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "NEW_ANSWER_REQUIRED_TO_UNLOCK",
+          });
+        }
+      }
+
+      // --- Call AI Harness ---
+      const result = await generateHelp({
+        questionContent: question.content,
+        studentAnswer: question.studentAnswer ?? "",
+        correctAnswer: question.correctAnswer ?? undefined,
+        helpLevel: input.level,
+        subject: session.subject ?? undefined,
+        grade: session.grade ?? undefined,
+        context: {
+          userId: ctx.session.userId,
+          locale: ctx.session.locale,
+          grade: session.grade ?? undefined,
+          correlationId: `help-${input.sessionId}-${input.questionId}`,
+        },
+      });
+
+      if (!result.success) {
+        // Use fallback text if available
+        const fallbackText = result.fallback
+          ? JSON.stringify(result.fallback)
+          : null;
+        if (fallbackText) {
+          const helpRequest = await ctx.db.helpRequest.create({
+            data: {
+              homeworkSessionId: input.sessionId,
+              sessionQuestionId: input.questionId,
+              level: input.level,
+              aiResponse: fallbackText,
+            },
+          });
+          return helpRequest;
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "HELP_GENERATION_FAILED",
+        });
+      }
+
+      // Store help response (cache for future requests)
+      const helpRequest = await ctx.db.helpRequest.create({
+        data: {
+          homeworkSessionId: input.sessionId,
+          sessionQuestionId: input.questionId,
+          level: input.level,
+          aiResponse: result.data!.helpText,
+        },
+      });
+
+      return helpRequest;
     }),
 });

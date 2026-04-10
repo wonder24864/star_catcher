@@ -100,6 +100,24 @@ type MockRoundQuestionResult = {
   correctedFromPrev: boolean;
 };
 
+type MockHelpRequest = {
+  id: string;
+  homeworkSessionId: string;
+  sessionQuestionId: string;
+  level: number;
+  aiResponse: string;
+  createdAt: Date;
+};
+
+type MockParentStudentConfig = {
+  id: string;
+  parentId: string;
+  studentId: string;
+  maxHelpLevel: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 let counter = 0;
 function cuid() {
   return `test_${++counter}_${Date.now()}`;
@@ -114,6 +132,8 @@ export function createMockDb() {
   const sessionQuestions: MockSessionQuestion[] = [];
   const checkRounds: MockCheckRound[] = [];
   const roundQuestionResults: MockRoundQuestionResult[] = [];
+  const helpRequests: MockHelpRequest[] = [];
+  const parentStudentConfigs: MockParentStudentConfig[] = [];
 
   return {
     user: {
@@ -449,6 +469,13 @@ export function createMockDb() {
         }
         return q;
       },
+      findFirst: async ({ where }: { where?: Record<string, unknown> }) => {
+        return sessionQuestions.find((q) => {
+          if (where?.id && q.id !== where.id) return false;
+          if (where?.homeworkSessionId && q.homeworkSessionId !== where.homeworkSessionId) return false;
+          return true;
+        }) || null;
+      },
       findMany: async ({ where }: { where?: Record<string, unknown> }) => {
         if (where?.homeworkSessionId) {
           return sessionQuestions.filter((q) => q.homeworkSessionId === where.homeworkSessionId);
@@ -559,11 +586,73 @@ export function createMockDb() {
       },
     },
     roundQuestionResult: {
-      findMany: async ({ where }: { where?: Record<string, unknown> }) => {
+      findMany: async ({ where, orderBy }: { where?: Record<string, unknown>; orderBy?: Record<string, unknown> }) => {
+        let result = [...roundQuestionResults];
         if (where?.checkRoundId) {
-          return roundQuestionResults.filter((r) => r.checkRoundId === where.checkRoundId);
+          result = result.filter((r) => r.checkRoundId === where.checkRoundId);
         }
-        return roundQuestionResults;
+        if (where?.sessionQuestionId) {
+          result = result.filter((r) => r.sessionQuestionId === where.sessionQuestionId);
+        }
+        // Handle nested checkRound filter
+        if (where?.checkRound && typeof where.checkRound === "object") {
+          const crWhere = where.checkRound as Record<string, unknown>;
+          result = result.filter((rr) => {
+            const cr = checkRounds.find((c) => c.id === rr.checkRoundId);
+            if (!cr) return false;
+            if (crWhere.homeworkSessionId && cr.homeworkSessionId !== crWhere.homeworkSessionId) return false;
+            if (crWhere.createdAt && typeof crWhere.createdAt === "object") {
+              const dateFilter = crWhere.createdAt as { gt?: Date };
+              if (dateFilter.gt && cr.createdAt <= dateFilter.gt) return false;
+            }
+            return true;
+          });
+        }
+        return result;
+      },
+    },
+    helpRequest: {
+      findFirst: async ({ where }: { where?: Record<string, unknown> }) => {
+        return helpRequests.find((h) => {
+          if (where?.sessionQuestionId && h.sessionQuestionId !== where.sessionQuestionId) return false;
+          if (where?.level !== undefined && h.level !== where.level) return false;
+          if (where?.homeworkSessionId && h.homeworkSessionId !== where.homeworkSessionId) return false;
+          return true;
+        }) || null;
+      },
+      findMany: async ({ where, orderBy }: { where?: Record<string, unknown>; orderBy?: Record<string, unknown> }) => {
+        let result = [...helpRequests];
+        if (where?.homeworkSessionId) {
+          result = result.filter((h) => h.homeworkSessionId === where.homeworkSessionId);
+        }
+        if (where?.sessionQuestionId) {
+          result = result.filter((h) => h.sessionQuestionId === where.sessionQuestionId);
+        }
+        if (orderBy && "level" in orderBy && orderBy.level === "asc") {
+          result.sort((a, b) => a.level - b.level);
+        }
+        return result;
+      },
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        const hr: MockHelpRequest = {
+          id: cuid(),
+          homeworkSessionId: data.homeworkSessionId as string,
+          sessionQuestionId: data.sessionQuestionId as string,
+          level: data.level as number,
+          aiResponse: data.aiResponse as string,
+          createdAt: new Date(),
+        };
+        helpRequests.push(hr);
+        return hr;
+      },
+    },
+    parentStudentConfig: {
+      findFirst: async ({ where }: { where?: Record<string, unknown> }) => {
+        return parentStudentConfigs.find((c) => {
+          if (where?.studentId && c.studentId !== where.studentId) return false;
+          if (where?.parentId && c.parentId !== where.parentId) return false;
+          return true;
+        }) || null;
       },
     },
     // Expose internals for test assertions
@@ -575,6 +664,8 @@ export function createMockDb() {
     _sessionQuestions: sessionQuestions,
     _checkRounds: checkRounds,
     _roundQuestionResults: roundQuestionResults,
+    _helpRequests: helpRequests,
+    _parentStudentConfigs: parentStudentConfigs,
   };
 }
 
