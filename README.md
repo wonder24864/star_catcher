@@ -105,9 +105,10 @@ star_catcher/
 │   ├── DESIGN-SYSTEM.md       # 设计系统（3 套主题 + 响应式）
 │   ├── BUSINESS-RULES.md      # 业务规则
 │   ├── ROADMAP.md             # 路线图
-│   ├── adr/                   # 架构决策记录（7 个）
-│   ├── user-stories/          # 用户故事（9 个模块）
-│   └── sprints/               # Sprint 计划（3 个）
+│   ├── PHASE2-LAUNCH-PLAN.md  # Phase 2 启动计划 + 设计决策记录
+│   ├── adr/                   # 架构决策记录（11 个）
+│   ├── user-stories/          # 用户故事（9 个模块 + Phase 2 大纲）
+│   └── sprints/               # Sprint 计划（5 个：1, 2, 3, 4a, 4b）
 │
 │── 源码 ──────────────────────────────────────────────────
 └── src/

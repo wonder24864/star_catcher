@@ -14,7 +14,8 @@ Core flow: Photo -> AI recognize -> score (no answers) -> student corrects -> re
 | Design System | `docs/DESIGN-SYSTEM.md` | UI themes, components, responsive breakpoints |
 | Business Rules | `docs/BUSINESS-RULES.md` | Edge cases, scoring, dedup, locking, help levels |
 | User Stories | `docs/user-stories/` | Per-module acceptance criteria (9 files) |
-| ADRs | `docs/adr/` | Architecture Decision Records (7 files) |
+| ADRs | `docs/adr/` | Architecture Decision Records (11 files) |
+| Launch Plan | `docs/PHASE2-LAUNCH-PLAN.md` | Phase 2 开发方式调整 + 启动清单 + 设计决策记录 |
 | Sprint Plans | `docs/sprints/` | Sprint-scoped task lists + acceptance criteria |
 | Roadmap | `docs/ROADMAP.md` | Phase/Sprint status tracking, acceptance summaries |
 | Original PRD | `docs/archive/PRD-Phase1-original.md` | Archived monolithic PRD (reference only) |
@@ -41,6 +42,13 @@ Every AI operation needs 3 files:
 3. `src/lib/domain/ai/operations/<operation>.ts` — Business-facing orchestration
 
 See: `docs/adr/001-ai-harness-pipeline.md`
+
+> **Phase 2 补充**：Skill 是另一种 AI 操作模式。每个 Skill 的三件套为：
+> 1. `schema.json` — Canonical JSON Schema 参数定义（等效于 Zod output schema）
+> 2. `execute.ts` — Skill 实现（等效于 operation）
+> 3. Skill 内调用 AI 时仍通过 `ctx.callAI()` 走 Harness 管道
+>
+> Skill 的 prompt 由 Skill 内部管理或通过 PromptManager 注册。
 
 ### Rule 2: Code is the Spec
 
@@ -70,6 +78,55 @@ The `docker-compose.yml` has `name: star-catcher` at top level.
 ### Rule 5: ADR Discipline
 
 Before changing an architectural decision, read the relevant ADR in `docs/adr/` and update it. ADRs capture the "why" — changing the decision without updating the ADR loses institutional knowledge.
+
+### Rule 6: Agent 合规 (MANDATORY)
+
+**所有 AI Agent 必须遵守以下约束：**
+
+- 每个 Agent 定义必须包含显式终止条件（maxSteps + Token 预算 + 决策停止条件）
+- 所有 function calling 决策写入 AICallLog + AgentTrace（完整审计链）
+- 所有 Skill 必须有 Zod input/output schema
+- Skill 通过插件系统注册（SkillDefinition 表），schema 使用 Canonical JSON Schema，在 IPC 沙箱中隔离执行
+- Agent 代码不能直接查数据库 — 必须通过 Skill
+
+每个 Agent 需要：
+1. Agent 定义（system prompt + allowedSkills 列表 + 终止条件）
+2. 对应的测试（含终止边界测试 + Skill 失败恢复测试）
+
+每个 Skill 需要：
+1. Skill bundle（manifest.json + schema.json + execute.ts）
+2. Zod input/output schema
+3. 对应的沙箱内单元测试
+
+See: `docs/adr/008-agent-architecture.md`
+
+### Rule 7: Student Memory 隔离 (MANDATORY)
+
+**Agent/Skill 对学生状态的读写必须通过 Memory 层，禁止直接数据库操作。**
+
+- Memory 层是掌握度、复习计划、干预历史的唯一写入入口
+- Skill 通过 IPC 协议调用 Memory 层（`ctx.readMemory` / `ctx.writeMemory`）
+- 掌握度状态机转换由 Memory 层验证合法性
+- 每次状态变更自动记录到 InterventionHistory
+- 架构测试：Skill bundle 中禁止出现 Prisma 相关 import
+
+See: `docs/adr/010-student-memory-layer.md`
+
+### Rule 8: Function Calling 安全 (MANDATORY)
+
+**防止 Agent 越权调用或异常循环：**
+
+- Agent 的 allowedSkills 列表声明可用 Skill，运行时从 DB 查询 ACTIVE 状态组装 tools 数组
+- Tool parameter schema 必须与 Skill 的 Zod inputSchema 匹配
+- Agent system prompt 显式禁止调用 allowedSkills 之外的函数
+- Skill 在 IPC 沙箱中执行，只能通过 SkillContext API 访问三类能力：
+  1. `callAI` — AI 调用（经 Harness 管道）
+  2. `readMemory` — 读 Student Memory
+  3. `writeMemory` — 写 Student Memory（经状态机验证）
+- 所有 function call 结果处理用 try-catch 包裹
+- AgentStepLimiter 硬上限（单次 Agent ≤ 10 步），超限强制终止
+
+See: `docs/adr/008-agent-architecture.md`
 
 ## Sprint Self-Review
 
@@ -149,6 +206,12 @@ git status
 - **不要用 Explore agent 探索已熟悉的代码模式**。直接 Read 2-3 个样板文件即可。
 - **编写新文件前**，只读一个同类文件作为模板，不要读所有同类文件。
 - **测试只在任务完成时跑**，不在任务开始时跑（模式 B）。
+
+### Phase 2 测试规则变更
+
+- 改了 router / operation / harness / skill / memory 组件后，**立即跑该文件的单元测试**再继续
+- 任务完成时跑全量测试不变
+- 此规则覆盖上方"测试只在任务完成时跑"的规则
 
 ### 工作结束时
 
