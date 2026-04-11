@@ -13,6 +13,10 @@ import {
   helpChannel,
   type JobResultEvent,
 } from "@/lib/infra/events";
+import {
+  subscribeToAgentTrace,
+  type AgentTraceEvent,
+} from "@/lib/domain/agent/trace-publisher";
 
 const jobResultSchema = z.object({
   type: z.enum(["ocr-recognize", "correction-photos", "help-generate"]),
@@ -50,6 +54,24 @@ export const subscriptionRouter = router({
       const signal = opts.signal ?? AbortSignal.timeout(300_000);
       for await (const event of subscribeToChannel(channel, signal)) {
         yield event satisfies JobResultEvent;
+      }
+    }),
+
+  /**
+   * Listen for Agent trace step events (real-time execution progress).
+   * Frontend subscribes when an Agent run starts; receives step:started,
+   * step:completed, and trace:completed events via SSE.
+   * See: docs/adr/008-agent-architecture.md #6
+   */
+  onAgentTraceUpdate: protectedProcedure
+    .input(z.object({ traceId: z.string() }))
+    .subscription(async function* (opts) {
+      const signal = opts.signal ?? AbortSignal.timeout(300_000);
+      for await (const event of subscribeToAgentTrace(
+        opts.input.traceId,
+        signal,
+      )) {
+        yield event satisfies AgentTraceEvent;
       }
     }),
 });

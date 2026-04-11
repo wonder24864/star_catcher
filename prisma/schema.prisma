@@ -41,6 +41,7 @@ model User {
   masteryStates     MasteryState[]        @relation("StudentMastery")
   reviewSchedules   ReviewSchedule[]      @relation("StudentReview")
   interventions     InterventionHistory[] @relation("StudentIntervention")
+  agentTraces       AgentTrace[]
 
   @@index([username])
   @@index([role])
@@ -545,6 +546,74 @@ model InterventionHistory {
 
   @@index([studentId, knowledgePointId, createdAt])
   @@index([studentId, type])
+}
+
+// ==================== Agent Execution Trace ====================
+// See docs/adr/008-agent-architecture.md §6
+
+enum AgentTraceStatus {
+  RUNNING
+  COMPLETED
+  TERMINATED
+  FAILED
+}
+
+enum AgentTraceTerminationReason {
+  COMPLETED        // AI decided to stop
+  MAX_STEPS        // Hit maxSteps limit
+  MAX_TOKENS       // Hit token budget
+  SKILL_ALL_FAILED // All skill calls in a step failed
+  ERROR            // Unrecoverable error
+}
+
+enum AgentTraceStepStatus {
+  SUCCESS
+  FAILED
+  TIMEOUT
+}
+
+model AgentTrace {
+  id                 String                       @id @default(cuid())
+  agentName          String                       @db.VarChar(64)
+  sessionId          String                       @db.VarChar(64)
+  userId             String
+  status             AgentTraceStatus             @default(RUNNING)
+  totalSteps         Int                          @default(0)
+  totalInputTokens   Int                          @default(0)
+  totalOutputTokens  Int                          @default(0)
+  totalDurationMs    Int                          @default(0)
+  terminationReason  AgentTraceTerminationReason?
+  summary            String?                      @db.Text // AI-generated execution summary
+  createdAt          DateTime                     @default(now()) @db.Timestamptz
+  completedAt        DateTime?                    @db.Timestamptz
+
+  user  User             @relation(fields: [userId], references: [id])
+  steps AgentTraceStep[]
+
+  @@index([userId, createdAt])
+  @@index([sessionId])
+  @@index([agentName, createdAt])
+  @@index([status])
+}
+
+model AgentTraceStep {
+  id           String               @id @default(cuid())
+  traceId      String
+  stepNo       Int
+  skillName    String               @db.VarChar(64)
+  input        Json                 // JSONB
+  output       Json?                // JSONB
+  inputTokens  Int                  @default(0)
+  outputTokens Int                  @default(0)
+  durationMs   Int                  @default(0)
+  status       AgentTraceStepStatus
+  errorMessage String?              @db.Text
+  createdAt    DateTime             @default(now()) @db.Timestamptz
+
+  trace AgentTrace @relation(fields: [traceId], references: [id], onDelete: Cascade)
+
+  @@index([traceId, stepNo])
+  @@index([traceId])
 }
 
 // ==================== AI Call Logging ====================

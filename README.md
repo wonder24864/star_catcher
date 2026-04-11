@@ -177,6 +177,7 @@ star_catcher/
     │   │   │   ├── step-limiter.ts    # AgentStepLimiter（步数限制，ADR-008 ≤ 10）
     │   │   │   ├── cost-tracker.ts    # CostTracker（Token 预算追踪）
     │   │   │   ├── circuit-breaker.ts # CircuitBreaker（熔断 + 多 Provider 降级）
+    │   │   │   ├── trace-publisher.ts # AgentTracePublisher（Redis Pub/Sub 推送）
     │   │   │   └── index.ts           # 公共导出
     │   │   ├── memory/            # Student Memory 层（Phase 2）
     │   │   │   ├── types.ts           # 状态机定义 + Memory 接口
@@ -205,7 +206,7 @@ star_catcher/
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）
     │   └── skill-build.ts         # Skill 构建（校验 + 编译 + Prisma 检查）
     │
-    ├── tests/                 # ── 测试（32 文件，513+ 用例）──
+    ├── tests/                 # ── 测试（35 文件，583+ 用例）──
     │   ├── acceptance/            # 验收测试（9 个用户故事模块）
     │   ├── unit/                  # 单元测试（含 Skill 运行时 / Agent 组件）
     │   ├── perf/                  # 性能测试（Knowledge Graph CTE 等）

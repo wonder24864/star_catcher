@@ -40,7 +40,7 @@
   - Memory 层实现：掌握度状态机 + IPC 暴露接口
   - 产出：schema + migration + Memory 层代码 + 状态机测试
 
-- [ ] 48. Agent Trace 数据层
+- [x] 48. Agent Trace 数据层
   - Prisma: AgentTrace, AgentTraceStep
   - AgentTracePublisher（步骤状态推送，复用 Redis Pub/Sub + SSE）
   - 产出：schema + 发布器代码 + 推送测试

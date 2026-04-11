@@ -11,6 +11,11 @@ export { AgentRunner } from "./runner";
 export { AgentStepLimiter } from "./step-limiter";
 export { CostTracker } from "./cost-tracker";
 export { CircuitBreaker, ProviderCircuitManager } from "./circuit-breaker";
+export {
+  AgentTracePublisher,
+  agentTraceChannel,
+  subscribeToAgentTrace,
+} from "./trace-publisher";
 export type { AgentRunnerConfig } from "./runner";
 export type { StepLimitCheck } from "./step-limiter";
 export type { CostBudgetCheck } from "./cost-tracker";
@@ -22,6 +27,11 @@ export type {
   ProviderCircuitConfig,
   ProviderFallbackResult,
 } from "./circuit-breaker";
+export type {
+  AgentTraceEvent,
+  AgentTraceStepEvent,
+  AgentTraceCompleteEvent,
+} from "./trace-publisher";
 export type {
   AgentDefinition,
   AgentTerminationConfig,
