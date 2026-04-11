@@ -50,22 +50,22 @@
   - AICallLog 记录 prompt 版本号
   - 产出：代码修改 + 测试
 
-- [ ] 50. SemanticCache 可行性评估
+- [x] 50. SemanticCache 可行性评估
   - pgvector 安装 + embedding 存储 + 相似度查询
   - 目标：相似度查询延迟 < 50ms
   - 产出：可行性报告（通过/不通过 + 替代方案）
 
 ## 验证清单
 
-- [ ] Agent Runner 完成 ≥ 3 步 function calling 循环（使用 IPC 沙箱 Skill）
-- [ ] AgentStepLimiter 超步数时终止 Agent
-- [ ] CostTracker 超预算时阻止 AI 调用
-- [ ] CircuitBreaker 连续失败后切换降级
-- [ ] Knowledge Graph recursive CTE 查 5 层前置链 < 100ms
-- [ ] Student Memory 状态机拒绝非法转换（如 NEW_ERROR → MASTERED）
-- [ ] AgentTrace + AgentTraceStep 记录完整执行链
-- [ ] PromptManager version 写入 AICallLog
-- [ ] SemanticCache: pgvector 查询 < 50ms（或记录不可行原因）
+- [x] Agent Runner 完成 ≥ 3 步 function calling 循环（使用 IPC 沙箱 Skill）
+- [x] AgentStepLimiter 超步数时终止 Agent
+- [x] CostTracker 超预算时阻止 AI 调用
+- [x] CircuitBreaker 连续失败后切换降级
+- [x] Knowledge Graph recursive CTE 查 5 层前置链 < 100ms
+- [x] Student Memory 状态机拒绝非法转换（如 NEW_ERROR → MASTERED）
+- [x] AgentTrace + AgentTraceStep 记录完整执行链
+- [x] PromptManager version 写入 AICallLog
+- [x] SemanticCache: pgvector 查询 < 50ms（通过，详见 docs/spikes/semantic-cache-pgvector.md）
 
 ## ADR 产出
 
