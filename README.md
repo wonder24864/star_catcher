@@ -178,6 +178,10 @@ star_catcher/
     │   │   │   ├── cost-tracker.ts    # CostTracker（Token 预算追踪）
     │   │   │   ├── circuit-breaker.ts # CircuitBreaker（熔断 + 多 Provider 降级）
     │   │   │   └── index.ts           # 公共导出
+    │   │   ├── memory/            # Student Memory 层（Phase 2）
+    │   │   │   ├── types.ts           # 状态机定义 + Memory 接口
+    │   │   │   ├── student-memory.ts  # StudentMemoryImpl（状态机验证 + 乐观锁）
+    │   │   │   └── index.ts           # 公共导出
     │   │   ├── auth.ts            # NextAuth 认证配置
     │   │   ├── scoring.ts         # 得分计算
     │   │   ├── content-hash.ts    # SHA256 去重哈希

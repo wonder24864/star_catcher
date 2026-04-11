@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 function createPrismaClient() {
   return new PrismaClient().$extends({
     query: {
-      // Soft-delete filtering: User, Family, ErrorQuestion
+      // Soft-delete filtering: User, Family, ErrorQuestion, KnowledgePoint
       // All reads automatically filter WHERE deletedAt IS NULL
       // See docs/adr/002-prisma-source-of-truth.md & docs/BUSINESS-RULES.md §9
       user: {

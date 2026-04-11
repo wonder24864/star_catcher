@@ -35,7 +35,7 @@
   - recursive CTE 性能测试
   - 产出：schema + migration + 性能数据 → 更新 ADR-009
 
-- [ ] 47. Student Memory schema + Memory 层
+- [x] 47. Student Memory schema + Memory 层
   - Prisma: MasteryState, ReviewSchedule, InterventionHistory
   - Memory 层实现：掌握度状态机 + IPC 暴露接口
   - 产出：schema + migration + Memory 层代码 + 状态机测试
