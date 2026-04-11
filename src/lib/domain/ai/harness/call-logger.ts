@@ -8,6 +8,7 @@ interface CallLogEntry {
   provider: string;
   model: string;
   correlationId?: string;
+  promptVersion?: string;
   usage: AIUsage;
   durationMs: number;
   success: boolean;
@@ -27,6 +28,7 @@ export async function logAICall(entry: CallLogEntry): Promise<void> {
         provider: entry.provider,
         model: entry.model,
         correlationId: entry.correlationId,
+        promptVersion: entry.promptVersion,
         inputTokens: entry.usage.inputTokens,
         outputTokens: entry.usage.outputTokens,
         durationMs: entry.durationMs,

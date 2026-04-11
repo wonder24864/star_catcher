@@ -45,7 +45,7 @@
   - AgentTracePublisher（步骤状态推送，复用 Redis Pub/Sub + SSE）
   - 产出：schema + 发布器代码 + 推送测试
 
-- [ ] 49. Prompt 版本管理扩展
+- [x] 49. Prompt 版本管理扩展
   - PromptManager 增加 version 字段
   - AICallLog 记录 prompt 版本号
   - 产出：代码修改 + 测试

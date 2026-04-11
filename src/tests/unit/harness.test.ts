@@ -32,6 +32,7 @@ import { getFallbackResult } from "@/lib/domain/ai/harness/fallback-handler";
 import { executeOperation } from "@/lib/domain/ai/harness/index";
 import { recognizeHomeworkSchema } from "@/lib/domain/ai/harness/schemas/recognize-homework";
 import { MockAIProvider } from "../helpers/mock-ai-provider";
+import { db } from "@/lib/infra/db";
 
 describe("OutputValidator", () => {
   const simpleSchema = z.object({
@@ -316,6 +317,52 @@ describe("Harness Pipeline (executeOperation)", () => {
     expect(result.success).toBe(false);
     expect(result.error?.code).toBe("CONTENT_GUARDRAIL_BLOCKED");
     expect(result.error?.retryable).toBe(false);
+  });
+
+  test("logs promptVersion to AICallLog on success", async () => {
+    provider.nextResponse = {
+      content: '{"answer": "correct"}',
+      usage: { inputTokens: 40, outputTokens: 15 },
+      model: "mock",
+      finishReason: "stop",
+    };
+
+    const versionedPrompt = {
+      version: "2.1.0",
+      build: () => [{ role: "user" as const, content: "test" }],
+    };
+
+    await executeOperation(provider, {
+      operation: testOperation,
+      prompt: versionedPrompt,
+      variables: {},
+      context: testContext,
+    });
+
+    const createMock = db.aICallLog.create as ReturnType<typeof vi.fn>;
+    const lastCall = createMock.mock.calls[createMock.mock.calls.length - 1][0];
+    expect(lastCall.data.promptVersion).toBe("2.1.0");
+  });
+
+  test("logs promptVersion to AICallLog on failure", async () => {
+    provider.shouldThrow = new Error("API error");
+
+    const versionedPrompt = {
+      version: "3.0.0-beta",
+      build: () => [{ role: "user" as const, content: "test" }],
+    };
+
+    await executeOperation(provider, {
+      operation: testOperation,
+      prompt: versionedPrompt,
+      variables: {},
+      context: testContext,
+    });
+
+    const createMock = db.aICallLog.create as ReturnType<typeof vi.fn>;
+    const lastCall = createMock.mock.calls[createMock.mock.calls.length - 1][0];
+    expect(lastCall.data.promptVersion).toBe("3.0.0-beta");
+    expect(lastCall.data.success).toBe(false);
   });
 
   test("handles output validation failure", async () => {

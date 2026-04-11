@@ -632,6 +632,7 @@ model AICallLog {
   provider      String          @db.VarChar(16) // azure / local
   model         String          @db.VarChar(32) // gpt-5.4
   correlationId String?         @db.VarChar(64) // BullMQ jobId or tRPC requestId
+  promptVersion String?         @db.VarChar(16) // semver from PromptTemplate (e.g. "1.0.0")
   inputTokens   Int             @default(0)
   outputTokens  Int             @default(0)
   durationMs    Int             @default(0)
