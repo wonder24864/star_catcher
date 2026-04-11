@@ -91,6 +91,12 @@ function createSkillContext(executionContext, config) {
         data: params || {},
       });
     },
+    query: function (queryName, params) {
+      return ipcRequest("query", {
+        queryName: queryName,
+        data: params || {},
+      });
+    },
     config: Object.freeze(config || {}),
     context: Object.freeze(executionContext || {}),
   };

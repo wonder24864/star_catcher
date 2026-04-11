@@ -193,6 +193,12 @@ export class SkillRuntime {
           data = undefined;
           break;
         }
+        case "query": {
+          const queryName = params.queryName as string;
+          const queryData = (params.data ?? {}) as Record<string, unknown>;
+          data = await this.handlers.onQuery(queryName, queryData);
+          break;
+        }
         default:
           throw new Error(`Unknown IPC method: ${method}`);
       }

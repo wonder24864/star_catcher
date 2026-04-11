@@ -87,6 +87,7 @@
     "filter": "筛选",
     "noData": "暂无数据",
     "success": "操作成功",
+    "prev": "上一步",
     "switchLanguage": "English"
   },
   "error": {
@@ -389,6 +390,20 @@
     "enable": "启用",
     "disable": "禁用",
     "upload": "上传 Skill",
-    "empty": "暂无 Skill"
+    "empty": "暂无 Skill",
+    "description": "描述",
+    "author": "作者",
+    "config": "配置参数",
+    "schema": "功能 Schema",
+    "details": "详情",
+    "bundleUrl": "Bundle 地址",
+    "statusDraft": "草稿",
+    "statusActive": "已启用",
+    "statusDisabled": "已禁用",
+    "statusDeprecated": "已废弃",
+    "confirmDisable": "确定禁用此 Skill？",
+    "uploadSuccess": "Skill 上传成功",
+    "allStatuses": "全部状态",
+    "ms": "ms"
   }
 }

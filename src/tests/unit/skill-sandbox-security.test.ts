@@ -43,6 +43,7 @@ function createHandlers(): SkillIPCHandlers {
     onCallAI: vi.fn().mockResolvedValue({ success: true }),
     onReadMemory: vi.fn().mockResolvedValue(null),
     onWriteMemory: vi.fn().mockResolvedValue(undefined),
+    onQuery: vi.fn().mockResolvedValue([]),
   };
 }
 

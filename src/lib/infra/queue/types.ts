@@ -45,6 +45,7 @@ export interface QuestionUnderstandingJobData {
   subject: string;
   grade?: string;
   schoolLevel: string;
+  studentId: string;
   userId: string;
   locale: string;
 }

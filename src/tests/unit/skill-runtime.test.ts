@@ -34,6 +34,7 @@ function createMockHandlers(): SkillIPCHandlers {
       .fn()
       .mockResolvedValue({ status: "REVIEWING", totalAttempts: 3 }),
     onWriteMemory: vi.fn().mockResolvedValue(undefined),
+    onQuery: vi.fn().mockResolvedValue([]),
   };
 }
 

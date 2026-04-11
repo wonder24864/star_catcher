@@ -8,7 +8,7 @@
 // ─── IPC Protocol ─────────────────────────────────
 
 /** IPC method categories */
-export type SkillIPCMethod = "harness.call" | "memory.read" | "memory.write";
+export type SkillIPCMethod = "harness.call" | "memory.read" | "memory.write" | "query";
 
 /** Worker → Main: service request via IPC */
 export interface SkillIPCRequest {
@@ -90,6 +90,11 @@ export interface SkillContext {
     method: string,
     params: Record<string, unknown>,
   ): Promise<void>;
+  /** Execute a whitelisted DB query (host-side validated) */
+  query(
+    queryName: string,
+    params: Record<string, unknown>,
+  ): Promise<unknown>;
   /** Skill-specific configuration (from SkillDefinition.config) */
   config: Readonly<Record<string, unknown>>;
   /** Execution context */
@@ -124,6 +129,11 @@ export interface SkillIPCHandlers {
     method: string,
     data: Record<string, unknown>,
   ): Promise<void>;
+  /** Handle query → whitelisted DB queries (e.g. searchKnowledgePoints) */
+  onQuery(
+    queryName: string,
+    data: Record<string, unknown>,
+  ): Promise<unknown>;
 }
 
 // ─── Execution Result ─────────────────────────────

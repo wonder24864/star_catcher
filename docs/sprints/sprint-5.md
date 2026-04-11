@@ -15,42 +15,42 @@
 
 ### Week 9
 
-- [ ] 51. Knowledge Graph CRUD tRPC Router
+- [x] 51. Knowledge Graph CRUD tRPC Router
   - 知识点树增删改查 API（adminProcedure）
   - 关系管理（添加/删除 + PREREQUISITE 环检测��
   - 批量审核（pending_review → approved/rejected）
   - 产出：router 代码 + 单元测试
 
-- [ ] 52. 教材目录提取 Skill (extract-knowledge-points)
+- [x] 52. 教材目录提取 Skill (extract-knowledge-points)
   - 第一个生产 Skill bundle（manifest + schema + execute）
   - AI 从教材目录结构提取知识点层级树
   - 对应 Harness 三件套（schema + prompt + operation）
   - 产出：Skill bundle + Operation + 测试
 
-- [ ] 53. KG 数据导入 Job + 管理页面
+- [x] 53. KG 数据导入 Job + 管理页面
   - BullMQ Job: PDF → 目录提取 → Skill 调用 → 入库
   - 管理页面三 Tab：知识点树 / 导入管理 / 待审核
   - MinIO presigned URL 上传
   - 产出：Worker handler + 管理页面 + i18n
 
-- [ ] 54. search-knowledge-points Skill
+- [x] 54. search-knowledge-points Skill
   - 纯 DB 查询 Skill（不调 AI）
   - 扩展 SkillRuntime IPC 协议：新增 `query` 方法（白名单查询）
   - 产出：Skill bundle + IPC 扩展 + 测试
 
-- [ ] 55. classify-question-knowledge Skill
+- [x] 55. classify-question-knowledge Skill
   - AI 分类 Skill：判断题目与候选知识点的关联置信度
   - 对应 Harness 三件套
   - 产出：Skill bundle + Operation + 测试
 
-- [ ] 56. Question Understanding Agent
+- [x] 56. Question Understanding Agent
   - AgentDefinition + BullMQ Job handler
   - 触发：CheckSession COMPLETED 时自动入队
   - 幂等 + KG 为空时优雅跳过
   - 写入 QuestionKnowledgeMapping（多对多，一题多知识点）
   - 产出：Agent 定义 + handler + 集成测试（fixture 预录响应）
 
-- [ ] 57. Skill 管理页面
+- [x] 57. Skill 管理页面
   - 管理员 Skill 列表 + 状态切换 + 上传 + 详情
   - 复用已有 skill router
   - 产出：管理页面 + i18n

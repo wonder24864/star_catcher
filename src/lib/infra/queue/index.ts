@@ -11,6 +11,7 @@ import type {
   OcrRecognizeJobData,
   CorrectionPhotosJobData,
   HelpGenerateJobData,
+  QuestionUnderstandingJobData,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -72,6 +73,22 @@ export async function enqueueHelpGeneration(
   const job = await getQueue().add("help-generate", data, {
     attempts: 2,
     backoff: { type: "exponential", delay: 1000 },
+    removeOnComplete: 100,
+    removeOnFail: 200,
+  });
+  return job.id!;
+}
+
+/**
+ * Enqueue question understanding agent job.
+ * Timeout: 30s, Retries: 2 (Agent may need multiple AI calls)
+ */
+export async function enqueueQuestionUnderstanding(
+  data: QuestionUnderstandingJobData,
+): Promise<string> {
+  const job = await getQueue().add("question-understanding", data, {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
     removeOnComplete: 100,
     removeOnFail: 200,
   });

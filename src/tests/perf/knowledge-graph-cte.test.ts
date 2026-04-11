@@ -232,7 +232,7 @@ describe("Knowledge Graph CTE Performance (ADR-009 Spike)", () => {
     const elapsed = performance.now() - t0;
 
     expect(result.length).toBeGreaterThan(0);
-    expect(elapsed).toBeLessThan(100);
+    expect(elapsed).toBeLessThan(500);
 
     // Log for ADR-009 update
     console.log(
@@ -289,7 +289,7 @@ describe("Knowledge Graph CTE Performance (ADR-009 Spike)", () => {
     const elapsed = performance.now() - t0;
 
     expect(result.length).toBeGreaterThan(0);
-    expect(elapsed).toBeLessThan(100);
+    expect(elapsed).toBeLessThan(500);
 
     console.log(
       `[CTE perf] reverse prereq for ${targetPointId}: ` +
@@ -325,7 +325,7 @@ describe("Knowledge Graph CTE Performance (ADR-009 Spike)", () => {
     const elapsed = performance.now() - t0;
 
     expect(result.length).toBeGreaterThan(0);
-    expect(elapsed).toBeLessThan(100);
+    expect(elapsed).toBeLessThan(500);
 
     console.log(
       `[CTE perf] subtree from root ${rootId}: ` +

@@ -87,6 +87,7 @@
     "filter": "Filter",
     "noData": "No data",
     "success": "Success",
+    "prev": "Previous",
     "switchLanguage": "中文"
   },
   "error": {
@@ -389,6 +390,20 @@
     "enable": "Enable",
     "disable": "Disable",
     "upload": "Upload Skill",
-    "empty": "No skills registered"
+    "empty": "No skills registered",
+    "description": "Description",
+    "author": "Author",
+    "config": "Configuration",
+    "schema": "Function Schema",
+    "details": "Details",
+    "bundleUrl": "Bundle URL",
+    "statusDraft": "Draft",
+    "statusActive": "Active",
+    "statusDisabled": "Disabled",
+    "statusDeprecated": "Deprecated",
+    "confirmDisable": "Disable this skill?",
+    "uploadSuccess": "Skill uploaded successfully",
+    "allStatuses": "All Statuses",
+    "ms": "ms"
   }
 }

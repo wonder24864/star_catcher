@@ -34,6 +34,7 @@ vi.mock("@/lib/infra/queue", () => ({
   enqueueRecognition: vi.fn().mockResolvedValue("job-recognize-1"),
   enqueueCorrectionPhotos: vi.fn().mockResolvedValue("job-correction-1"),
   enqueueHelpGeneration: vi.fn().mockResolvedValue("job-help-1"),
+  enqueueQuestionUnderstanding: vi.fn().mockResolvedValue("job-qu-1"),
 }));
 import { gradeAnswer } from "@/lib/domain/ai/operations/grade-answer";
 import { generateHelp } from "@/lib/domain/ai/operations/help-generate";

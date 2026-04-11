@@ -9,6 +9,7 @@ import {
   enqueueRecognition,
   enqueueCorrectionPhotos,
   enqueueHelpGeneration,
+  enqueueQuestionUnderstanding,
 } from "@/lib/infra/queue";
 import {
   createSessionSchema,
@@ -83,6 +84,12 @@ function getDefaultMaxHelpLevel(grade: string | null | undefined): number {
   if (!grade) return 2;
   if (grade.startsWith("PRIMARY_")) return 2;
   return 3;
+}
+
+function inferSchoolLevel(grade: string): "PRIMARY" | "JUNIOR" | "SENIOR" {
+  if (grade.startsWith("PRIMARY_")) return "PRIMARY";
+  if (grade.startsWith("JUNIOR_")) return "JUNIOR";
+  return "SENIOR";
 }
 
 export const homeworkRouter = router({
@@ -533,6 +540,9 @@ export const homeworkRouter = router({
         (q: { isCorrect: boolean | null }) => q.isCorrect !== true
       );
 
+      // Collect ErrorQuestion IDs for Agent trigger
+      const errorQuestionEntries: Array<{ errorQuestionId: string; content: string }> = [];
+
       for (const q of wrongQuestions) {
         const hash = computeContentHash(q.content);
 
@@ -550,9 +560,10 @@ export const homeworkRouter = router({
             where: { id: existing.id },
             data: { totalAttempts: existing.totalAttempts + 1 },
           });
+          errorQuestionEntries.push({ errorQuestionId: existing.id, content: q.content });
         } else {
           // Create new ErrorQuestion
-          await ctx.db.errorQuestion.create({
+          const created = await ctx.db.errorQuestion.create({
             data: {
               studentId: session.studentId,
               sessionQuestionId: q.id,
@@ -566,6 +577,32 @@ export const homeworkRouter = router({
               correctAnswer: q.correctAnswer ?? undefined,
               aiKnowledgePoint: q.aiKnowledgePoint ?? undefined,
             },
+          });
+          errorQuestionEntries.push({ errorQuestionId: created.id, content: q.content });
+        }
+      }
+
+      // --- Auto-trigger Question Understanding Agent (Task 56, US-033) ---
+      // Enqueue asynchronously — don't block the response
+      for (const entry of errorQuestionEntries) {
+        if (entry.content && entry.content.trim().length > 0) {
+          enqueueQuestionUnderstanding({
+            sessionId: input.sessionId,
+            questionId: entry.errorQuestionId,
+            questionText: entry.content,
+            subject: session.subject ?? "OTHER",
+            grade: session.grade ?? undefined,
+            schoolLevel: session.grade
+              ? inferSchoolLevel(session.grade)
+              : "PRIMARY",
+            studentId: session.studentId,
+            userId: ctx.session.userId,
+            locale: ctx.session.locale ?? "zh-CN",
+          }).catch((err) => {
+            console.error(
+              `[completeSession] Failed to enqueue question-understanding for ${entry.errorQuestionId}:`,
+              err,
+            );
           });
         }
       }

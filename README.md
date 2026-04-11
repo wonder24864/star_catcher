@@ -114,7 +114,10 @@ star_catcher/
 ├── skills/                    # Skill 插件源码 + 编译产物
 │   ├── echo/                      # Echo Skill（IPC 流程测试用）
 │   ├── harness-call/              # AI 调用 Skill（IPC→Harness 链路测试用）
-│   └── diagnose-error/            # 错误诊断 Skill（业务示例）
+│   ├── diagnose-error/            # 错误诊断 Skill（业务示例）
+│   ├── extract-knowledge-points/  # 教材目录提取 Skill（AI → 知识点层级树）
+│   ├── search-knowledge-points/   # 知识点搜索 Skill（纯 DB 查询，IPC query）
+│   └── classify-question-knowledge/ # 题目知识点分类 Skill（AI 置信度评分）
 │
 │── 源码 ──────────────────────────────────────────────────
 └── src/
@@ -125,7 +128,7 @@ star_catcher/
     │   │   ├── check/                 # 作业检查（新建/详情/结果）
     │   │   ├── errors/                # 错题管理（列表/详情）
     │   │   ├── parent/                # 家长视图（概览/统计/时间线）
-    │   │   ├── admin/                 # 管理后台（用户/配置）
+    │   │   ├── admin/                 # 管理后台（用户/配置/知识图谱/Skill）
     │   │   ├── family/                # 家庭组管理
     │   │   └── settings/              # 个人设置
     │   ├── api/trpc/[trpc]/       # tRPC 端点
@@ -161,7 +164,7 @@ star_catcher/
     │   │   │   ├── harness/           # 管道组件（7 个）
     │   │   │   ├── operations/        # 业务操作（OCR/判分/求助/学科检测）
     │   │   │   ├── prompts/           # Prompt 模板
-    │   │   │   └── providers/         # AI 提供商（Azure OpenAI）
+    │   │   │   └── providers/         # AI 提供商（Azure OpenAI / FC 适配器）
     │   │   ├── skill/             # Skill 插件系统（Phase 2）
     │   │   │   ├── types.ts           # IPC 协议 + 执行上下文类型
     │   │   │   ├── runtime.ts         # SkillRuntime（worker_threads 生命周期）
@@ -178,6 +181,8 @@ star_catcher/
     │   │   │   ├── cost-tracker.ts    # CostTracker（Token 预算追踪）
     │   │   │   ├── circuit-breaker.ts # CircuitBreaker（熔断 + 多 Provider 降级）
     │   │   │   ├── trace-publisher.ts # AgentTracePublisher（Redis Pub/Sub 推送）
+    │   │   │   ├── definitions/       # Agent 定义（代码声明，非 DB）
+    │   │   │   │   └── question-understanding.ts  # 题目理解 Agent
     │   │   │   └── index.ts           # 公共导出
     │   │   ├── memory/            # Student Memory 层（Phase 2）
     │   │   │   ├── types.ts           # 状态机定义 + Memory 接口
