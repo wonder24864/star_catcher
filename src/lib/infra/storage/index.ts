@@ -63,6 +63,19 @@ export async function getObjectAsBase64DataUrl(objectKey: string): Promise<strin
 }
 
 /**
+ * Read an object from MinIO and return its raw Buffer.
+ * Used for processing files server-side (e.g., PDF parsing).
+ */
+export async function getObjectBuffer(objectKey: string): Promise<Buffer> {
+  const stream = await getMinioClient().getObject(BUCKET, objectKey);
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
  * Delete an object from MinIO.
  */
 export async function deleteObject(objectKey: string): Promise<void> {

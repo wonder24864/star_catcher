@@ -1,0 +1,37 @@
+{
+  "name": "extract_knowledge_points",
+  "description": "Extract knowledge point tree from textbook table of contents. Identifies chapter/section hierarchy, prerequisite relationships, and difficulty estimates.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "tocText": {
+        "type": "string",
+        "description": "The table of contents text extracted from a textbook PDF"
+      },
+      "bookTitle": {
+        "type": "string",
+        "description": "Full textbook title, e.g. '人教版七年级数学上册'"
+      },
+      "subject": {
+        "type": "string",
+        "enum": ["MATH", "CHINESE", "ENGLISH", "PHYSICS", "CHEMISTRY", "BIOLOGY", "HISTORY", "GEOGRAPHY", "POLITICS", "OTHER"],
+        "description": "School subject"
+      },
+      "grade": {
+        "type": "string",
+        "description": "Grade level, e.g. 'PRIMARY_3', 'JUNIOR_1'"
+      },
+      "schoolLevel": {
+        "type": "string",
+        "enum": ["PRIMARY", "JUNIOR", "SENIOR"],
+        "description": "School level"
+      },
+      "locale": {
+        "type": "string",
+        "default": "zh-CN",
+        "description": "Output language"
+      }
+    },
+    "required": ["tocText", "bookTitle", "subject", "schoolLevel"]
+  }
+}

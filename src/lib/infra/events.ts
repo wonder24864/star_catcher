@@ -12,7 +12,7 @@ import Redis from "ioredis";
 // ---------------------------------------------------------------------------
 
 export type JobResultEvent = {
-  type: "ocr-recognize" | "correction-photos" | "help-generate";
+  type: "ocr-recognize" | "correction-photos" | "help-generate" | "kg-import" | "question-understanding";
   status: "completed" | "failed";
   data?: unknown;
   error?: string;

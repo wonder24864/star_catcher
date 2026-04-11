@@ -1,0 +1,8 @@
+{
+  "name": "extract-knowledge-points",
+  "version": "1.0.0",
+  "description": "Extract structured knowledge point tree from textbook table of contents",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 30000
+}

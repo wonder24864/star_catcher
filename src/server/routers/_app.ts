@@ -9,6 +9,7 @@ import { errorRouter } from "./error";
 import { adminRouter } from "./admin";
 import { subscriptionRouter } from "./subscription";
 import { skillRouter } from "./skill";
+import { knowledgeGraphRouter } from "./knowledge-graph";
 
 export const appRouter = router({
   auth: authRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   admin: adminRouter,
   subscription: subscriptionRouter,
   skill: skillRouter,
+  knowledgeGraph: knowledgeGraphRouter,
 });
 
 export type AppRouter = typeof appRouter;

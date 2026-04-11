@@ -33,10 +33,10 @@
 | US-029 | PWA Support | [pwa-i18n.md](pwa-i18n.md) | Sprint 3 |
 | US-030 | Internationalization | [pwa-i18n.md](pwa-i18n.md) | Sprint 3 |
 | — | — | **Phase 2 高层大纲**（详细故事逐 Sprint 补充，模板见 [TEMPLATE-PHASE2.md](TEMPLATE-PHASE2.md)） | — |
-| US-031 | Knowledge Graph 数据导入 | 管理员上传教材 PDF，AI 提取知识点，审核入库 | Sprint 5 |
-| US-032 | Knowledge Graph 管理界面 | 管理员查看/编辑知识点树形结构和关系 | Sprint 5 |
-| US-033 | Question Understanding Agent | 完成检查后 AI Agent 自动分析题目关联知识点 | Sprint 5 |
-| US-034 | Skill 管理界面 | 管理员上传/启用/禁用 Skill bundle，查看调用统计 | Sprint 5 |
+| US-031 | Knowledge Graph 数据导��� | [knowledge-graph.md](knowledge-graph.md) | Sprint 5 |
+| US-032 | Knowledge Graph 管理界面 | [knowledge-graph.md](knowledge-graph.md) | Sprint 5 |
+| US-033 | Question Understanding Agent | [question-understanding.md](question-understanding.md) | Sprint 5 |
+| US-034 | Skill 管理界面 | [skill-management.md](skill-management.md) | Sprint 5 |
 | US-035 | Diagnosis Agent | 基于错题历史+知识图谱，自动诊断薄弱知识点 | Sprint 6 |
 | US-036 | 薄弱知识点报告 | 学生查看知识点掌握地图（已掌握/薄弱/新错） | Sprint 6 |
 | US-037 | 学生学习状态追踪 | 系统自动追踪知识点掌握度状态机流转 | Sprint 6 |

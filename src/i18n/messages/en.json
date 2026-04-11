@@ -351,5 +351,44 @@
     "groupNameLength": "Group name must be 1-32 characters",
     "inviteCodeFormat": "Invite code must be 6 alphanumeric characters",
     "gradeRequired": "Grade is required for students"
+  },
+  "knowledgeGraph": {
+    "title": "Knowledge Graph",
+    "tabs": {
+      "tree": "Knowledge Tree",
+      "import": "Import",
+      "review": "Review"
+    },
+    "primary": "Primary",
+    "junior": "Junior",
+    "senior": "Senior",
+    "searchPlaceholder": "Search knowledge points...",
+    "difficulty": "Difficulty",
+    "empty": "No knowledge points yet",
+    "import": {
+      "title": "Import Textbook Knowledge Points",
+      "bookTitle": "Book Title",
+      "bookTitlePlaceholder": "e.g., PEP 7th Grade Math Vol.1",
+      "importing": "Extracting knowledge points..."
+    },
+    "review": {
+      "empty": "No pending reviews",
+      "pendingCount": "pending review",
+      "approveAll": "Approve All",
+      "rejectAll": "Reject All"
+    }
+  },
+  "skills": {
+    "title": "Skill Management",
+    "name": "Name",
+    "version": "Version",
+    "status": "Status",
+    "calls": "Call Count",
+    "avgDuration": "Avg Duration",
+    "actions": "Actions",
+    "enable": "Enable",
+    "disable": "Disable",
+    "upload": "Upload Skill",
+    "empty": "No skills registered"
   }
 }

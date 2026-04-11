@@ -13,6 +13,8 @@ import type { AIJobData, AIJobName } from "@/lib/infra/queue/types";
 import { handleOcrRecognize } from "./handlers/ocr-recognize";
 import { handleCorrectionPhotos } from "./handlers/correction-photos";
 import { handleHelpGenerate } from "./handlers/help-generate";
+import { handleKGImport } from "./handlers/kg-import";
+import { handleQuestionUnderstanding } from "./handlers/question-understanding";
 
 console.log("[worker] Starting AI jobs worker...");
 
@@ -41,6 +43,14 @@ const worker = new Worker<AIJobData, void, AIJobName>(
               level: 1 | 2 | 3;
             }
           >,
+        );
+        break;
+      case "kg-import":
+        await handleKGImport(job as unknown as Job<import("@/lib/infra/queue/types").KGImportJobData>);
+        break;
+      case "question-understanding":
+        await handleQuestionUnderstanding(
+          job as unknown as Job<import("@/lib/infra/queue/types").QuestionUnderstandingJobData>,
         );
         break;
       default:

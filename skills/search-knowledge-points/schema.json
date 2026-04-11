@@ -1,0 +1,33 @@
+{
+  "name": "search_knowledge_points",
+  "description": "Search knowledge points by keywords, subject, and grade level. Returns matching knowledge points for question-to-KP mapping.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "keywords": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Search keywords extracted from question text"
+      },
+      "subject": {
+        "type": "string",
+        "description": "School subject to filter by"
+      },
+      "grade": {
+        "type": "string",
+        "description": "Grade level to filter by"
+      },
+      "schoolLevel": {
+        "type": "string",
+        "enum": ["PRIMARY", "JUNIOR", "SENIOR"],
+        "description": "School level to filter by"
+      },
+      "limit": {
+        "type": "number",
+        "default": 10,
+        "description": "Maximum number of results to return"
+      }
+    },
+    "required": ["keywords", "subject"]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "classify_question_knowledge",
+  "description": "Classify the relevance between a question and candidate knowledge points. Returns confidence scores for each candidate.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "questionText": {
+        "type": "string",
+        "description": "The question text to analyze"
+      },
+      "questionSubject": {
+        "type": "string",
+        "description": "Subject of the question"
+      },
+      "questionGrade": {
+        "type": "string",
+        "description": "Grade level of the question"
+      },
+      "candidates": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "description": { "type": "string" }
+          },
+          "required": ["id", "name"]
+        },
+        "description": "Candidate knowledge points to evaluate"
+      }
+    },
+    "required": ["questionText", "questionSubject", "candidates"]
+  }
+}

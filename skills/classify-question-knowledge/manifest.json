@@ -1,0 +1,8 @@
+{
+  "name": "classify-question-knowledge",
+  "version": "1.0.0",
+  "description": "Classify relevance between a question and candidate knowledge points via AI",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 30000
+}

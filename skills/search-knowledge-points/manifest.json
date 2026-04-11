@@ -1,0 +1,8 @@
+{
+  "name": "search-knowledge-points",
+  "version": "1.0.0",
+  "description": "Search knowledge points by keywords, subject, and grade level (DB query, no AI)",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 5000
+}

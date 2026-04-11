@@ -351,5 +351,44 @@
     "groupNameLength": "家庭组名称长度需为 1-32 个字符",
     "inviteCodeFormat": "邀请码为 6 位字母和数字",
     "gradeRequired": "学生需选择年级"
+  },
+  "knowledgeGraph": {
+    "title": "知识图谱管理",
+    "tabs": {
+      "tree": "知识点树",
+      "import": "导入管理",
+      "review": "待审核"
+    },
+    "primary": "小学",
+    "junior": "初中",
+    "senior": "高中",
+    "searchPlaceholder": "搜索知识点...",
+    "difficulty": "难度",
+    "empty": "暂无知识点数据",
+    "import": {
+      "title": "导入教材知识点",
+      "bookTitle": "教材名称",
+      "bookTitlePlaceholder": "如：人教版七年级数学上册",
+      "importing": "正在提取知识点..."
+    },
+    "review": {
+      "empty": "暂无待审核知识点",
+      "pendingCount": "条待审核",
+      "approveAll": "全部通过",
+      "rejectAll": "全部驳回"
+    }
+  },
+  "skills": {
+    "title": "Skill 管理",
+    "name": "名称",
+    "version": "版本",
+    "status": "状态",
+    "calls": "调用次数",
+    "avgDuration": "平均耗时",
+    "actions": "操作",
+    "enable": "启用",
+    "disable": "禁用",
+    "upload": "上传 Skill",
+    "empty": "暂无 Skill"
   }
 }
