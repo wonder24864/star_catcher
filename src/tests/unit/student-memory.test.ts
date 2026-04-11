@@ -591,4 +591,102 @@ describe("StudentMemoryImpl", () => {
       });
     }
   });
+
+  // ── ensureMasteryState ──
+
+  describe("ensureMasteryState", () => {
+    test("creates NEW_ERROR when no existing state", async () => {
+      mockDb.masteryState.findUnique.mockResolvedValue(null);
+      const created = createMockMasteryRow({ status: "NEW_ERROR" });
+      mockDb.masteryState.create.mockResolvedValue(created);
+
+      const result = await memory.ensureMasteryState("student-1", "kp-1");
+
+      expect(result.status).toBe("NEW_ERROR");
+      expect(mockDb.masteryState.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          studentId: "student-1",
+          knowledgePointId: "kp-1",
+          status: "NEW_ERROR",
+          totalAttempts: 1,
+        }),
+      });
+    });
+
+    test("transitions MASTERED → REGRESSED when already mastered", async () => {
+      const masteredRow = createMockMasteryRow({ status: "MASTERED", version: 3 });
+      const regressedRow = createMockMasteryRow({ status: "REGRESSED", version: 4, masteredAt: null });
+
+      // ensureMasteryState calls findUnique (1st)
+      // then updateMasteryState calls findUnique (2nd for current state, 3rd for re-fetch)
+      mockDb.masteryState.findUnique
+        .mockResolvedValueOnce(masteredRow) // ensureMasteryState lookup
+        .mockResolvedValueOnce(masteredRow) // updateMasteryState load
+        .mockResolvedValueOnce(regressedRow); // updateMasteryState re-fetch
+      mockDb.masteryState.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await memory.ensureMasteryState("student-1", "kp-1");
+
+      expect(result.status).toBe("REGRESSED");
+    });
+
+    test("increments totalAttempts for other statuses", async () => {
+      const existingRow = createMockMasteryRow({ status: "CORRECTED", version: 2 });
+      const updatedRow = createMockMasteryRow({ status: "CORRECTED", version: 3, totalAttempts: 2 });
+
+      mockDb.masteryState.findUnique
+        .mockResolvedValueOnce(existingRow) // ensureMasteryState lookup
+        .mockResolvedValueOnce(updatedRow); // re-fetch after update
+
+      const result = await memory.ensureMasteryState("student-1", "kp-1");
+
+      expect(result.status).toBe("CORRECTED");
+      expect(mockDb.masteryState.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "mastery-1", version: 2 },
+          data: expect.objectContaining({
+            totalAttempts: { increment: 1 },
+          }),
+        }),
+      );
+    });
+
+    test("retries on optimistic lock conflict (MASTERED path)", async () => {
+      const masteredRow = createMockMasteryRow({ status: "MASTERED", version: 3 });
+      const regressedRow = createMockMasteryRow({ status: "REGRESSED", version: 5, masteredAt: null });
+
+      // First attempt: findUnique returns MASTERED, updateMany fails (count 0)
+      // Retry: findUnique returns MASTERED again (freshly loaded), updateMany succeeds
+      mockDb.masteryState.findUnique
+        .mockResolvedValueOnce(masteredRow) // 1st ensureMasteryState
+        .mockResolvedValueOnce(masteredRow) // 1st updateMasteryState load
+        .mockResolvedValueOnce(masteredRow) // retry ensureMasteryState
+        .mockResolvedValueOnce(masteredRow) // retry updateMasteryState load
+        .mockResolvedValueOnce(regressedRow); // retry updateMasteryState re-fetch
+
+      mockDb.masteryState.updateMany
+        .mockResolvedValueOnce({ count: 0 }) // 1st attempt fails
+        .mockResolvedValueOnce({ count: 1 }); // retry succeeds
+
+      const result = await memory.ensureMasteryState("student-1", "kp-1");
+
+      expect(result.status).toBe("REGRESSED");
+      expect(mockDb.masteryState.updateMany).toHaveBeenCalledTimes(2);
+    });
+
+    test("is idempotent for NEW_ERROR status", async () => {
+      const existingRow = createMockMasteryRow({ status: "NEW_ERROR", version: 1 });
+      const updatedRow = createMockMasteryRow({ status: "NEW_ERROR", version: 2, totalAttempts: 2 });
+
+      mockDb.masteryState.findUnique
+        .mockResolvedValueOnce(existingRow)
+        .mockResolvedValueOnce(updatedRow);
+
+      const result = await memory.ensureMasteryState("student-1", "kp-1");
+
+      // Should NOT create a new row, just increment attempts
+      expect(mockDb.masteryState.create).not.toHaveBeenCalled();
+      expect(result.status).toBe("NEW_ERROR");
+    });
+  });
 });

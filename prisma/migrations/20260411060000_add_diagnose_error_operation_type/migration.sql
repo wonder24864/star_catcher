@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "AIOperationType" ADD VALUE 'DIAGNOSE_ERROR';

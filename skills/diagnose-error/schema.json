@@ -1,6 +1,6 @@
 {
   "name": "diagnose_error",
-  "description": "Analyze a student's incorrect answer to identify the error pattern and underlying knowledge gap",
+  "description": "Analyze a student's incorrect answer to identify the error pattern, knowledge gaps, and provide improvement recommendations",
   "parameters": {
     "type": "object",
     "properties": {
@@ -19,6 +19,28 @@
       "subject": {
         "type": "string",
         "description": "Subject area (MATH, CHINESE, ENGLISH, etc.)"
+      },
+      "grade": {
+        "type": "string",
+        "description": "Student grade level (e.g., GRADE_3, GRADE_7)"
+      },
+      "knowledgePointIds": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "IDs of knowledge points mapped to this question"
+      },
+      "errorHistory": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "question": { "type": "string" },
+            "studentAnswer": { "type": "string" },
+            "knowledgePointName": { "type": "string" },
+            "createdAt": { "type": "string" }
+          }
+        },
+        "description": "Recent error history (last 30 days) for the same knowledge points"
       }
     },
     "required": ["question", "correctAnswer", "studentAnswer", "subject"]

@@ -107,8 +107,8 @@ star_catcher/
 │   ├── ROADMAP.md             # 路线图
 │   ├── PHASE2-LAUNCH-PLAN.md  # Phase 2 启动计划 + 设计决策记录
 │   ├── adr/                   # 架构决策记录（11 个）
-│   ├── user-stories/          # 用户故事（9 个模块 + Phase 2 大纲）
-│   └── sprints/               # Sprint 计划（5 个：1, 2, 3, 4a, 4b）
+│   ├── user-stories/          # 用户故事（10 个模块 + Phase 2 大纲）
+│   └── sprints/               # Sprint 计划（6 个：1, 2, 3, 4a, 4b, 5, 6）
 │
 │── Skill 示例 ────────────────────────────────────────────
 ├── skills/                    # Skill 插件源码 + 编译产物
@@ -127,6 +127,7 @@ star_catcher/
     │   ├── [locale]/(dashboard)/  # 受保护的功能页面
     │   │   ├── check/                 # 作业检查（新建/详情/结果）
     │   │   ├── errors/                # 错题管理（列表/详情）
+    │   │   ├── mastery/               # 掌握地图（知识点掌握度 + 色标）
     │   │   ├── parent/                # 家长视图（概览/统计/时间线）
     │   │   ├── admin/                 # 管理后台（用户/配置/知识图谱/Skill）
     │   │   ├── family/                # 家庭组管理

@@ -147,6 +147,86 @@ export class StudentMemoryImpl implements StudentMemory {
     return rows.map((r) => this.toMasteryView(r));
   }
 
+  // ─── Mastery State Upsert ─────────────────────
+
+  /**
+   * Ensure a MasteryState exists for the given student + knowledge point.
+   * Upsert semantics:
+   *   - Not found → create with NEW_ERROR status
+   *   - Found with MASTERED → transition to REGRESSED
+   *   - Found with other status → increment totalAttempts only
+   *
+   * Handles optimistic lock conflicts with a single retry.
+   */
+  async ensureMasteryState(
+    studentId: string,
+    knowledgePointId: string,
+  ): Promise<MasteryStateView> {
+    const existing = await this.db.masteryState.findUnique({
+      where: {
+        studentId_knowledgePointId: { studentId, knowledgePointId },
+      },
+    });
+
+    if (!existing) {
+      // Create new MasteryState with NEW_ERROR
+      const created = await this.db.masteryState.create({
+        data: {
+          studentId,
+          knowledgePointId,
+          status: "NEW_ERROR",
+          totalAttempts: 1,
+          lastAttemptAt: new Date(),
+        },
+      });
+      return this.toMasteryView(created);
+    }
+
+    if (existing.status === "MASTERED") {
+      // Trigger MASTERED → REGRESSED transition
+      try {
+        return await this.updateMasteryState(studentId, knowledgePointId, {
+          from: "MASTERED",
+          to: "REGRESSED",
+          reason: "New error on previously mastered knowledge point",
+        });
+      } catch (error) {
+        if (error instanceof OptimisticLockError) {
+          // Retry once on optimistic lock conflict
+          return this.ensureMasteryState(studentId, knowledgePointId);
+        }
+        throw error;
+      }
+    }
+
+    // Other statuses: increment totalAttempts only
+    try {
+      const updated = await this.db.masteryState.updateMany({
+        where: { id: existing.id, version: existing.version },
+        data: {
+          totalAttempts: { increment: 1 },
+          lastAttemptAt: new Date(),
+          version: { increment: 1 },
+        },
+      });
+
+      if (updated.count === 0) {
+        // Retry once on optimistic lock conflict
+        return this.ensureMasteryState(studentId, knowledgePointId);
+      }
+    } catch {
+      // Best-effort increment; don't fail the whole flow
+    }
+
+    // Re-fetch and return
+    const result = await this.db.masteryState.findUnique({
+      where: {
+        studentId_knowledgePointId: { studentId, knowledgePointId },
+      },
+    });
+    return this.toMasteryView(result!);
+  }
+
   // ─── Review Scheduling ────────────────────────
 
   async getNextReviewDate(

@@ -37,9 +37,9 @@
 | US-032 | Knowledge Graph 管理界面 | [knowledge-graph.md](knowledge-graph.md) | Sprint 5 |
 | US-033 | Question Understanding Agent | [question-understanding.md](question-understanding.md) | Sprint 5 |
 | US-034 | Skill 管理界面 | [skill-management.md](skill-management.md) | Sprint 5 |
-| US-035 | Diagnosis Agent | 基于错题历史+知识图谱，自动诊断薄弱知识点 | Sprint 6 |
-| US-036 | 薄弱知识点报告 | 学生查看知识点掌握地图（已掌握/薄弱/新错） | Sprint 6 |
-| US-037 | 学生学习状态追踪 | 系统自动追踪知识点掌握度状态机流转 | Sprint 6 |
+| US-035 | Diagnosis Agent | [diagnosis-mastery.md](diagnosis-mastery.md) | Sprint 6 |
+| US-036 | 薄弱知识点报告 | [diagnosis-mastery.md](diagnosis-mastery.md) | Sprint 6 |
+| US-037 | 学生学习状态追踪 | [diagnosis-mastery.md](diagnosis-mastery.md) | Sprint 6 |
 | US-038 | 间隔复习调度 | SM-2 算法计算薄弱知识点的下次复习时间 | Sprint 7 |
 | US-039 | 复习任务通知 | 学生首页显示今日需复习的知识点列表 | Sprint 7 |
 | US-040 | 掌握度评估 | 复习后重新评估掌握状态（MASTERED/REGRESSED） | Sprint 7 |

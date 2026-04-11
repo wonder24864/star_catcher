@@ -25,6 +25,7 @@ import { SkillRuntime } from "@/lib/domain/skill/runtime";
 import { AzureOpenAIFunctionCallingProvider } from "@/lib/domain/ai/providers/azure-openai-fc";
 import { questionUnderstandingAgent } from "@/lib/domain/agent/definitions/question-understanding";
 import { publishJobResult, sessionChannel } from "@/lib/infra/events";
+import { enqueueDiagnosis } from "@/lib/infra/queue";
 import { classifyQuestionKnowledge } from "@/lib/domain/ai/operations/classify-question-knowledge";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
@@ -401,6 +402,50 @@ Find the relevant knowledge points and classify their relevance.`;
         traceId: trace.id,
       },
     });
+
+    // ── 10. Chain-trigger Diagnosis Agent ──
+    if (validMappings.length > 0) {
+      try {
+        // Look up the ErrorQuestion for this SessionQuestion
+        const errorQuestion = await db.errorQuestion.findFirst({
+          where: {
+            sessionQuestionId: questionId,
+            deletedAt: null,
+          },
+          select: {
+            id: true,
+            content: true,
+            studentAnswer: true,
+            correctAnswer: true,
+          },
+        });
+
+        if (errorQuestion) {
+          await enqueueDiagnosis({
+            sessionId,
+            questionId,
+            errorQuestionId: errorQuestion.id,
+            questionText: questionText,
+            correctAnswer: errorQuestion.correctAnswer ?? "",
+            studentAnswer: errorQuestion.studentAnswer ?? "",
+            subject,
+            grade,
+            knowledgePointIds: validMappings.map((m) => m.knowledgePointId),
+            studentId,
+            userId,
+            locale,
+          });
+          console.log(
+            `${logPrefix} — enqueued diagnosis for errorQuestion ${errorQuestion.id}`,
+          );
+        }
+      } catch (chainError) {
+        // Don't fail QUA if diagnosis enqueue fails
+        console.warn(
+          `${logPrefix} — failed to enqueue diagnosis: ${chainError instanceof Error ? chainError.message : chainError}`,
+        );
+      }
+    }
 
     console.log(
       `${logPrefix} — completed: ${validMappings.length} mappings, ${result.totalSteps} steps, ${result.totalDurationMs}ms`,

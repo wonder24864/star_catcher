@@ -15,7 +15,8 @@
     "adminUsers": "用户管理",
     "adminSettings": "系统配置",
     "parentOverview": "今日概览",
-    "parentStats": "学习统计"
+    "parentStats": "学习统计",
+    "mastery": "掌握地图"
   },
   "auth": {
     "login": "登录",
@@ -74,6 +75,7 @@
     "language": "语言"
   },
   "common": {
+    "all": "全部",
     "loading": "加载中...",
     "save": "保存",
     "cancel": "取消",
@@ -405,5 +407,54 @@
     "uploadSuccess": "Skill 上传成功",
     "allStatuses": "全部状态",
     "ms": "ms"
+  },
+  "mastery": {
+    "title": "掌握地图",
+    "empty": "还没有学习记录",
+    "accuracy": "正确率",
+    "attempts": "共 {count} 次",
+    "stats": {
+      "weak": "薄弱",
+      "mastered": "已掌握",
+      "newError": "新错题"
+    },
+    "status": {
+      "NEW_ERROR": "新错",
+      "CORRECTED": "已改正",
+      "REVIEWING": "复习中",
+      "MASTERED": "已掌握",
+      "REGRESSED": "退步"
+    },
+    "filters": {
+      "ALL": "全部",
+      "WEAK": "薄弱",
+      "MASTERED": "已掌握",
+      "NEW_ERROR": "新错"
+    },
+    "subjects": {
+      "MATH": "数学",
+      "CHINESE": "语文",
+      "ENGLISH": "英语",
+      "PHYSICS": "物理",
+      "CHEMISTRY": "化学",
+      "BIOLOGY": "生物",
+      "POLITICS": "政治",
+      "HISTORY": "历史",
+      "GEOGRAPHY": "地理",
+      "OTHER": "其他"
+    },
+    "detail": {
+      "attempts": "总次数",
+      "correct": "正确次数",
+      "difficulty": "难度",
+      "interventions": "分析历史",
+      "errorQuestions": "关联错题"
+    },
+    "interventionType": {
+      "DIAGNOSIS": "诊断",
+      "HINT": "提示",
+      "REVIEW": "复习",
+      "EXPLANATION": "讲解"
+    }
   }
 }

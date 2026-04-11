@@ -34,6 +34,12 @@ export function BottomNav() {
       icon: "📚",
     },
     {
+      label: t("nav.mastery"),
+      href: "/mastery",
+      roles: ["STUDENT", "PARENT"],
+      icon: "🗺️",
+    },
+    {
       label: t("nav.parentOverview"),
       href: "/parent/overview",
       roles: ["PARENT"],

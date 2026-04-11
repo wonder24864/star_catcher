@@ -1,12 +1,12 @@
 /**
- * Skill: diagnose-error
+ * Skill: diagnose-error v1.1.0
  * Diagnose student error patterns and identify knowledge point weaknesses.
  *
  * Flow:
- *   1. Call AI to analyze the error pattern
- *   2. Read existing mastery state from memory
- *   3. Write updated diagnosis to memory
- *   4. Return structured diagnosis
+ *   1. Call AI to analyze the error pattern with full context
+ *   2. For each diagnosed weak KP, read existing mastery state
+ *   3. Log the diagnosis as an intervention in memory
+ *   4. Return structured diagnosis result
  */
 
 interface DiagnoseInput {
@@ -14,6 +14,36 @@ interface DiagnoseInput {
   correctAnswer: string;
   studentAnswer: string;
   subject: string;
+  grade?: string;
+  knowledgePointIds?: string[];
+  errorHistory?: Array<{
+    question: string;
+    studentAnswer: string;
+    knowledgePointName: string;
+    createdAt: string;
+  }>;
+}
+
+interface WeakKnowledgePoint {
+  knowledgePointId: string;
+  severity: "HIGH" | "MEDIUM" | "LOW";
+  reasoning: string;
+}
+
+interface DiagnosisResult {
+  errorPattern: string;
+  errorDescription: string;
+  weakKnowledgePoints: WeakKnowledgePoint[];
+  recommendation: string;
+}
+
+interface MasteryStateView {
+  id: string;
+  studentId: string;
+  knowledgePointId: string;
+  status: string;
+  totalAttempts: number;
+  correctAttempts: number;
 }
 
 interface SkillContext {
@@ -34,32 +64,67 @@ module.exports.execute = async function execute(
   input: DiagnoseInput,
   ctx: SkillContext,
 ): Promise<unknown> {
-  // 1. Call AI to analyze the error
-  const diagnosis = await ctx.callAI("DIAGNOSE_ERROR", {
+  // 1. Call AI to analyze the error with full context
+  const diagnosis = (await ctx.callAI("DIAGNOSE_ERROR", {
     question: input.question,
     correctAnswer: input.correctAnswer,
     studentAnswer: input.studentAnswer,
     subject: input.subject,
+    grade: input.grade ?? ctx.context.grade,
+    knowledgePointIds: input.knowledgePointIds,
+    errorHistory: input.errorHistory,
     locale: ctx.context.locale,
-    grade: ctx.context.grade,
-  });
+  })) as DiagnosisResult;
 
-  // 2. Read current mastery state (if exists)
-  const currentState = await ctx.readMemory("getMasteryState", {
-    studentId: ctx.context.studentId,
-    // knowledgePointId would come from AI diagnosis
-  });
+  // 2. For each diagnosed weak KP, read current mastery state
+  const masteryStates: Array<{
+    knowledgePointId: string;
+    currentStatus: string | null;
+    severity: string;
+  }> = [];
+
+  if (diagnosis.weakKnowledgePoints?.length) {
+    for (const weakKP of diagnosis.weakKnowledgePoints) {
+      const state = (await ctx.readMemory("getMasteryState", {
+        studentId: ctx.context.studentId,
+        knowledgePointId: weakKP.knowledgePointId,
+      })) as MasteryStateView | null;
+
+      masteryStates.push({
+        knowledgePointId: weakKP.knowledgePointId,
+        currentStatus: state?.status ?? null,
+        severity: weakKP.severity,
+      });
+    }
+  }
 
   // 3. Log the diagnosis as an intervention
-  await ctx.writeMemory("logIntervention", {
-    studentId: ctx.context.studentId,
-    type: "DIAGNOSIS",
-    content: diagnosis,
-  });
+  // Use the first weak KP for the intervention record,
+  // or a general entry if no specific KP identified
+  if (diagnosis.weakKnowledgePoints?.length) {
+    for (const weakKP of diagnosis.weakKnowledgePoints) {
+      await ctx.writeMemory("logIntervention", {
+        studentId: ctx.context.studentId,
+        knowledgePointId: weakKP.knowledgePointId,
+        type: "DIAGNOSIS",
+        content: {
+          errorPattern: diagnosis.errorPattern,
+          errorDescription: diagnosis.errorDescription,
+          severity: weakKP.severity,
+          reasoning: weakKP.reasoning,
+          recommendation: diagnosis.recommendation,
+        },
+      });
+    }
+  }
 
+  // 4. Return structured result for the Agent to process
   return {
-    diagnosis,
-    currentState,
+    errorPattern: diagnosis.errorPattern,
+    errorDescription: diagnosis.errorDescription,
+    weakKnowledgePoints: diagnosis.weakKnowledgePoints,
+    recommendation: diagnosis.recommendation,
+    masteryStates,
     studentId: ctx.context.studentId,
   };
 };

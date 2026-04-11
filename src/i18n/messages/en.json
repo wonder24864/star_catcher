@@ -15,7 +15,8 @@
     "adminUsers": "Users",
     "adminSettings": "System Config",
     "parentOverview": "Today's Overview",
-    "parentStats": "Learning Stats"
+    "parentStats": "Learning Stats",
+    "mastery": "Mastery Map"
   },
   "auth": {
     "login": "Login",
@@ -74,6 +75,7 @@
     "language": "Language"
   },
   "common": {
+    "all": "All",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -405,5 +407,54 @@
     "uploadSuccess": "Skill uploaded successfully",
     "allStatuses": "All Statuses",
     "ms": "ms"
+  },
+  "mastery": {
+    "title": "Mastery Map",
+    "empty": "No learning records yet",
+    "accuracy": "Accuracy",
+    "attempts": "{count} attempts",
+    "stats": {
+      "weak": "Weak",
+      "mastered": "Mastered",
+      "newError": "New Errors"
+    },
+    "status": {
+      "NEW_ERROR": "New Error",
+      "CORRECTED": "Corrected",
+      "REVIEWING": "Reviewing",
+      "MASTERED": "Mastered",
+      "REGRESSED": "Regressed"
+    },
+    "filters": {
+      "ALL": "All",
+      "WEAK": "Weak",
+      "MASTERED": "Mastered",
+      "NEW_ERROR": "New Errors"
+    },
+    "subjects": {
+      "MATH": "Math",
+      "CHINESE": "Chinese",
+      "ENGLISH": "English",
+      "PHYSICS": "Physics",
+      "CHEMISTRY": "Chemistry",
+      "BIOLOGY": "Biology",
+      "POLITICS": "Politics",
+      "HISTORY": "History",
+      "GEOGRAPHY": "Geography",
+      "OTHER": "Other"
+    },
+    "detail": {
+      "attempts": "Total Attempts",
+      "correct": "Correct",
+      "difficulty": "Difficulty",
+      "interventions": "Analysis History",
+      "errorQuestions": "Related Error Questions"
+    },
+    "interventionType": {
+      "DIAGNOSIS": "Diagnosis",
+      "HINT": "Hint",
+      "REVIEW": "Review",
+      "EXPLANATION": "Explanation"
+    }
   }
 }

@@ -50,12 +50,28 @@ export interface QuestionUnderstandingJobData {
   locale: string;
 }
 
+export interface DiagnosisJobData {
+  sessionId: string;
+  questionId: string;
+  errorQuestionId: string;
+  questionText: string;
+  correctAnswer: string;
+  studentAnswer: string;
+  subject: string;
+  grade?: string;
+  knowledgePointIds: string[];
+  studentId: string;
+  userId: string;
+  locale: string;
+}
+
 export type AIJobData =
   | OcrRecognizeJobData
   | CorrectionPhotosJobData
   | HelpGenerateJobData
   | KGImportJobData
-  | QuestionUnderstandingJobData;
+  | QuestionUnderstandingJobData
+  | DiagnosisJobData;
 
 /** Job names matching ADR-003 timeout/retry configuration */
 export type AIJobName =
@@ -63,4 +79,5 @@ export type AIJobName =
   | "correction-photos"
   | "help-generate"
   | "kg-import"
-  | "question-understanding";
+  | "question-understanding"
+  | "diagnosis";

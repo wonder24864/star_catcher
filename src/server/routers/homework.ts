@@ -11,6 +11,8 @@ import {
   enqueueHelpGeneration,
   enqueueQuestionUnderstanding,
 } from "@/lib/infra/queue";
+import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
+import type { PrismaClient } from "@prisma/client";
 import {
   createSessionSchema,
   getSessionSchema,
@@ -678,6 +680,49 @@ export const homeworkRouter = router({
             needsReview: grade.needsReview,
           },
         });
+      }
+
+      // ── Mastery State: NEW_ERROR → CORRECTED for correct answers ──
+      const correctGrades = gradeResults.filter((g) => g.isCorrect);
+      if (correctGrades.length > 0) {
+        const memory = new StudentMemoryImpl(ctx.db as unknown as PrismaClient);
+        for (const grade of correctGrades) {
+          try {
+            // Find KP mappings for this question's ErrorQuestion
+            const errorQuestion = await ctx.db.errorQuestion.findFirst({
+              where: { sessionQuestionId: grade.questionId, deletedAt: null },
+              select: {
+                knowledgeMappings: {
+                  select: { knowledgePointId: true },
+                },
+              },
+            });
+            if (errorQuestion?.knowledgeMappings.length) {
+              for (const mapping of errorQuestion.knowledgeMappings) {
+                const mastery = await memory.getMasteryState(
+                  session.studentId,
+                  mapping.knowledgePointId,
+                );
+                // Only transition if currently NEW_ERROR (null check protection)
+                if (mastery?.status === "NEW_ERROR") {
+                  await memory.updateMasteryState(
+                    session.studentId,
+                    mapping.knowledgePointId,
+                    {
+                      from: "NEW_ERROR",
+                      to: "CORRECTED",
+                      reason: "Student answered correctly in correction round",
+                    },
+                  );
+                }
+              }
+            }
+          } catch (masteryError) {
+            console.warn(
+              `[submitCorrections] mastery update failed for question ${grade.questionId}: ${masteryError instanceof Error ? masteryError.message : masteryError}`,
+            );
+          }
+        }
       }
 
       // Recalculate score from all questions' current state

@@ -15,6 +15,7 @@ import { handleCorrectionPhotos } from "./handlers/correction-photos";
 import { handleHelpGenerate } from "./handlers/help-generate";
 import { handleKGImport } from "./handlers/kg-import";
 import { handleQuestionUnderstanding } from "./handlers/question-understanding";
+import { handleDiagnosis } from "./handlers/diagnosis";
 
 console.log("[worker] Starting AI jobs worker...");
 
@@ -51,6 +52,11 @@ const worker = new Worker<AIJobData, void, AIJobName>(
       case "question-understanding":
         await handleQuestionUnderstanding(
           job as unknown as Job<import("@/lib/infra/queue/types").QuestionUnderstandingJobData>,
+        );
+        break;
+      case "diagnosis":
+        await handleDiagnosis(
+          job as unknown as Job<import("@/lib/infra/queue/types").DiagnosisJobData>,
         );
         break;
       default:

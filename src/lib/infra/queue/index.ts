@@ -12,6 +12,7 @@ import type {
   CorrectionPhotosJobData,
   HelpGenerateJobData,
   QuestionUnderstandingJobData,
+  DiagnosisJobData,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -87,6 +88,22 @@ export async function enqueueQuestionUnderstanding(
   data: QuestionUnderstandingJobData,
 ): Promise<string> {
   const job = await getQueue().add("question-understanding", data, {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
+    removeOnComplete: 100,
+    removeOnFail: 200,
+  });
+  return job.id!;
+}
+
+/**
+ * Enqueue diagnosis agent job.
+ * Timeout: 30s, Retries: 2 (Agent may need multiple AI calls)
+ */
+export async function enqueueDiagnosis(
+  data: DiagnosisJobData,
+): Promise<string> {
+  const job = await getQueue().add("diagnosis", data, {
     attempts: 3,
     backoff: { type: "exponential", delay: 2000 },
     removeOnComplete: 100,
