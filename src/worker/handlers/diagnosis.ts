@@ -428,6 +428,20 @@ ${errorHistoryForAgent.length > 0 ? `Error history (last 30 days):\n${errorHisto
         try {
           await memory.ensureMasteryState(studentId, weakKP.knowledgePointId);
           masteryUpdates++;
+
+          // Write diagnosis result to InterventionHistory (US-035 audit trail)
+          await memory.logIntervention(
+            studentId,
+            weakKP.knowledgePointId,
+            "DIAGNOSIS",
+            {
+              errorPattern: diagnosis.errorPattern,
+              errorQuestionId,
+              severity: weakKP.severity,
+              reasoning: weakKP.reasoning,
+            },
+            { agentId: diagnosisAgent.name },
+          );
         } catch (error) {
           console.warn(
             `${logPrefix} — failed to ensure mastery state for KP ${weakKP.knowledgePointId}: ${error instanceof Error ? error.message : error}`,

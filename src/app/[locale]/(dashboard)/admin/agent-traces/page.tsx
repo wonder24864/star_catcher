@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 const STATUS_COLORS: Record<string, string> = {
   RUNNING: "bg-blue-100 text-blue-700",
@@ -27,11 +28,15 @@ export default function AgentTracesPage() {
   const [page, setPage] = useState(1);
   const [agentFilter, setAgentFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const { data, isLoading } = trpc.agentTrace.list.useQuery({
     page,
     agentName: agentFilter === "all" ? undefined : agentFilter,
     status: statusFilter === "all" ? undefined : statusFilter as "RUNNING" | "COMPLETED" | "TERMINATED" | "FAILED",
+    ...(dateFrom ? { dateFrom: new Date(dateFrom) } : {}),
+    ...(dateTo ? { dateTo: new Date(dateTo) } : {}),
   });
 
   const { data: stats } = trpc.agentTrace.stats.useQuery();
@@ -83,6 +88,21 @@ export default function AgentTracesPage() {
             ))}
           </SelectContent>
         </Select>
+
+        <Input
+          type="date"
+          className="w-44"
+          value={dateFrom}
+          onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+          placeholder={t("agentTrace.filter.dateFrom")}
+        />
+        <Input
+          type="date"
+          className="w-44"
+          value={dateTo}
+          onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+          placeholder={t("agentTrace.filter.dateTo")}
+        />
       </div>
 
       {/* Trace List */}

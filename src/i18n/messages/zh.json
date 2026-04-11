@@ -74,7 +74,11 @@
     "changePassword": "修改密码",
     "currentPassword": "当前密码",
     "newPassword": "新密码",
-    "language": "语言"
+    "language": "语言",
+    "languageNames": {
+      "zh": "中文",
+      "en": "English"
+    }
   },
   "common": {
     "all": "全部",
@@ -149,6 +153,8 @@
     "correctAnswer": "正确答案",
     "subject": "学科",
     "knowledgePoint": "知识点",
+    "errorCount": "{count} 条错题",
+    "attemptCount": "出错 {count} 次",
     "lowConfidence": "AI 信心不足，请确认",
     "noQuestions": "未识别到题目",
     "status": {
@@ -279,6 +285,7 @@
     "session": {
       "corrected": "改正 {count} 题",
       "helpRecords": "求助记录",
+      "addNotePlaceholder": "添加家长备注（最多500字）",
       "questionList": "题目列表",
       "wrongRemaining": "仍有 {count} 题未改正"
     },
@@ -381,6 +388,25 @@
       "pendingCount": "条待审核",
       "approveAll": "全部通过",
       "rejectAll": "全部驳回"
+    },
+    "name": "名称",
+    "questionCount": "{count} 题关联",
+    "edit": {
+      "title": "编辑知识点",
+      "description": "描述",
+      "importance": "重要性",
+      "examFrequency": "考频",
+      "save": "保存"
+    },
+    "relations": {
+      "title": "关系",
+      "add": "添加关系",
+      "type": "类型",
+      "target": "目标",
+      "searchPlaceholder": "搜索知识点...",
+      "PREREQUISITE": "前置",
+      "PARALLEL": "平行",
+      "CONTAINS": "包含"
     }
   },
   "skills": {
@@ -567,7 +593,9 @@
     "filter": {
       "allAgents": "全部 Agent",
       "allStatuses": "全部状态",
-      "dateRange": "日期范围"
+      "dateRange": "日期范围",
+      "dateFrom": "开始日期",
+      "dateTo": "结束日期"
     },
     "summary": {
       "analyzing": "AI 正在分析...",

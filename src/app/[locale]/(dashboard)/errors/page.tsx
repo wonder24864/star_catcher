@@ -143,7 +143,7 @@ export default function ErrorsPage() {
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            {data.total} 条错题
+            {t("homework.errorCount", { count: data.total })}
           </p>
           <div className="space-y-2">
             {data.items.map((eq) => (
@@ -162,7 +162,7 @@ export default function ErrorsPage() {
                         </Badge>
                         {eq.isMastered && (
                           <Badge variant="outline" className="text-green-600 border-green-600">
-                            已掌握
+                            {t("mastery.status.MASTERED")}
                           </Badge>
                         )}
                       </div>
@@ -178,7 +178,7 @@ export default function ErrorsPage() {
                     <div className="text-right text-xs text-muted-foreground shrink-0">
                       <p>{new Date(eq.createdAt).toLocaleDateString()}</p>
                       <p className="mt-1">
-                        {t("homework.check.round", { round: eq.totalAttempts })} 次
+                        {t("homework.attemptCount", { count: eq.totalAttempts })}
                       </p>
                     </div>
                   </CardContent>

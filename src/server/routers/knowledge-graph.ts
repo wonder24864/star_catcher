@@ -90,8 +90,10 @@ export const knowledgeGraphRouter = router({
             difficulty: true,
             importance: true,
             examFrequency: true,
+            description: true,
             metadata: true,
             createdAt: true,
+            _count: { select: { questionMappings: true } },
           },
           orderBy: [{ depth: "asc" }, { name: "asc" }],
           skip: (input.page - 1) * input.pageSize,
@@ -532,6 +534,31 @@ export const knowledgeGraphRouter = router({
       const objectKey = `kg-imports/${ctx.session.userId}/${Date.now()}.${ext}`;
       const { url } = await getPresignedPutUrl(objectKey, "application/pdf");
       return { url, objectKey };
+    }),
+
+  /** Start KG import: enqueue worker job after PDF upload */
+  startImport: adminProcedure
+    .input(
+      z.object({
+        fileUrl: z.string().min(1),
+        bookTitle: z.string().min(1).max(200),
+        subject: subjectEnum,
+        schoolLevel: schoolLevelEnum,
+        grade: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { enqueueKGImport } = await import("@/lib/infra/queue");
+      const jobId = await enqueueKGImport({
+        fileUrl: input.fileUrl,
+        bookTitle: input.bookTitle,
+        subject: input.subject as string,
+        schoolLevel: input.schoolLevel as string,
+        grade: input.grade,
+        userId: ctx.session.userId as string,
+        locale: (ctx.session.locale as string) ?? "zh",
+      });
+      return { jobId };
     }),
 });
 

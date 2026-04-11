@@ -13,10 +13,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 type Tab = "tree" | "import" | "review";
 type Subject = "MATH" | "CHINESE" | "ENGLISH" | "PHYSICS" | "CHEMISTRY" | "BIOLOGY" | "HISTORY" | "GEOGRAPHY" | "POLITICS" | "OTHER";
 type SchoolLevel = "PRIMARY" | "JUNIOR" | "SENIOR";
+type RelationType = "PREREQUISITE" | "PARALLEL" | "CONTAINS";
 
 export default function KnowledgeGraphPage() {
   const t = useTranslations();
@@ -84,6 +95,9 @@ function TreeTab({
   onPageChange: (v: number) => void;
 }) {
   const t = useTranslations();
+  const utils = trpc.useUtils();
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   const { data, isLoading } = trpc.knowledgeGraph.list.useQuery({
     subject,
     schoolLevel,
@@ -93,7 +107,9 @@ function TreeTab({
   });
 
   const deleteMutation = trpc.knowledgeGraph.delete.useMutation({
-    onSuccess: () => { /* refetch handled by invalidation */ },
+    onSuccess: () => {
+      utils.knowledgeGraph.list.invalidate();
+    },
   });
 
   const totalPages = data ? Math.ceil(data.total / 30) : 1;
@@ -147,15 +163,30 @@ function TreeTab({
                   <Badge variant="outline" className="text-xs">
                     {t(`knowledgeGraph.difficulty`)} {kp.difficulty}
                   </Badge>
+                  {kp._count.questionMappings > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {t("knowledgeGraph.questionCount", { count: kp._count.questionMappings })}
+                    </Badge>
+                  )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive text-xs"
-                  onClick={() => deleteMutation.mutate({ id: kp.id })}
-                >
-                  {t("common.delete")}
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => setEditingId(kp.id)}
+                  >
+                    {t("common.edit")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive text-xs"
+                    onClick={() => deleteMutation.mutate({ id: kp.id })}
+                  >
+                    {t("common.delete")}
+                  </Button>
+                </div>
               </div>
             </Card>
           ))}
@@ -179,7 +210,330 @@ function TreeTab({
           </Button>
         </div>
       )}
+
+      {/* Edit Dialog */}
+      {editingId && (
+        <KPEditDialog
+          kpId={editingId}
+          open={!!editingId}
+          onOpenChange={(open) => { if (!open) setEditingId(null); }}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── KP Edit Dialog ───
+
+function KPEditDialog({
+  kpId,
+  open,
+  onOpenChange,
+}: {
+  kpId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const t = useTranslations();
+  const utils = trpc.useUtils();
+
+  // Fetch full KP data with relations
+  const { data: kp, isLoading } = trpc.knowledgeGraph.getById.useQuery(
+    { id: kpId },
+    { enabled: open },
+  );
+
+  // Edit form state
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [difficulty, setDifficulty] = useState("3");
+  const [importance, setImportance] = useState("3");
+  const [examFrequency, setExamFrequency] = useState("3");
+  const [formInitialized, setFormInitialized] = useState(false);
+
+  // Initialize form when data loads
+  if (kp && !formInitialized) {
+    setName(kp.name);
+    setDescription(kp.description ?? "");
+    setDifficulty(String(kp.difficulty));
+    setImportance(String(kp.importance));
+    setExamFrequency(String(kp.examFrequency));
+    setFormInitialized(true);
+  }
+
+  // Reset form state when dialog closes
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setFormInitialized(false);
+    }
+    onOpenChange(nextOpen);
+  };
+
+  // Update mutation
+  const updateMutation = trpc.knowledgeGraph.update.useMutation({
+    onSuccess: () => {
+      toast.success(t("knowledgeGraph.edit.save"));
+      utils.knowledgeGraph.list.invalidate();
+      utils.knowledgeGraph.getById.invalidate({ id: kpId });
+    },
+  });
+
+  // Relation mutations
+  const addRelationMutation = trpc.knowledgeGraph.addRelation.useMutation({
+    onSuccess: () => {
+      utils.knowledgeGraph.getById.invalidate({ id: kpId });
+      setRelationSearchQuery("");
+      setRelationSearchResults([]);
+      setSelectedTargetId("");
+    },
+  });
+
+  const removeRelationMutation = trpc.knowledgeGraph.removeRelation.useMutation({
+    onSuccess: () => {
+      utils.knowledgeGraph.getById.invalidate({ id: kpId });
+    },
+  });
+
+  // Relation add form state
+  const [relationSearchQuery, setRelationSearchQuery] = useState("");
+  const [relationSearchResults, setRelationSearchResults] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [selectedTargetId, setSelectedTargetId] = useState("");
+  const [relationType, setRelationType] = useState<RelationType>("PREREQUISITE");
+
+  // Search for target KP
+  const searchQuery = trpc.knowledgeGraph.search.useQuery(
+    { query: relationSearchQuery, limit: 10 },
+    { enabled: relationSearchQuery.length >= 1 },
+  );
+
+  // Sync search results when query data changes
+  if (searchQuery.data && searchQuery.data !== relationSearchResults) {
+    const filtered = searchQuery.data.filter((item) => item.id !== kpId);
+    if (
+      filtered.length !== relationSearchResults.length ||
+      filtered.some((f, i) => f.id !== relationSearchResults[i]?.id)
+    ) {
+      setRelationSearchResults(filtered);
+    }
+  }
+
+  function handleSave() {
+    updateMutation.mutate({
+      id: kpId,
+      name,
+      description: description || undefined,
+      difficulty: parseInt(difficulty, 10),
+      importance: parseInt(importance, 10),
+      examFrequency: parseInt(examFrequency, 10),
+    });
+  }
+
+  function handleAddRelation() {
+    if (!selectedTargetId) return;
+    addRelationMutation.mutate({
+      fromId: kpId,
+      toId: selectedTargetId,
+      type: relationType,
+    });
+  }
+
+  function handleRemoveRelation(relationId: string) {
+    removeRelationMutation.mutate({ id: relationId });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t("knowledgeGraph.edit.title")}</DialogTitle>
+        </DialogHeader>
+
+        {isLoading ? (
+          <p className="text-muted-foreground text-sm">{t("common.loading")}</p>
+        ) : kp ? (
+          <div className="space-y-6">
+            {/* Edit Form */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="kp-name">{t("knowledgeGraph.name")}</Label>
+                <Input
+                  id="kp-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="kp-description">{t("knowledgeGraph.edit.description")}</Label>
+                <Textarea
+                  id="kp-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label>{t("knowledgeGraph.difficulty")}</Label>
+                  <Select value={difficulty} onValueChange={setDifficulty}>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map((v) => (
+                        <SelectItem key={v} value={String(v)}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{t("knowledgeGraph.edit.importance")}</Label>
+                  <Select value={importance} onValueChange={setImportance}>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map((v) => (
+                        <SelectItem key={v} value={String(v)}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{t("knowledgeGraph.edit.examFrequency")}</Label>
+                  <Select value={examFrequency} onValueChange={setExamFrequency}>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map((v) => (
+                        <SelectItem key={v} value={String(v)}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSave}
+                disabled={updateMutation.isPending || !name.trim()}
+                className="w-full"
+              >
+                {t("knowledgeGraph.edit.save")}
+              </Button>
+            </div>
+
+            {/* Relations Section */}
+            <div className="space-y-3 border-t pt-4">
+              <h3 className="font-medium text-sm">{t("knowledgeGraph.relations.title")}</h3>
+
+              {/* Existing relations from this KP */}
+              {kp.relationsFrom.length > 0 ? (
+                <div className="space-y-1">
+                  {kp.relationsFrom.map((rel) => (
+                    <div
+                      key={rel.id}
+                      className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {t(`knowledgeGraph.relations.${rel.type}` as never)}
+                        </Badge>
+                        <span className="text-sm">{rel.toPoint.name}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive text-xs h-7"
+                        onClick={() => handleRemoveRelation(rel.id)}
+                        disabled={removeRelationMutation.isPending}
+                      >
+                        {t("common.delete")}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  {t("knowledgeGraph.empty")}
+                </p>
+              )}
+
+              {/* Add relation row */}
+              <div className="space-y-2 rounded-md border p-3">
+                <p className="text-sm font-medium">{t("knowledgeGraph.relations.add")}</p>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">{t("knowledgeGraph.relations.target")}</Label>
+                  <Input
+                    value={relationSearchQuery}
+                    onChange={(e) => {
+                      setRelationSearchQuery(e.target.value);
+                      setSelectedTargetId("");
+                    }}
+                    placeholder={t("knowledgeGraph.relations.searchPlaceholder")}
+                    className="text-sm"
+                  />
+                  {relationSearchResults.length > 0 && !selectedTargetId && (
+                    <div className="rounded-md border max-h-32 overflow-y-auto">
+                      {relationSearchResults.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted/50"
+                          onClick={() => {
+                            setSelectedTargetId(item.id);
+                            setRelationSearchQuery(item.name);
+                            setRelationSearchResults([]);
+                          }}
+                        >
+                          {item.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs">{t("knowledgeGraph.relations.type")}</Label>
+                    <Select
+                      value={relationType}
+                      onValueChange={(v) => setRelationType(v as RelationType)}
+                    >
+                      <SelectTrigger className="text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(["PREREQUISITE", "PARALLEL", "CONTAINS"] as RelationType[]).map(
+                          (type) => (
+                            <SelectItem key={type} value={type}>
+                              {t(`knowledgeGraph.relations.${type}` as never)}
+                            </SelectItem>
+                          ),
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleAddRelation}
+                    disabled={!selectedTargetId || addRelationMutation.isPending}
+                  >
+                    {t("knowledgeGraph.relations.add")}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -193,6 +547,7 @@ function ImportTab() {
   const [importing, setImporting] = useState(false);
 
   const uploadUrlMutation = trpc.knowledgeGraph.getImportUploadUrl.useMutation();
+  const startImportMutation = trpc.knowledgeGraph.startImport.useMutation();
 
   async function handleImport(file: File) {
     if (!bookTitle.trim()) return;
@@ -204,8 +559,13 @@ function ImportTab() {
       });
       // 2. Upload to MinIO
       await fetch(url, { method: "PUT", body: file, headers: { "Content-Type": "application/pdf" } });
-      // 3. TODO: Enqueue kg-import job via tRPC mutation (requires queue enqueue endpoint)
-      console.log("Uploaded PDF to:", objectKey, { bookTitle, subject, schoolLevel });
+      // 3. Enqueue kg-import worker job
+      await startImportMutation.mutateAsync({
+        fileUrl: objectKey,
+        bookTitle,
+        subject,
+        schoolLevel,
+      });
     } finally {
       setImporting(false);
     }

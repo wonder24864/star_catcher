@@ -125,11 +125,25 @@ star_catcher/
     ├── app/                   # ── 页面层（Next.js App Router）──
     │   ├── [locale]/(auth)/       # 登录 / 注册
     │   ├── [locale]/(dashboard)/  # 受保护的功能页面
-    │   │   ├── check/                 # 作业检查（新建/详情/结果）
-    │   │   ├── errors/                # 错题管理（列表/详情）
+    │   │   ├── check/                 # 作业检查
+    │   │   │   ├── new/                   # 新建检查（拍照上传）
+    │   │   │   ├── manual/                # 手动录入错题
+    │   │   │   └── [sessionId]/results/   # 检查结果 + 多轮改正
+    │   │   ├── errors/                # 错题管理
+    │   │   │   ├── page.tsx               # 错题列表（筛选/搜索/分页）
+    │   │   │   └── [id]/page.tsx          # 错题详情（AI 摘要 + 家长备注）
     │   │   ├── mastery/               # 掌握地图（掌握度 + 间隔复习 + 复习对话框）
-    │   │   ├── parent/                # 家长视图（概览/统计/时间线/学习报告）
-    │   │   ├── admin/                 # 管理后台（用户/配置/知识图谱/Skill/Agent 追踪）
+    │   │   ├── parent/                # 家长视图
+    │   │   │   ├── overview/              # 今日概览
+    │   │   │   ├── stats/                 # 学习统计
+    │   │   │   ├── sessions/[sessionId]/  # 检查时间线
+    │   │   │   └── reports/               # 学习报告（周报/月报）
+    │   │   ├── admin/                 # 管理后台
+    │   │   │   ├── users/[id]/            # 用户管理 + 详情
+    │   │   │   ├── settings/              # 系统配置
+    │   │   │   ├── knowledge-graph/       # 知识图谱管理
+    │   │   │   ├── skills/                # Skill 管理
+    │   │   │   └── agent-traces/[traceId]/ # Agent 追踪（列表 + 详情时序图）
     │   │   ├── family/                # 家庭组管理
     │   │   └── settings/              # 个人设置
     │   ├── api/trpc/[trpc]/       # tRPC 端点
@@ -212,7 +226,7 @@ star_catcher/
     │
     ├── worker/                # ── BullMQ Worker（独立 Docker 服务）──
     │   ├── index.ts               # 入口（监听 ai-jobs 队列）
-    │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成
+    │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成 / 题目理解 / 诊断
     │
     ├── cli/                   # ── CLI 工具 ──
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）

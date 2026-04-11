@@ -162,12 +162,12 @@ export default function SettingsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="zh">中文</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="zh">{t("profile.languageNames.zh")}</SelectItem>
+                  <SelectItem value="en">{t("profile.languageNames.en")}</SelectItem>
                 </SelectContent>
               </Select>
             ) : (
-              <p className="text-sm">{user.locale === "zh" ? "中文" : "English"}</p>
+              <p className="text-sm">{t(`profile.languageNames.${user.locale}`)}</p>
             )}
           </div>
 

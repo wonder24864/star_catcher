@@ -19,6 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 type SkillStatus = "DRAFT" | "ACTIVE" | "DISABLED" | "DEPRECATED";
 
@@ -37,6 +39,7 @@ export default function SkillsPage() {
   const [statusFilter, setStatusFilter] = useState<SkillStatus | "ALL">("ALL");
   const [page, setPage] = useState(1);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const pageSize = 20;
 
   const skillsQuery = trpc.skill.list.useQuery({
@@ -83,6 +86,10 @@ export default function SkillsPage() {
             </SelectItem>
           </SelectContent>
         </Select>
+
+        <Button onClick={() => setUploadOpen(true)}>
+          {t("skills.upload")}
+        </Button>
       </div>
 
       {/* Skill List */}
@@ -192,6 +199,13 @@ export default function SkillsPage() {
         open={!!selectedSkillId}
         onClose={() => setSelectedSkillId(null)}
       />
+
+      {/* Skill Upload Dialog */}
+      <SkillUploadDialog
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onSuccess={() => skillsQuery.refetch()}
+      />
     </div>
   );
 }
@@ -300,6 +314,88 @@ function SkillDetailDialog({
               )}
           </div>
         ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Skill Upload Dialog ─────────────────────────
+
+function SkillUploadDialog({
+  open,
+  onClose,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const t = useTranslations();
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const getUploadUrl = trpc.skill.getUploadUrl.useMutation();
+  const register = trpc.skill.register.useMutation();
+
+  const handleUpload = async () => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      // Parse skill name and version from filename (e.g., my-skill-1.0.0.zip)
+      const basename = file.name.replace(/\.zip$/i, "");
+      const versionMatch = basename.match(/-(\d+\.\d+\.\d+)$/);
+      const version = versionMatch?.[1] ?? "1.0.0";
+      const skillName = versionMatch ? basename.slice(0, -versionMatch[0].length) : basename;
+
+      const { url, objectKey } = await getUploadUrl.mutateAsync({
+        skillName,
+        version,
+      });
+      await fetch(url, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": "application/zip" },
+      });
+      await register.mutateAsync({
+        name: skillName,
+        version,
+        description: skillName,
+        author: "admin",
+        functionSchema: { name: skillName, description: skillName, parameters: { type: "object" as const, properties: {}, required: [] } },
+        bundleUrl: objectKey,
+      });
+      toast.success(t("skills.uploadSuccess"));
+      onSuccess();
+      onClose();
+      setFile(null);
+    } catch {
+      toast.error(t("error.serverError"));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t("skills.upload")}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input
+            type="file"
+            accept=".zip"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose} disabled={uploading}>
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={handleUpload} disabled={!file || uploading}>
+              {uploading ? t("common.loading") : t("skills.upload")}
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

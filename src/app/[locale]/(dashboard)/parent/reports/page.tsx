@@ -15,6 +15,12 @@ import { useStudentStore } from "@/lib/stores/student-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const STATUS_COLORS: Record<string, string> = {
   NEW_ERROR: "bg-red-100 text-red-700",
@@ -26,6 +32,7 @@ export default function ParentReportsPage() {
   const t = useTranslations();
   const { selectedStudentId, setSelectedStudentId } = useStudentStore();
   const [period, setPeriod] = useState<"7d" | "30d">("7d");
+  const [selectedKpId, setSelectedKpId] = useState<string | null>(null);
 
   const { data: students } = trpc.family.students.useQuery();
   const effectiveStudentId = selectedStudentId || students?.[0]?.id || null;
@@ -83,6 +90,13 @@ export default function ParentReportsPage() {
       {!isLoading && !report && (
         <p className="py-12 text-center text-muted-foreground">{t("report.noData")}</p>
       )}
+
+      <KPProgressDialog
+        knowledgePointId={selectedKpId}
+        studentId={effectiveStudentId}
+        open={!!selectedKpId}
+        onClose={() => setSelectedKpId(null)}
+      />
 
       {report && (
         <>
@@ -176,7 +190,8 @@ export default function ParentReportsPage() {
                   {report.weakPoints.map((wp) => (
                     <div
                       key={wp.knowledgePointId}
-                      className="flex items-center justify-between rounded-lg border p-3"
+                      className="flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-colors hover:bg-accent/50"
+                      onClick={() => setSelectedKpId(wp.knowledgePointId)}
                     >
                       <div>
                         <p className="font-medium">{wp.name}</p>
@@ -220,5 +235,76 @@ function SummaryCard({
         <p className={`text-2xl font-bold ${color}`}>{value}</p>
       </CardContent>
     </Card>
+  );
+}
+
+// ─── KP Progress Dialog ─────────────────────────
+
+function KPProgressDialog({
+  knowledgePointId,
+  studentId,
+  open,
+  onClose,
+}: {
+  knowledgePointId: string | null;
+  studentId: string;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const t = useTranslations();
+  const { data, isLoading } = trpc.report.knowledgeProgress.useQuery(
+    { studentId, knowledgePointId: knowledgePointId!, limit: 20 },
+    { enabled: !!knowledgePointId },
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[80vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t("report.progress.title")}</DialogTitle>
+        </DialogHeader>
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          </div>
+        ) : data ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="font-medium">{data.mastery.knowledgePoint.name}</p>
+              <Badge variant="secondary">{t(("mastery.status." + data.mastery.status) as never)}</Badge>
+            </div>
+
+            <div>
+              <h3 className="mb-2 text-sm font-medium">
+                {t("report.progress.interventions")}
+              </h3>
+              {data.interventions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">-</p>
+              ) : (
+                <div className="space-y-2">
+                  {data.interventions.map((iv) => (
+                    <div key={iv.id} className="rounded border p-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="text-xs">
+                          {t(("mastery.interventionType." + iv.type) as never)}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(iv.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {iv.content && (
+                        <p className="mt-1 text-muted-foreground text-xs">
+                          {typeof iv.content === "string" ? iv.content : JSON.stringify(iv.content)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }

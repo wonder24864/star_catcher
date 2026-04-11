@@ -114,7 +114,7 @@ export default function ErrorDetailPage() {
             </Badge>
             {question.isMastered && (
               <Badge variant="outline" className="text-green-600 border-green-600">
-                已掌握
+                {t("mastery.status.MASTERED")}
               </Badge>
             )}
           </div>
@@ -148,7 +148,7 @@ export default function ErrorDetailPage() {
           )}
 
           <div className="pt-2 text-xs text-muted-foreground flex gap-4">
-            <span>出错 {question.totalAttempts} 次</span>
+            <span>{t("homework.attemptCount", { count: question.totalAttempts })}</span>
             <span>{new Date(question.createdAt).toLocaleDateString()}</span>
           </div>
         </CardContent>
@@ -227,7 +227,7 @@ export default function ErrorDetailPage() {
             {isParent && (
               <div className="space-y-2 pt-2">
                 <Textarea
-                  placeholder="添加家长备注（最多500字）"
+                  placeholder={t("parent.session.addNotePlaceholder")}
                   value={noteContent}
                   onChange={(e) => setNoteContent(e.target.value)}
                   maxLength={500}

@@ -74,7 +74,11 @@
     "changePassword": "Change Password",
     "currentPassword": "Current Password",
     "newPassword": "New Password",
-    "language": "Language"
+    "language": "Language",
+    "languageNames": {
+      "zh": "中文",
+      "en": "English"
+    }
   },
   "common": {
     "all": "All",
@@ -149,6 +153,8 @@
     "correctAnswer": "Correct Answer",
     "subject": "Subject",
     "knowledgePoint": "Knowledge Point",
+    "errorCount": "{count} error questions",
+    "attemptCount": "{count} attempts",
     "lowConfidence": "AI confidence is low, please verify",
     "noQuestions": "No questions detected",
     "status": {
@@ -279,6 +285,7 @@
     "session": {
       "corrected": "{count} corrected",
       "helpRecords": "Help Records",
+      "addNotePlaceholder": "Add parent note (max 500 characters)",
       "questionList": "Questions",
       "wrongRemaining": "{count} questions still incorrect"
     },
@@ -381,6 +388,25 @@
       "pendingCount": "pending review",
       "approveAll": "Approve All",
       "rejectAll": "Reject All"
+    },
+    "name": "Name",
+    "questionCount": "{count} questions",
+    "edit": {
+      "title": "Edit Knowledge Point",
+      "description": "Description",
+      "importance": "Importance",
+      "examFrequency": "Exam Frequency",
+      "save": "Save"
+    },
+    "relations": {
+      "title": "Relations",
+      "add": "Add Relation",
+      "type": "Type",
+      "target": "Target",
+      "searchPlaceholder": "Search knowledge point...",
+      "PREREQUISITE": "Prerequisite",
+      "PARALLEL": "Parallel",
+      "CONTAINS": "Contains"
     }
   },
   "skills": {
@@ -567,7 +593,9 @@
     "filter": {
       "allAgents": "All Agents",
       "allStatuses": "All Statuses",
-      "dateRange": "Date Range"
+      "dateRange": "Date Range",
+      "dateFrom": "From date",
+      "dateTo": "To date"
     },
     "summary": {
       "analyzing": "AI is analyzing...",

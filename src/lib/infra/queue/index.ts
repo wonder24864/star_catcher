@@ -13,6 +13,7 @@ import type {
   HelpGenerateJobData,
   QuestionUnderstandingJobData,
   DiagnosisJobData,
+  KGImportJobData,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -104,6 +105,22 @@ export async function enqueueDiagnosis(
   data: DiagnosisJobData,
 ): Promise<string> {
   const job = await getQueue().add("diagnosis", data, {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
+    removeOnComplete: 100,
+    removeOnFail: 200,
+  });
+  return job.id!;
+}
+
+/**
+ * Enqueue knowledge graph import job.
+ * Timeout: 30s, Retries: 2 (PDF parse + single AI call)
+ */
+export async function enqueueKGImport(
+  data: KGImportJobData,
+): Promise<string> {
+  const job = await getQueue().add("kg-import", data, {
     attempts: 3,
     backoff: { type: "exponential", delay: 2000 },
     removeOnComplete: 100,
