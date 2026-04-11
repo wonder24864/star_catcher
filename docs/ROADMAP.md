@@ -31,7 +31,7 @@
 |--------|------|------|------|
 | Sprint 4a | Week 7 | Skill 插件基础设施（IPC 沙箱 + 打包 + 注册表）| 已完成 |
 | Sprint 4b | Week 8 | Agent Runner + Memory + KG schema + Harness 新组件 | 已完成 |
-| Sprint 5 | Week 9 | Knowledge Graph + Question Understanding Agent | 未开始 |
+| Sprint 5 | Week 9 | Knowledge Graph + Question Understanding Agent | 已完成 |
 | Sprint 6 | Week 10 | Diagnosis Agent + Student Memory | 未开始 |
 | Sprint 7 | Week 11 | Mastery Tracking + 间隔复习 | 未开始 |
 | Sprint 8 | Week 12 | Parent Reports v1 + Agent Trace 可视化 + Phase 2 收尾 | 未开始 |
@@ -51,7 +51,7 @@
 ### Phase 2 待完成事项
 
 > 以下事项需在各 Sprint 开始时完成，此处记录以防遗漏：
-> - [ ] Sprint 5 开始时：写 US-031~034 完整用户故事
+> - [x] Sprint 5 开始时：写 US-031~034 完整用户故事
 > - [ ] Sprint 6 开始时：写 US-035~037 完整用户故事
 > - [ ] Sprint 7 开始时：写 US-038~040 完整用户故事
 > - [ ] Sprint 8 开始时：写 US-041~043 完整用户故事

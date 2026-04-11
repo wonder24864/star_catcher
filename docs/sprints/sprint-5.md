@@ -57,19 +57,19 @@
 
 ## 验证清单
 
-- [ ] KnowledgePoint CRUD 全部 adminProcedure 保护
-- [ ] 添加 PREREQUISITE 关系时环检测生效（CTE 验证）
-- [ ] PDF 上传 → 目录提取 → AI 解析 → 入库 全链路
-- [ ] extract-knowledge-points Skill 在 IPC 沙箱中运行
-- [ ] Question Understanding Agent ≥ 2 步循环完成知识点映射
-- [ ] 一题映射多知识点（QuestionKnowledgeMapping 多条记录��
-- [ ] Agent 超步数/超 Token 时正确终���
-- [ ] 幂等���同一题目不重复分析
-- [ ] KG 为空时 Agent 优雅跳过
-- [ ] Skill 状态切换立即生效（Registry invalidate）
-- [ ] 所有用户可见字符串使用 i18n key
-- [ ] `npm test` 通过
-- [ ] `tsc --noEmit` 无错误
+- [x] KnowledgePoint CRUD 全部 adminProcedure 保护
+- [x] 添加 PREREQUISITE 关系时环检测生效（CTE 验证）
+- [x] PDF 上传 → 目录提取 → AI 解析 → 入库 全链路
+- [x] extract-knowledge-points Skill 在 IPC 沙箱中运行
+- [x] Question Understanding Agent ≥ 2 步循环完成知识点映射
+- [x] 一题映射多知识点（QuestionKnowledgeMapping 多条记录��
+- [x] Agent 超步数/超 Token 时正确终���
+- [x] 幂等���同一题目不重复分析
+- [x] KG 为空时 Agent 优雅跳过
+- [x] Skill 状态切换立即生效（Registry invalidate）
+- [x] 所有用户可见字符串使用 i18n key
+- [x] `npm test` 通过
+- [x] `tsc --noEmit` 无错误
 
 ## 关键设计决策
 
