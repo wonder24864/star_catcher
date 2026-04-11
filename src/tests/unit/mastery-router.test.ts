@@ -12,9 +12,21 @@ vi.mock("@/lib/infra/db", () => ({
       findUnique: vi.fn(),
       groupBy: vi.fn(),
       count: vi.fn().mockResolvedValue(0),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+    reviewSchedule: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+    },
+    knowledgePoint: {
+      findMany: vi.fn().mockResolvedValue([]),
     },
     interventionHistory: {
       findMany: vi.fn(),
+      create: vi.fn().mockResolvedValue({
+        id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, createdAt: new Date(),
+      }),
     },
     errorQuestion: {
       findMany: vi.fn(),
@@ -48,8 +60,20 @@ import { createCallerFactory } from "@/server/trpc";
 import { db } from "@/lib/infra/db";
 
 const mockDb = db as unknown as {
-  masteryState: { findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; groupBy: ReturnType<typeof vi.fn>; count: ReturnType<typeof vi.fn> };
-  interventionHistory: { findMany: ReturnType<typeof vi.fn> };
+  masteryState: {
+    findMany: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
+    groupBy: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
+  };
+  reviewSchedule: {
+    findMany: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
+    upsert: ReturnType<typeof vi.fn>;
+  };
+  knowledgePoint: { findMany: ReturnType<typeof vi.fn> };
+  interventionHistory: { findMany: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
   errorQuestion: { findMany: ReturnType<typeof vi.fn> };
   familyMember: { findMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn> };
   $queryRaw: ReturnType<typeof vi.fn>;
@@ -255,6 +279,146 @@ describe("MasteryRouter", () => {
       expect(result.bySubject).toHaveLength(2);
       expect(result.total).toBe(8);
       expect(result.bySubject[0]!.count).toBe(5);
+    });
+  });
+
+  // ── mastery.todayReviews ──
+
+  describe("todayReviews", () => {
+    test("returns empty when no overdue reviews", async () => {
+      mockDb.reviewSchedule.findMany.mockResolvedValue([]);
+
+      const caller = createCaller(createCtx(studentSession));
+      const result = await caller.mastery.todayReviews({});
+
+      expect(result.items).toHaveLength(0);
+      expect(result.count).toBe(0);
+    });
+
+    test("returns overdue reviews with KP details", async () => {
+      const pastDate = new Date("2026-04-09");
+      mockDb.reviewSchedule.findMany.mockResolvedValue([
+        {
+          id: "rev-1",
+          studentId: "student-1",
+          knowledgePointId: "kp-1",
+          nextReviewAt: pastDate,
+          intervalDays: 1,
+          easeFactor: 2.5,
+          consecutiveCorrect: 0,
+        },
+      ]);
+      mockDb.knowledgePoint.findMany.mockResolvedValue([
+        { id: "kp-1", name: "Addition", subject: "MATH", grade: "PRIMARY_3" },
+      ]);
+
+      const caller = createCaller(createCtx(studentSession));
+      const result = await caller.mastery.todayReviews({});
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]!.knowledgePointName).toBe("Addition");
+      expect(result.count).toBe(1);
+    });
+  });
+
+  // ── mastery.reviewDetail ──
+
+  describe("reviewDetail", () => {
+    test("returns KP info + error questions", async () => {
+      mockDb.masteryState.findUnique.mockResolvedValue(
+        makeMasteryRow({ status: "REVIEWING" }),
+      );
+      mockDb.reviewSchedule.findUnique.mockResolvedValue({
+        nextReviewAt: new Date("2026-04-12"),
+        intervalDays: 6,
+        consecutiveCorrect: 1,
+      });
+      mockDb.errorQuestion.findMany.mockResolvedValue([
+        {
+          id: "eq-1",
+          content: "2+2=?",
+          studentAnswer: "5",
+          correctAnswer: "4",
+          subject: "MATH",
+          createdAt: new Date(),
+        },
+      ]);
+
+      const caller = createCaller(createCtx(studentSession));
+      const result = await caller.mastery.reviewDetail({ knowledgePointId: "kp-1" });
+
+      expect(result.mastery.status).toBe("REVIEWING");
+      expect(result.schedule?.intervalDays).toBe(6);
+      expect(result.errorQuestions).toHaveLength(1);
+    });
+
+    test("throws NOT_FOUND when no mastery state", async () => {
+      mockDb.masteryState.findUnique.mockResolvedValue(null);
+
+      const caller = createCaller(createCtx(studentSession));
+      await expect(
+        caller.mastery.reviewDetail({ knowledgePointId: "kp-unknown" }),
+      ).rejects.toThrow("NOT_FOUND");
+    });
+  });
+
+  // ── mastery.list nextReviewAt ──
+
+  describe("list with nextReviewAt", () => {
+    test("includes nextReviewAt from ReviewSchedule", async () => {
+      const reviewDate = new Date("2026-04-15");
+      mockDb.masteryState.findMany.mockResolvedValue([
+        makeMasteryRow({ status: "REVIEWING" }),
+      ]);
+      mockDb.masteryState.count.mockResolvedValue(1);
+      mockDb.reviewSchedule.findMany.mockResolvedValue([
+        { knowledgePointId: "kp-1", nextReviewAt: reviewDate },
+      ]);
+
+      const caller = createCaller(createCtx(studentSession));
+      const result = await caller.mastery.list({});
+
+      expect(result.items[0]!.nextReviewAt).toEqual(reviewDate);
+    });
+
+    test("nextReviewAt is null when no ReviewSchedule", async () => {
+      mockDb.masteryState.findMany.mockResolvedValue([
+        makeMasteryRow({ status: "NEW_ERROR" }),
+      ]);
+      mockDb.masteryState.count.mockResolvedValue(1);
+      mockDb.reviewSchedule.findMany.mockResolvedValue([]);
+
+      const caller = createCaller(createCtx(studentSession));
+      const result = await caller.mastery.list({});
+
+      expect(result.items[0]!.nextReviewAt).toBeNull();
+    });
+  });
+
+  // ── mastery.submitReview ──
+
+  describe("submitReview", () => {
+    test("parent is FORBIDDEN from submitting reviews", async () => {
+      const caller = createCaller(createCtx(parentSession));
+      await expect(
+        caller.mastery.submitReview({
+          knowledgePointId: "kp-1",
+          isCorrect: true,
+          selfRatedDifficulty: 3,
+        }),
+      ).rejects.toThrow("FORBIDDEN");
+    });
+
+    test("admin is FORBIDDEN from submitting reviews", async () => {
+      const adminSession = { userId: "admin-1", role: "ADMIN", grade: null, locale: "zh" };
+      const caller = createCaller(createCtx(adminSession));
+      await expect(
+        caller.mastery.submitReview({
+          knowledgePointId: "kp-1",
+          isCorrect: true,
+          selfRatedDifficulty: 3,
+        }),
+      ).rejects.toThrow("FORBIDDEN");
     });
   });
 });

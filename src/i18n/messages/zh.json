@@ -455,6 +455,38 @@
       "HINT": "提示",
       "REVIEW": "复习",
       "EXPLANATION": "讲解"
+    },
+    "nextReview": "下次复习：{date}",
+    "overdueBadge": "已到期",
+    "startReview": "开始复习",
+    "review": {
+      "title": "复习知识点",
+      "material": "复习素材",
+      "selfAssess": "自我评估",
+      "correct": "我答对了",
+      "incorrect": "我答错了",
+      "difficulty": "难度如何？",
+      "difficultyLabels": {
+        "1": "很简单",
+        "2": "简单",
+        "3": "一般",
+        "4": "困难",
+        "5": "很困难"
+      },
+      "submit": "提交复习",
+      "submitting": "提交中...",
+      "close": "确定",
+      "resultMastered": "恭喜！你已掌握此知识点！",
+      "resultReviewing": "继续加油！下次复习：{date}",
+      "resultRegressed": "别灰心，明天再来复习吧！"
     }
+  },
+  "dashboard": {
+    "todayReviews": "今日复习",
+    "reviewCount": "{count} 个知识点待复习",
+    "noReviews": "今天没有复习任务",
+    "noReviewsSubtext": "继续保持！",
+    "startReview": "开始复习",
+    "viewAll": "查看全部"
   }
 }

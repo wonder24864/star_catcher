@@ -82,6 +82,14 @@ export interface ReviewScheduleView {
   consecutiveCorrect: number;
 }
 
+/** Result of processing a review via SM-2 algorithm */
+export interface ReviewResult {
+  mastery: MasteryStateView;
+  schedule: ReviewScheduleView;
+  /** Non-null if a state transition occurred (e.g., REVIEWING→MASTERED) */
+  transition: MasteryTransition | null;
+}
+
 /**
  * StudentMemory — the interface exposed to Skills via IPC.
  *
@@ -116,9 +124,22 @@ export interface StudentMemory {
     studentId: string,
     knowledgePointId: string,
     intervalDays: number,
+    sm2Params?: { easeFactor: number; consecutiveCorrect: number },
   ): Promise<ReviewScheduleView>;
 
   getOverdueReviews(studentId: string): Promise<ReviewScheduleView[]>;
+
+  /**
+   * Process a review result using SM-2 algorithm.
+   * Updates ReviewSchedule, transitions mastery state if needed.
+   *
+   * @param quality — SM-2 quality rating 0-5
+   */
+  processReviewResult(
+    studentId: string,
+    knowledgePointId: string,
+    quality: number,
+  ): Promise<ReviewResult>;
 
   // ── Intervention History (append-only) ──
   logIntervention(

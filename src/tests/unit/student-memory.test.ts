@@ -689,4 +689,276 @@ describe("StudentMemoryImpl", () => {
       expect(result.status).toBe("NEW_ERROR");
     });
   });
+
+  // ─── Sprint 7: scheduleReview SM-2 params ─────
+
+  describe("scheduleReview with SM-2 params", () => {
+    test("persists easeFactor and consecutiveCorrect on create", async () => {
+      const schedule = {
+        id: "rev-1",
+        studentId: "s1",
+        knowledgePointId: "kp-1",
+        nextReviewAt: new Date(),
+        intervalDays: 6,
+        easeFactor: 2.36,
+        consecutiveCorrect: 2,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockDb.reviewSchedule.upsert.mockResolvedValue(schedule);
+
+      const result = await memory.scheduleReview("s1", "kp-1", 6, {
+        easeFactor: 2.36,
+        consecutiveCorrect: 2,
+      });
+
+      expect(result.easeFactor).toBe(2.36);
+      expect(result.consecutiveCorrect).toBe(2);
+      expect(mockDb.reviewSchedule.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            easeFactor: 2.36,
+            consecutiveCorrect: 2,
+          }),
+          update: expect.objectContaining({
+            easeFactor: 2.36,
+            consecutiveCorrect: 2,
+          }),
+        }),
+      );
+    });
+
+    test("defaults to EF=2.5 and cc=0 when no sm2Params", async () => {
+      const schedule = {
+        id: "rev-1",
+        studentId: "s1",
+        knowledgePointId: "kp-1",
+        nextReviewAt: new Date(),
+        intervalDays: 1,
+        easeFactor: 2.5,
+        consecutiveCorrect: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockDb.reviewSchedule.upsert.mockResolvedValue(schedule);
+
+      await memory.scheduleReview("s1", "kp-1", 1);
+
+      expect(mockDb.reviewSchedule.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            easeFactor: 2.5,
+            consecutiveCorrect: 0,
+          }),
+        }),
+      );
+    });
+  });
+
+  // ─── Sprint 7: processReviewResult ────────────
+
+  describe("processReviewResult", () => {
+    const reviewingRow = createMockMasteryRow({ status: "REVIEWING", version: 3 });
+    const scheduleRow = {
+      id: "rev-1",
+      studentId: "s1",
+      knowledgePointId: "kp-1",
+      nextReviewAt: new Date("2026-04-10"),
+      intervalDays: 1,
+      easeFactor: 2.5,
+      consecutiveCorrect: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    test("throws if MasteryState not found", async () => {
+      mockDb.masteryState.findUnique.mockResolvedValue(null);
+
+      await expect(
+        memory.processReviewResult("s1", "kp-1", 4),
+      ).rejects.toThrow("MasteryState not found");
+    });
+
+    test("throws if status is not REVIEWING", async () => {
+      const correctedRow = createMockMasteryRow({ status: "CORRECTED" });
+      mockDb.masteryState.findUnique.mockResolvedValue(correctedRow);
+
+      await expect(
+        memory.processReviewResult("s1", "kp-1", 4),
+      ).rejects.toThrow("expected REVIEWING");
+    });
+
+    test("correct answer (quality≥3): updates ReviewSchedule with SM-2 values", async () => {
+      // getMasteryState → findUnique returns REVIEWING
+      mockDb.masteryState.findUnique.mockResolvedValue(reviewingRow);
+      // Load schedule
+      mockDb.reviewSchedule.findUnique.mockResolvedValue(scheduleRow);
+      // updateMany for attempt counters
+      mockDb.masteryState.updateMany.mockResolvedValue({ count: 1 });
+      // scheduleReview upsert
+      const updatedSchedule = { ...scheduleRow, intervalDays: 6, consecutiveCorrect: 1 };
+      mockDb.reviewSchedule.upsert.mockResolvedValue(updatedSchedule);
+      // logIntervention
+      mockDb.interventionHistory.create.mockResolvedValue({
+        id: "int-1",
+        type: "REVIEW",
+        content: {},
+        agentId: null,
+        skillId: null,
+        createdAt: new Date(),
+      });
+      // Final getMasteryState re-fetch
+      mockDb.masteryState.findUnique.mockResolvedValue(reviewingRow);
+
+      const result = await memory.processReviewResult("s1", "kp-1", 4);
+
+      expect(result.schedule.consecutiveCorrect).toBe(1);
+      expect(result.transition).toBeNull();
+      // Verify attempt counters incremented
+      expect(mockDb.masteryState.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            totalAttempts: { increment: 1 },
+            correctAttempts: { increment: 1 },
+          }),
+        }),
+      );
+    });
+
+    test("correct answer reaching threshold: transitions REVIEWING → MASTERED", async () => {
+      const scheduleAt2 = { ...scheduleRow, consecutiveCorrect: 2, intervalDays: 6 };
+      // getMasteryState returns REVIEWING
+      mockDb.masteryState.findUnique
+        .mockResolvedValueOnce(reviewingRow) // getMasteryState
+        .mockResolvedValueOnce(reviewingRow) // updateMasteryState load (for MASTERED transition)
+        .mockResolvedValueOnce(createMockMasteryRow({ status: "MASTERED", version: 5 })) // updateMasteryState re-fetch
+        .mockResolvedValueOnce(createMockMasteryRow({ status: "MASTERED", version: 5 })); // final getMasteryState
+      mockDb.reviewSchedule.findUnique.mockResolvedValue(scheduleAt2);
+      mockDb.masteryState.updateMany.mockResolvedValue({ count: 1 });
+      const updatedSchedule = { ...scheduleAt2, intervalDays: 15, consecutiveCorrect: 3 };
+      mockDb.reviewSchedule.upsert.mockResolvedValue(updatedSchedule);
+      mockDb.interventionHistory.create.mockResolvedValue({
+        id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, createdAt: new Date(),
+      });
+
+      const result = await memory.processReviewResult("s1", "kp-1", 4);
+
+      expect(result.mastery.status).toBe("MASTERED");
+      expect(result.transition).toEqual(
+        expect.objectContaining({ from: "REVIEWING", to: "MASTERED" }),
+      );
+    });
+
+    test("incorrect answer (quality<3): transitions REVIEWING → REGRESSED", async () => {
+      const regressedRow = createMockMasteryRow({ status: "REGRESSED", version: 4 });
+      // getMasteryState returns REVIEWING
+      mockDb.masteryState.findUnique
+        .mockResolvedValueOnce(reviewingRow) // getMasteryState
+        .mockResolvedValueOnce(reviewingRow) // updateMasteryState load (REVIEWING→REGRESSED)
+        .mockResolvedValueOnce(regressedRow) // updateMasteryState re-fetch
+        .mockResolvedValueOnce(regressedRow); // final getMasteryState (may be REVIEWING after auto)
+      mockDb.reviewSchedule.findUnique.mockResolvedValue(scheduleRow);
+      mockDb.masteryState.updateMany.mockResolvedValue({ count: 1 });
+      mockDb.reviewSchedule.upsert.mockResolvedValue(scheduleRow);
+      mockDb.interventionHistory.create.mockResolvedValue({
+        id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, createdAt: new Date(),
+      });
+
+      const result = await memory.processReviewResult("s1", "kp-1", 1);
+
+      expect(result.transition).toEqual(
+        expect.objectContaining({ from: "REVIEWING", to: "REGRESSED" }),
+      );
+    });
+
+    test("logs intervention with type REVIEW", async () => {
+      mockDb.masteryState.findUnique.mockResolvedValue(reviewingRow);
+      mockDb.reviewSchedule.findUnique.mockResolvedValue(scheduleRow);
+      mockDb.masteryState.updateMany.mockResolvedValue({ count: 1 });
+      mockDb.reviewSchedule.upsert.mockResolvedValue({ ...scheduleRow, consecutiveCorrect: 1 });
+      mockDb.interventionHistory.create.mockResolvedValue({
+        id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, createdAt: new Date(),
+      });
+      mockDb.masteryState.findUnique.mockResolvedValue(reviewingRow);
+
+      await memory.processReviewResult("s1", "kp-1", 4);
+
+      expect(mockDb.interventionHistory.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          type: "REVIEW",
+          content: expect.objectContaining({ quality: 4, isCorrect: true }),
+        }),
+      });
+    });
+  });
+
+  // ─── Sprint 7: handleAutoTransitions ──────────
+
+  describe("auto-transitions", () => {
+    test("CORRECTED triggers auto CORRECTED→REVIEWING + scheduleReview", async () => {
+      const newErrorRow = createMockMasteryRow({ status: "NEW_ERROR", version: 1 });
+      const correctedRow = createMockMasteryRow({ status: "CORRECTED", version: 2 });
+      const reviewingRow = createMockMasteryRow({ status: "REVIEWING", version: 3 });
+
+      mockDb.masteryState.findUnique
+        .mockResolvedValueOnce(newErrorRow)     // updateMasteryState load (NEW_ERROR→CORRECTED)
+        .mockResolvedValueOnce(correctedRow)    // updateMasteryState re-fetch
+        .mockResolvedValueOnce(correctedRow)    // auto: updateMasteryState load (CORRECTED→REVIEWING)
+        .mockResolvedValueOnce(reviewingRow);   // auto: updateMasteryState re-fetch
+      mockDb.masteryState.updateMany.mockResolvedValue({ count: 1 });
+      mockDb.interventionHistory.create.mockResolvedValue({
+        id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, createdAt: new Date(),
+      });
+      mockDb.reviewSchedule.upsert.mockResolvedValue({
+        id: "rev-1", studentId: "s1", knowledgePointId: "kp-1",
+        nextReviewAt: new Date(), intervalDays: 1,
+        easeFactor: 2.5, consecutiveCorrect: 0,
+        createdAt: new Date(), updatedAt: new Date(),
+      });
+
+      const result = await memory.updateMasteryState("s1", "kp-1", {
+        from: "NEW_ERROR",
+        to: "CORRECTED",
+        reason: "Student corrected",
+      });
+
+      // Returns the explicit transition result (CORRECTED)
+      expect(result.status).toBe("CORRECTED");
+      // Auto-transition happened: updateMany called twice (explicit + auto)
+      expect(mockDb.masteryState.updateMany).toHaveBeenCalledTimes(2);
+      // scheduleReview was called
+      expect(mockDb.reviewSchedule.upsert).toHaveBeenCalled();
+    });
+
+    test("auto-transition failure does not affect explicit transition result", async () => {
+      const newErrorRow = createMockMasteryRow({ status: "NEW_ERROR", version: 1 });
+      const correctedRow = createMockMasteryRow({ status: "CORRECTED", version: 2 });
+
+      mockDb.masteryState.findUnique
+        .mockResolvedValueOnce(newErrorRow)     // updateMasteryState load
+        .mockResolvedValueOnce(correctedRow)    // updateMasteryState re-fetch
+        .mockResolvedValueOnce(null);           // auto: findUnique returns null → fail
+      mockDb.masteryState.updateMany.mockResolvedValue({ count: 1 });
+      mockDb.interventionHistory.create.mockResolvedValue({
+        id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, createdAt: new Date(),
+      });
+
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const result = await memory.updateMasteryState("s1", "kp-1", {
+        from: "NEW_ERROR",
+        to: "CORRECTED",
+        reason: "Student corrected",
+      });
+
+      // Explicit transition still returns CORRECTED
+      expect(result.status).toBe("CORRECTED");
+      // Warning was logged
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("auto-transition failed"),
+      );
+
+      warnSpy.mockRestore();
+    });
+  });
 });

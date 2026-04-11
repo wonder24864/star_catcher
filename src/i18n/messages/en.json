@@ -455,6 +455,38 @@
       "HINT": "Hint",
       "REVIEW": "Review",
       "EXPLANATION": "Explanation"
+    },
+    "nextReview": "Next review: {date}",
+    "overdueBadge": "Overdue",
+    "startReview": "Start Review",
+    "review": {
+      "title": "Review Knowledge Point",
+      "material": "Review Material",
+      "selfAssess": "Self Assessment",
+      "correct": "I got it right",
+      "incorrect": "I got it wrong",
+      "difficulty": "How difficult was it?",
+      "difficultyLabels": {
+        "1": "Very Easy",
+        "2": "Easy",
+        "3": "Normal",
+        "4": "Hard",
+        "5": "Very Hard"
+      },
+      "submit": "Submit Review",
+      "submitting": "Submitting...",
+      "close": "OK",
+      "resultMastered": "Congratulations! You've mastered this!",
+      "resultReviewing": "Good job! Next review: {date}",
+      "resultRegressed": "Let's review this again soon!"
     }
+  },
+  "dashboard": {
+    "todayReviews": "Today's Reviews",
+    "reviewCount": "{count} items to review",
+    "noReviews": "No reviews due today",
+    "noReviewsSubtext": "Keep up the good work!",
+    "startReview": "Start Review",
+    "viewAll": "View All"
   }
 }

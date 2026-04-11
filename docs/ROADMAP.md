@@ -33,7 +33,7 @@
 | Sprint 4b | Week 8 | Agent Runner + Memory + KG schema + Harness 新组件 | 已完成 |
 | Sprint 5 | Week 9 | Knowledge Graph + Question Understanding Agent | 已完成 |
 | Sprint 6 | Week 10 | Diagnosis Agent + Student Memory | 已完成 |
-| Sprint 7 | Week 11 | Mastery Tracking + 间隔复习 | 未开始 |
+| Sprint 7 | Week 11 | Mastery Tracking + 间隔复习 | 已完成 |
 | Sprint 8 | Week 12 | Parent Reports v1 + Agent Trace 可视化 + Phase 2 收尾 | 未开始 |
 
 ### Phase 2 目标交付物
@@ -53,7 +53,7 @@
 > 以下事项需在各 Sprint 开始时完成，此处记录以防遗漏：
 > - [x] Sprint 5 开始时：写 US-031~034 完整用户故事
 > - [x] Sprint 6 开始时：写 US-035~037 完整用户故事
-> - [ ] Sprint 7 开始时：写 US-038~040 完整用户故事
+> - [x] Sprint 7 开始时：写 US-038~040 完整用户故事
 > - [ ] Sprint 8 开始时：写 US-041~043 完整用户故事
 
 ## Phase 3: 学习闭环 + 干预（Learning Brain 全局编排）

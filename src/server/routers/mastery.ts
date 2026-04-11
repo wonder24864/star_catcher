@@ -9,8 +9,11 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, studentProcedure } from "../trpc";
 import type { Context } from "../trpc";
+import type { PrismaClient } from "@prisma/client";
+import { StudentMemoryImpl } from "@/lib/domain/memory";
+import { mapQuality } from "@/lib/domain/spaced-repetition";
 
 // ─── Permission Helper ─────────────────────────
 
@@ -101,6 +104,18 @@ export const masteryRouter = router({
         ctx.db.masteryState.count({ where }),
       ]);
 
+      // Fetch review schedules for these items in bulk
+      const kpIds = items.map((i) => i.knowledgePointId);
+      const schedules = kpIds.length > 0
+        ? await ctx.db.reviewSchedule.findMany({
+            where: { studentId, knowledgePointId: { in: kpIds } },
+            select: { knowledgePointId: true, nextReviewAt: true },
+          })
+        : [];
+      const scheduleMap = new Map(
+        schedules.map((s) => [s.knowledgePointId, s.nextReviewAt]),
+      );
+
       return {
         items: items.map((item) => ({
           id: item.id,
@@ -115,6 +130,7 @@ export const masteryRouter = router({
           correctAttempts: item.correctAttempts,
           lastAttemptAt: item.lastAttemptAt,
           masteredAt: item.masteredAt,
+          nextReviewAt: scheduleMap.get(item.knowledgePointId) ?? null,
         })),
         total,
         page: input.page,
@@ -320,6 +336,196 @@ export const masteryRouter = router({
           count: Number(s.count),
         })),
         total: byStatus.reduce((sum, s) => sum + s._count, 0),
+      };
+    }),
+
+  /**
+   * Today's reviews: overdue review items for a student.
+   */
+  todayReviews: protectedProcedure
+    .input(
+      z.object({
+        studentId: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const studentId = await resolveStudentId(
+        ctx.db,
+        ctx.session.userId,
+        input.studentId,
+      );
+
+      const memory = new StudentMemoryImpl(ctx.db as unknown as PrismaClient);
+      const overdueSchedules = await memory.getOverdueReviews(studentId);
+
+      if (overdueSchedules.length === 0) {
+        return { items: [], count: 0 };
+      }
+
+      // Fetch KnowledgePoint details for display
+      const kpIds = overdueSchedules.map((s) => s.knowledgePointId);
+      const knowledgePoints = await ctx.db.knowledgePoint.findMany({
+        where: { id: { in: kpIds }, deletedAt: null },
+        select: { id: true, name: true, subject: true, grade: true },
+      });
+      const kpMap = new Map(knowledgePoints.map((kp) => [kp.id, kp]));
+
+      const items: Array<{
+        knowledgePointId: string;
+        knowledgePointName: string;
+        subject: string;
+        grade: string | null;
+        nextReviewAt: Date;
+        intervalDays: number;
+        consecutiveCorrect: number;
+      }> = [];
+
+      for (const s of overdueSchedules) {
+        const kp = kpMap.get(s.knowledgePointId);
+        if (!kp) {
+          console.warn(`[todayReviews] KnowledgePoint ${s.knowledgePointId} not found for student ${studentId}`);
+          continue;
+        }
+        items.push({
+          knowledgePointId: s.knowledgePointId,
+          knowledgePointName: kp.name,
+          subject: kp.subject,
+          grade: kp.grade,
+          nextReviewAt: s.nextReviewAt,
+          intervalDays: s.intervalDays,
+          consecutiveCorrect: s.consecutiveCorrect,
+        });
+      }
+
+      return { items, count: items.length };
+    }),
+
+  /**
+   * Submit a review result. STUDENT only.
+   */
+  submitReview: studentProcedure
+    .input(
+      z.object({
+        knowledgePointId: z.string(),
+        isCorrect: z.boolean(),
+        selfRatedDifficulty: z.number().int().min(1).max(5),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const studentId = ctx.session.userId;
+
+      // Map to SM-2 quality
+      const quality = mapQuality(input.isCorrect, input.selfRatedDifficulty);
+
+      const memory = new StudentMemoryImpl(ctx.db as unknown as PrismaClient);
+      const result = await memory.processReviewResult(
+        studentId,
+        input.knowledgePointId,
+        quality,
+      );
+
+      return {
+        mastery: {
+          status: result.mastery.status,
+          totalAttempts: result.mastery.totalAttempts,
+          correctAttempts: result.mastery.correctAttempts,
+          masteredAt: result.mastery.masteredAt,
+        },
+        nextReviewAt: result.schedule.nextReviewAt,
+        transition: result.transition
+          ? `${result.transition.from} → ${result.transition.to}`
+          : null,
+      };
+    }),
+
+  /**
+   * Review detail: KP info + linked error questions for review material.
+   */
+  reviewDetail: protectedProcedure
+    .input(
+      z.object({
+        studentId: z.string().optional(),
+        knowledgePointId: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const studentId = await resolveStudentId(
+        ctx.db,
+        ctx.session.userId,
+        input.studentId,
+      );
+
+      const mastery = await ctx.db.masteryState.findUnique({
+        where: {
+          studentId_knowledgePointId: {
+            studentId,
+            knowledgePointId: input.knowledgePointId,
+          },
+        },
+        include: {
+          knowledgePoint: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              subject: true,
+              grade: true,
+              difficulty: true,
+            },
+          },
+        },
+      });
+
+      if (!mastery) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      // Review schedule
+      const schedule = await ctx.db.reviewSchedule.findUnique({
+        where: {
+          studentId_knowledgePointId: {
+            studentId,
+            knowledgePointId: input.knowledgePointId,
+          },
+        },
+      });
+
+      // Linked error questions as review material
+      const errorQuestions = await ctx.db.errorQuestion.findMany({
+        where: {
+          studentId,
+          deletedAt: null,
+          knowledgeMappings: {
+            some: { knowledgePointId: input.knowledgePointId },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          content: true,
+          studentAnswer: true,
+          correctAnswer: true,
+          subject: true,
+          createdAt: true,
+        },
+      });
+
+      return {
+        mastery: {
+          status: mastery.status,
+          totalAttempts: mastery.totalAttempts,
+          correctAttempts: mastery.correctAttempts,
+        },
+        knowledgePoint: mastery.knowledgePoint,
+        schedule: schedule
+          ? {
+              nextReviewAt: schedule.nextReviewAt,
+              intervalDays: schedule.intervalDays,
+              consecutiveCorrect: schedule.consecutiveCorrect,
+            }
+          : null,
+        errorQuestions,
       };
     }),
 });

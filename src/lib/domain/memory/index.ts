@@ -18,6 +18,7 @@ export type {
   MasteryTransition,
   MasteryStateView,
   ReviewScheduleView,
+  ReviewResult,
   InterventionKind,
   InterventionRecord,
 } from "./types";

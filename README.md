@@ -127,7 +127,7 @@ star_catcher/
     │   ├── [locale]/(dashboard)/  # 受保护的功能页面
     │   │   ├── check/                 # 作业检查（新建/详情/结果）
     │   │   ├── errors/                # 错题管理（列表/详情）
-    │   │   ├── mastery/               # 掌握地图（知识点掌握度 + 色标）
+    │   │   ├── mastery/               # 掌握地图（掌握度 + 间隔复习 + 复习对话框）
     │   │   ├── parent/                # 家长视图（概览/统计/时间线）
     │   │   ├── admin/                 # 管理后台（用户/配置/知识图谱/Skill）
     │   │   ├── family/                # 家庭组管理
@@ -137,6 +137,8 @@ star_catcher/
     │
     ├── components/            # ── UI 组件 ──
     │   ├── homework/              # 拍照 / 照片网格
+    │   ├── dashboard/             # 首页组件（今日复习 Widget）
+    │   ├── mastery/               # 掌握地图组件（复习对话框）
     │   ├── nav/                   # 侧边栏 / 底部导航 / 学生切换
     │   ├── providers/             # Session / Theme Provider
     │   └── ui/                    # shadcn/ui 基础组件
@@ -187,7 +189,10 @@ star_catcher/
     │   │   │   └── index.ts           # 公共导出
     │   │   ├── memory/            # Student Memory 层（Phase 2）
     │   │   │   ├── types.ts           # 状态机定义 + Memory 接口
-    │   │   │   ├── student-memory.ts  # StudentMemoryImpl（状态机验证 + 乐观锁）
+    │   │   │   ├── student-memory.ts  # StudentMemoryImpl（状态机 + SM-2 复习 + 自动转换）
+    │   │   │   └── index.ts           # 公共导出
+    │   │   ├── spaced-repetition/ # SM-2 间隔复习算法（Phase 2）
+    │   │   │   ├── sm2.ts             # SM-2 纯函数（calculateSM2 + mapQuality）
     │   │   │   └── index.ts           # 公共导出
     │   │   ├── auth.ts            # NextAuth 认证配置
     │   │   ├── scoring.ts         # 得分计算

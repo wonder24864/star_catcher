@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ReviewDialog } from "@/components/mastery/review-dialog";
 
 const SUBJECTS = [
   "MATH", "CHINESE", "ENGLISH", "PHYSICS", "CHEMISTRY",
@@ -37,7 +39,7 @@ const STATUS_BADGE_STYLES: Record<string, string> = {
   REGRESSED: "bg-purple-100 text-purple-800 border-purple-200",
 };
 
-const STATUS_FILTERS = ["ALL", "WEAK", "MASTERED", "NEW_ERROR"] as const;
+const STATUS_FILTERS = ["ALL", "WEAK", "MASTERED", "NEW_ERROR", "OVERDUE"] as const;
 
 type MasteryItem = {
   id: string;
@@ -52,6 +54,7 @@ type MasteryItem = {
   correctAttempts: number;
   lastAttemptAt: Date | null;
   masteredAt: Date | null;
+  nextReviewAt: Date | string | null;
 };
 
 export default function MasteryPage() {
@@ -59,6 +62,7 @@ export default function MasteryPage() {
   const tCommon = useTranslations("common");
   const { data: session } = useSession();
   const selectedStudentId = useStudentStore((s) => s.selectedStudentId);
+  const searchParams = useSearchParams();
 
   const isParent = session?.user?.role === "PARENT";
   const studentId = isParent ? selectedStudentId : session?.user?.id;
@@ -66,13 +70,22 @@ export default function MasteryPage() {
   const [subjectFilter, setSubjectFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [selectedKP, setSelectedKP] = useState<string | null>(null);
+  const [reviewKP, setReviewKP] = useState<string | null>(null);
+
+  // Handle URL query params for deep linking (?review=<kpId> or ?filter=OVERDUE)
+  useEffect(() => {
+    const reviewParam = searchParams.get("review");
+    const filterParam = searchParams.get("filter");
+    if (reviewParam) setReviewKP(reviewParam);
+    if (filterParam && STATUS_FILTERS.includes(filterParam as typeof STATUS_FILTERS[number])) {
+      setStatusFilter(filterParam);
+    }
+  }, [searchParams]);
 
   // Map status filter to query params
-  const queryStatus = statusFilter === "ALL"
+  const queryStatus = statusFilter === "ALL" || statusFilter === "WEAK" || statusFilter === "OVERDUE"
     ? undefined
-    : statusFilter === "WEAK"
-      ? undefined // Handle client-side
-      : (statusFilter as "NEW_ERROR" | "CORRECTED" | "REVIEWING" | "MASTERED" | "REGRESSED");
+    : (statusFilter as "NEW_ERROR" | "CORRECTED" | "REVIEWING" | "MASTERED" | "REGRESSED");
 
   const { data, isLoading } = trpc.mastery.list.useQuery(
     {
@@ -90,6 +103,11 @@ export default function MasteryPage() {
     { enabled: !!studentId },
   );
 
+  const { data: todayReviews } = trpc.mastery.todayReviews.useQuery(
+    { studentId: isParent ? (studentId ?? undefined) : undefined },
+    { enabled: !!studentId },
+  );
+
   const { data: detail } = trpc.mastery.detail.useQuery(
     {
       studentId: isParent ? (studentId ?? undefined) : undefined,
@@ -98,10 +116,17 @@ export default function MasteryPage() {
     { enabled: !!selectedKP && !!studentId },
   );
 
-  // Client-side filter for WEAK (NEW_ERROR + CORRECTED + REGRESSED)
+  const now = new Date();
+
+  // Client-side filters
   const weakStatuses = new Set(["NEW_ERROR", "CORRECTED", "REGRESSED"]);
+  const overdueKPIds = new Set(
+    todayReviews?.items?.map((r: { knowledgePointId: string }) => r.knowledgePointId) ?? [],
+  );
+
   const filteredItems = data?.items?.filter((item: MasteryItem) => {
     if (statusFilter === "WEAK") return weakStatuses.has(item.status);
+    if (statusFilter === "OVERDUE") return overdueKPIds.has(item.knowledgePointId);
     return true;
   }) ?? [];
 
@@ -113,6 +138,12 @@ export default function MasteryPage() {
     .find((s: { status: string }) => s.status === "MASTERED")?.count ?? 0;
   const newErrorCount = stats?.byStatus
     .find((s: { status: string }) => s.status === "NEW_ERROR")?.count ?? 0;
+  const overdueCount = todayReviews?.count ?? 0;
+
+  function isOverdue(item: MasteryItem): boolean {
+    if (!item.nextReviewAt) return false;
+    return new Date(item.nextReviewAt) <= now;
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -121,24 +152,32 @@ export default function MasteryPage() {
 
       {/* Stats Summary */}
       <div className="flex gap-3 overflow-x-auto">
-        <Card className="min-w-[120px] flex-1">
+        <Card className="min-w-[100px] flex-1">
           <CardContent className="p-3 text-center">
             <div className="text-2xl font-bold text-red-600">{weakCount}</div>
             <div className="text-xs text-muted-foreground">{t("stats.weak")}</div>
           </CardContent>
         </Card>
-        <Card className="min-w-[120px] flex-1">
+        <Card className="min-w-[100px] flex-1">
           <CardContent className="p-3 text-center">
             <div className="text-2xl font-bold text-green-600">{masteredCount}</div>
             <div className="text-xs text-muted-foreground">{t("stats.mastered")}</div>
           </CardContent>
         </Card>
-        <Card className="min-w-[120px] flex-1">
+        <Card className="min-w-[100px] flex-1">
           <CardContent className="p-3 text-center">
             <div className="text-2xl font-bold text-orange-600">{newErrorCount}</div>
             <div className="text-xs text-muted-foreground">{t("stats.newError")}</div>
           </CardContent>
         </Card>
+        {overdueCount > 0 && (
+          <Card className="min-w-[100px] flex-1 border-red-200">
+            <CardContent className="p-3 text-center">
+              <div className="text-2xl font-bold text-red-600">{overdueCount}</div>
+              <div className="text-xs text-muted-foreground">{t("overdueBadge")}</div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Subject Tabs */}
@@ -154,7 +193,7 @@ export default function MasteryPage() {
       </Tabs>
 
       {/* Status Filter */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {STATUS_FILTERS.map((f) => (
           <Button
             key={f}
@@ -162,7 +201,12 @@ export default function MasteryPage() {
             size="sm"
             onClick={() => setStatusFilter(f)}
           >
-            {t(`filters.${f}`)}
+            {f === "OVERDUE" ? t("overdueBadge") : t(`filters.${f}` as `filters.ALL`)}
+            {f === "OVERDUE" && overdueCount > 0 && (
+              <Badge variant="destructive" className="ml-1 h-5 w-5 rounded-full p-0 text-[10px]">
+                {overdueCount}
+              </Badge>
+            )}
           </Button>
         ))}
       </div>
@@ -182,11 +226,12 @@ export default function MasteryPage() {
             const accuracy = item.totalAttempts > 0
               ? Math.round((item.correctAttempts / item.totalAttempts) * 100)
               : 0;
+            const overdue = isOverdue(item);
 
             return (
               <Card
                 key={item.id}
-                className="cursor-pointer transition-shadow hover:shadow-md"
+                className={`cursor-pointer transition-shadow hover:shadow-md ${overdue ? "border-red-300" : ""}`}
                 onClick={() => setSelectedKP(item.knowledgePointId)}
               >
                 <CardContent className="p-4">
@@ -201,12 +246,19 @@ export default function MasteryPage() {
                         </span>
                       )}
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={STATUS_BADGE_STYLES[item.status] ?? ""}
-                    >
-                      {t(`status.${item.status}`)}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      {overdue && (
+                        <Badge variant="destructive" className="text-[10px]">
+                          {t("overdueBadge")}
+                        </Badge>
+                      )}
+                      <Badge
+                        variant="outline"
+                        className={STATUS_BADGE_STYLES[item.status] ?? ""}
+                      >
+                        {t(`status.${item.status}`)}
+                      </Badge>
+                    </div>
                   </div>
 
                   <div className="mt-3 space-y-1">
@@ -222,12 +274,32 @@ export default function MasteryPage() {
                     </div>
                   </div>
 
-                  <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                  <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                     <span>
                       {t("attempts", { count: item.totalAttempts })}
                     </span>
-                    <span className={`h-2 w-2 rounded-full ${STATUS_COLORS[item.status] ?? ""}`} />
+                    {item.status === "REVIEWING" && item.nextReviewAt && (
+                      <span>
+                        {t("nextReview", {
+                          date: new Date(item.nextReviewAt).toLocaleDateString(),
+                        })}
+                      </span>
+                    )}
                   </div>
+
+                  {/* Start Review button for overdue items */}
+                  {overdue && !isParent && (
+                    <Button
+                      size="sm"
+                      className="mt-3 w-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setReviewKP(item.knowledgePointId);
+                      }}
+                    >
+                      {t("startReview")}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -309,6 +381,12 @@ export default function MasteryPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Review Dialog */}
+      <ReviewDialog
+        knowledgePointId={reviewKP}
+        onClose={() => setReviewKP(null)}
+      />
     </div>
   );
 }

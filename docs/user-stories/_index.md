@@ -40,9 +40,9 @@
 | US-035 | Diagnosis Agent | [diagnosis-mastery.md](diagnosis-mastery.md) | Sprint 6 |
 | US-036 | 薄弱知识点报告 | [diagnosis-mastery.md](diagnosis-mastery.md) | Sprint 6 |
 | US-037 | 学生学习状态追踪 | [diagnosis-mastery.md](diagnosis-mastery.md) | Sprint 6 |
-| US-038 | 间隔复习调度 | SM-2 算法计算薄弱知识点的下次复习时间 | Sprint 7 |
-| US-039 | 复习任务通知 | 学生首页显示今日需复习的知识点列表 | Sprint 7 |
-| US-040 | 掌握度评估 | 复习后重新评估掌握状态（MASTERED/REGRESSED） | Sprint 7 |
+| US-038 | 间隔复习调度 | [mastery-review.md](mastery-review.md) | Sprint 7 |
+| US-039 | 复习任务通知 | [mastery-review.md](mastery-review.md) | Sprint 7 |
+| US-040 | 掌握度评估 | [mastery-review.md](mastery-review.md) | Sprint 7 |
 | US-041 | 家长周报/月报 | 家长查看知识点维度的进步趋势+薄弱分析 | Sprint 8 |
 | US-042 | Agent Trace 管理员视图 | 管理员查看 Agent trace 时序图（调用链+耗时+Token） | Sprint 8 |
 | US-043 | Agent 分析简化视图 | 家长/学生看到 AI 分析简化摘要 | Sprint 8 |

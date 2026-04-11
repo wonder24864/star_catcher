@@ -19,11 +19,20 @@ import type {
   MasteryTransition,
   MasteryStatus,
   ReviewScheduleView,
+  ReviewResult,
   InterventionKind,
   InterventionRecord,
 } from "./types";
+import {
+  calculateSM2,
+  DEFAULT_EASE_FACTOR,
+  MASTERY_THRESHOLD,
+} from "../spaced-repetition";
 
 export class StudentMemoryImpl implements StudentMemory {
+  /** Recursion guard for auto-transitions */
+  private _autoTransitioning = false;
+
   constructor(private readonly db: PrismaClient) {}
 
   // ─── Mastery State ────────────────────────────
@@ -119,7 +128,12 @@ export class StudentMemoryImpl implements StudentMemory {
         studentId_knowledgePointId: { studentId, knowledgePointId },
       },
     });
-    return this.toMasteryView(result!);
+    const view = this.toMasteryView(result!);
+
+    // 7. Auto-transitions (best-effort, never fails the explicit transition)
+    await this.handleAutoTransitions(studentId, knowledgePointId, transition.to);
+
+    return view;
   }
 
   async getWeakPoints(
@@ -245,9 +259,13 @@ export class StudentMemoryImpl implements StudentMemory {
     studentId: string,
     knowledgePointId: string,
     intervalDays: number,
+    sm2Params?: { easeFactor: number; consecutiveCorrect: number },
   ): Promise<ReviewScheduleView> {
     const nextReviewAt = new Date();
     nextReviewAt.setDate(nextReviewAt.getDate() + intervalDays);
+
+    const ef = sm2Params?.easeFactor ?? DEFAULT_EASE_FACTOR;
+    const cc = sm2Params?.consecutiveCorrect ?? 0;
 
     const schedule = await this.db.reviewSchedule.upsert({
       where: {
@@ -258,10 +276,14 @@ export class StudentMemoryImpl implements StudentMemory {
         knowledgePointId,
         nextReviewAt,
         intervalDays,
+        easeFactor: ef,
+        consecutiveCorrect: cc,
       },
       update: {
         nextReviewAt,
         intervalDays,
+        easeFactor: ef,
+        consecutiveCorrect: cc,
       },
     });
 
@@ -310,6 +332,220 @@ export class StudentMemoryImpl implements StudentMemory {
       orderBy: { createdAt: "desc" },
     });
     return rows.map((r) => this.toInterventionRecord(r));
+  }
+
+  // ─── Review Processing (SM-2) ─────────────────
+
+  async processReviewResult(
+    studentId: string,
+    knowledgePointId: string,
+    quality: number,
+  ): Promise<ReviewResult> {
+    // 1. Load current state
+    const mastery = await this.getMasteryState(studentId, knowledgePointId);
+    if (!mastery) {
+      throw new Error(
+        `MasteryState not found for student=${studentId}, kp=${knowledgePointId}`,
+      );
+    }
+    if (mastery.status !== "REVIEWING") {
+      throw new Error(
+        `Cannot process review: MasteryState is ${mastery.status}, expected REVIEWING`,
+      );
+    }
+
+    // 2. Load current schedule (create default if missing)
+    let schedule = await this.db.reviewSchedule.findUnique({
+      where: {
+        studentId_knowledgePointId: { studentId, knowledgePointId },
+      },
+    });
+    if (!schedule) {
+      // Defensive: create a default schedule if somehow missing
+      const defaultSchedule = await this.scheduleReview(
+        studentId,
+        knowledgePointId,
+        1,
+      );
+      schedule = {
+        id: defaultSchedule.id,
+        studentId: defaultSchedule.studentId,
+        knowledgePointId: defaultSchedule.knowledgePointId,
+        nextReviewAt: defaultSchedule.nextReviewAt,
+        intervalDays: defaultSchedule.intervalDays,
+        easeFactor: defaultSchedule.easeFactor,
+        consecutiveCorrect: defaultSchedule.consecutiveCorrect,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    // 3. Run SM-2 algorithm
+    const sm2Result = calculateSM2({
+      quality,
+      repetition: schedule.consecutiveCorrect,
+      interval: schedule.intervalDays,
+      easeFactor: schedule.easeFactor,
+    });
+
+    // 4. Update MasteryState attempt counters
+    await this.db.masteryState.updateMany({
+      where: { id: mastery.id, version: mastery.version },
+      data: {
+        totalAttempts: { increment: 1 },
+        ...(quality >= 3 ? { correctAttempts: { increment: 1 } } : {}),
+        lastAttemptAt: new Date(),
+        version: { increment: 1 },
+      },
+    });
+
+    let transition: MasteryTransition | null = null;
+
+    if (quality >= 3) {
+      // 5a. Correct: update ReviewSchedule with SM-2 values
+      const updatedSchedule = await this.scheduleReview(
+        studentId,
+        knowledgePointId,
+        sm2Result.interval,
+        {
+          easeFactor: sm2Result.easeFactor,
+          consecutiveCorrect: sm2Result.repetition,
+        },
+      );
+
+      // Check mastery threshold
+      if (sm2Result.repetition >= MASTERY_THRESHOLD) {
+        transition = {
+          from: "REVIEWING",
+          to: "MASTERED",
+          reason: `Consecutive correct reviews reached ${sm2Result.repetition} (threshold: ${MASTERY_THRESHOLD})`,
+        };
+        await this.updateMasteryState(
+          studentId,
+          knowledgePointId,
+          transition,
+        );
+      }
+
+      // Log the review
+      await this.logIntervention(studentId, knowledgePointId, "REVIEW", {
+        quality,
+        isCorrect: true,
+        sm2: sm2Result,
+        transition: transition
+          ? `${transition.from} → ${transition.to}`
+          : null,
+      });
+
+      const finalMastery = await this.getMasteryState(
+        studentId,
+        knowledgePointId,
+      );
+      return {
+        mastery: finalMastery!,
+        schedule: updatedSchedule,
+        transition,
+      };
+    } else {
+      // 5b. Incorrect: transition REVIEWING → REGRESSED
+      // (auto-transition in handleAutoTransitions will chain REGRESSED → REVIEWING + reschedule)
+      transition = {
+        from: "REVIEWING",
+        to: "REGRESSED",
+        reason: `Review quality ${quality} < 3 (incorrect)`,
+      };
+      await this.updateMasteryState(
+        studentId,
+        knowledgePointId,
+        transition,
+      );
+
+      // Log the review
+      await this.logIntervention(studentId, knowledgePointId, "REVIEW", {
+        quality,
+        isCorrect: false,
+        sm2: sm2Result,
+        transition: "REVIEWING → REGRESSED → REVIEWING (auto)",
+      });
+
+      // Re-fetch final state (should be REVIEWING after auto-transition)
+      const finalMastery = await this.getMasteryState(
+        studentId,
+        knowledgePointId,
+      );
+      const finalSchedule = await this.db.reviewSchedule.findUnique({
+        where: {
+          studentId_knowledgePointId: { studentId, knowledgePointId },
+        },
+      });
+
+      return {
+        mastery: finalMastery!,
+        schedule: finalSchedule
+          ? this.toReviewView(finalSchedule)
+          : (await this.scheduleReview(studentId, knowledgePointId, 1, {
+              easeFactor: sm2Result.easeFactor,
+              consecutiveCorrect: 0,
+            })),
+        transition,
+      };
+    }
+  }
+
+  // ─── Auto-Transitions (best-effort) ──────────
+
+  /**
+   * Handle automatic state transitions after an explicit transition.
+   * CORRECTED → REVIEWING + schedule first review.
+   * REGRESSED → REVIEWING + schedule review (interval=1).
+   *
+   * Best-effort: failures are logged but never propagate.
+   * Recursion-safe: guarded by _autoTransitioning flag.
+   */
+  private async handleAutoTransitions(
+    studentId: string,
+    knowledgePointId: string,
+    newStatus: MasteryStatus,
+  ): Promise<void> {
+    if (this._autoTransitioning) return;
+
+    if (newStatus !== "CORRECTED" && newStatus !== "REGRESSED") return;
+
+    this._autoTransitioning = true;
+    try {
+      if (newStatus === "CORRECTED") {
+        await this.updateMasteryState(studentId, knowledgePointId, {
+          from: "CORRECTED",
+          to: "REVIEWING",
+          reason: "Auto-transition: entering review queue after correction",
+        });
+        await this.scheduleReview(studentId, knowledgePointId, 1);
+      } else if (newStatus === "REGRESSED") {
+        // Preserve existing easeFactor if available
+        const existing = await this.db.reviewSchedule.findUnique({
+          where: {
+            studentId_knowledgePointId: { studentId, knowledgePointId },
+          },
+        });
+        await this.updateMasteryState(studentId, knowledgePointId, {
+          from: "REGRESSED",
+          to: "REVIEWING",
+          reason: "Auto-transition: re-entering review queue after regression",
+        });
+        await this.scheduleReview(studentId, knowledgePointId, 1, {
+          easeFactor: existing?.easeFactor ?? DEFAULT_EASE_FACTOR,
+          consecutiveCorrect: 0,
+        });
+      }
+    } catch (error) {
+      console.warn(
+        `[StudentMemory] auto-transition failed for ${studentId}/${knowledgePointId}: ${
+          error instanceof Error ? error.message : error
+        }`,
+      );
+    } finally {
+      this._autoTransitioning = false;
+    }
   }
 
   // ─── Validation ───────────────────────────────

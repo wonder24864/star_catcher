@@ -42,3 +42,11 @@ export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+// Student-only procedure
+export const studentProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  if (ctx.session.role !== "STUDENT") {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  return next({ ctx });
+});
