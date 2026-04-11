@@ -62,7 +62,7 @@ function seedSession(overrides?: Partial<{ id: string; status: string; createdBy
     id: overrides?.id ?? "hw-session-1",
     studentId: overrides?.studentId ?? "student1",
     createdBy: overrides?.createdBy ?? "student1",
-    subject: null, contentType: null, grade: null, title: null,
+    subject: null, contentType: null, grade: null as string | null, title: null,
     status: overrides?.status ?? "CREATED",
     finalScore: null, totalRounds: 0,
     createdAt: new Date(), updatedAt: new Date(),
@@ -517,7 +517,7 @@ describe("homework.getCheckStatus", () => {
 
     const caller = createCaller(createMockContext(db, parentSession));
     const result = await caller.homework.getCheckStatus({ sessionId: "hw-session-1" });
-    expect(result.sessionId ?? result.id).toBeTruthy();
+    expect(result.id).toBeTruthy();
   });
 
   test("rejects if session is not in check phase", async () => {
@@ -852,8 +852,9 @@ describe("homework.requestHelp", () => {
     });
 
     // Now async: mutation enqueues job instead of calling AI directly
-    expect(result.status).toBe("processing");
-    expect(result.jobId).toBe("job-help-1");
+    const asyncResult = result as { status: string; jobId: string };
+    expect(asyncResult.status).toBe("processing");
+    expect(asyncResult.jobId).toBe("job-help-1");
     expect(enqueueHelpGeneration).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionId: "hw-session-1",
@@ -875,7 +876,7 @@ describe("homework.requestHelp", () => {
       level: 1,
     });
 
-    expect(result.aiResponse).toBe("Cached level 1 help");
+    expect("aiResponse" in result && result.aiResponse).toBe("Cached level 1 help");
     // generateHelp should NOT have been called
     expect(generateHelp).not.toHaveBeenCalled();
   });
@@ -942,7 +943,7 @@ describe("homework.requestHelp", () => {
     });
 
     // Async: job enqueued for Level 2
-    expect(result.status).toBe("processing");
+    expect("status" in result && result.status).toBe("processing");
     expect(enqueueHelpGeneration).toHaveBeenCalledWith(
       expect.objectContaining({ level: 2 }),
     );
@@ -1012,7 +1013,7 @@ describe("homework.requestHelp", () => {
     });
 
     // Async: job enqueued for Level 3
-    expect(result.status).toBe("processing");
+    expect("status" in result && result.status).toBe("processing");
     expect(enqueueHelpGeneration).toHaveBeenCalledWith(
       expect.objectContaining({ level: 3 }),
     );

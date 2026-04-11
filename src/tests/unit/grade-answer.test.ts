@@ -119,7 +119,7 @@ describe("gradeAnswer", () => {
     const messages = mockProvider.calls[0].messages;
     const hasImageUrl = messages.some((m) =>
       Array.isArray(m.content) &&
-      m.content.some((c: Record<string, unknown>) => c.type === "image_url")
+      m.content.some((c) => c.type === "image_url")
     );
     expect(hasImageUrl).toBe(false);
   });

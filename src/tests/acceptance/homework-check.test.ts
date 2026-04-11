@@ -185,7 +185,7 @@ describe('US-018: Progressive Help', () => {
     const result = await caller.homework.requestHelp({ sessionId: "s1", questionId: "q1", level: 1 });
 
     // Async: mutation enqueues job instead of calling AI directly
-    expect(result.status).toBe("processing");
+    expect("status" in result && result.status).toBe("processing");
     expect(enqueueHelpGeneration).toHaveBeenCalledWith(
       expect.objectContaining({ sessionId: "s1", questionId: "q1", level: 1 }),
     );
@@ -211,7 +211,7 @@ describe('US-018: Progressive Help', () => {
     const result = await caller.homework.requestHelp({ sessionId: "s1", questionId: "q1", level: 2 });
 
     // Async: Level 2 gating passed, job enqueued
-    expect(result.status).toBe("processing");
+    expect("status" in result && result.status).toBe("processing");
     expect(enqueueHelpGeneration).toHaveBeenCalledWith(
       expect.objectContaining({ level: 2 }),
     );
@@ -250,7 +250,7 @@ describe('US-018: Progressive Help', () => {
     const result = await caller.homework.requestHelp({ sessionId: "s2", questionId: "q2", level: 3 });
 
     // Async: Level 3 gating passed, job enqueued
-    expect(result.status).toBe("processing");
+    expect("status" in result && result.status).toBe("processing");
     expect(enqueueHelpGeneration).toHaveBeenCalledWith(
       expect.objectContaining({ level: 3 }),
     );
@@ -312,7 +312,7 @@ describe('US-018: Progressive Help', () => {
     const caller = createCaller(createMockContext(db, studentSession));
     // Level 1 should succeed for high school (enqueued)
     const result = await caller.homework.requestHelp({ sessionId: "s3", questionId: "q3", level: 1 });
-    expect(result.status).toBe("processing");
+    expect("status" in result && result.status).toBe("processing");
     // Level 3 should NOT be blocked by default for high school (only by gating rules)
   });
 
