@@ -11,6 +11,8 @@ import { subscriptionRouter } from "./subscription";
 import { skillRouter } from "./skill";
 import { knowledgeGraphRouter } from "./knowledge-graph";
 import { masteryRouter } from "./mastery";
+import { reportRouter } from "./report";
+import { agentTraceRouter } from "./agent-trace";
 
 export const appRouter = router({
   auth: authRouter,
@@ -25,6 +27,8 @@ export const appRouter = router({
   skill: skillRouter,
   knowledgeGraph: knowledgeGraphRouter,
   mastery: masteryRouter,
+  report: reportRouter,
+  agentTrace: agentTraceRouter,
 });
 
 export type AppRouter = typeof appRouter;

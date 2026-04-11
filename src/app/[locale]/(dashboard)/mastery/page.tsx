@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReviewDialog } from "@/components/mastery/review-dialog";
+import { AgentSummaryCard } from "@/components/agent-summary-card";
 
 const SUBJECTS = [
   "MATH", "CHINESE", "ENGLISH", "PHYSICS", "CHEMISTRY",
@@ -109,6 +110,14 @@ export default function MasteryPage() {
   );
 
   const { data: detail } = trpc.mastery.detail.useQuery(
+    {
+      studentId: isParent ? (studentId ?? undefined) : undefined,
+      knowledgePointId: selectedKP!,
+    },
+    { enabled: !!selectedKP && !!studentId },
+  );
+
+  const { data: kpAgentTrace } = trpc.agentTrace.latestForKnowledgePoint.useQuery(
     {
       studentId: isParent ? (studentId ?? undefined) : undefined,
       knowledgePointId: selectedKP!,
@@ -333,6 +342,9 @@ export default function MasteryPage() {
                   <span>{detail.knowledgePoint.difficulty}/5</span>
                 </div>
               </div>
+
+              {/* Agent Analysis Summary */}
+              <AgentSummaryCard trace={kpAgentTrace} />
 
               {/* Intervention History */}
               {detail.interventions.length > 0 && (

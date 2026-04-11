@@ -34,7 +34,16 @@
 | Sprint 5 | Week 9 | Knowledge Graph + Question Understanding Agent | 已完成 |
 | Sprint 6 | Week 10 | Diagnosis Agent + Student Memory | 已完成 |
 | Sprint 7 | Week 11 | Mastery Tracking + 间隔复习 | 已完成 |
-| Sprint 8 | Week 12 | Parent Reports v1 + Agent Trace 可视化 + Phase 2 收尾 | 未开始 |
+| Sprint 8 | Week 12 | Parent Reports v1 + Agent Trace 可视化 + Phase 2 收尾 | 已完成 |
+
+### Phase 2 验收摘要 (2026-04-11)
+
+- 测试: 43 文件, 708 passed, 2 failed (pre-existing: skill-e2e flaky + perf timing)
+- 构建: `tsc --noEmit` 0 错误
+- 新增 router: report (3 procedures), agentTrace (6 procedures)
+- 新增页面: parent/reports, admin/agent-traces (列表+详情)
+- 新增组件: AgentSummaryCard (集成到错题详情+掌握地图)
+- i18n: report + agentTrace namespace, 中英双语完整覆盖
 
 ### Phase 2 目标交付物
 
@@ -54,7 +63,7 @@
 > - [x] Sprint 5 开始时：写 US-031~034 完整用户故事
 > - [x] Sprint 6 开始时：写 US-035~037 完整用户故事
 > - [x] Sprint 7 开始时：写 US-038~040 完整用户故事
-> - [ ] Sprint 8 开始时：写 US-041~043 完整用户故事
+> - [x] Sprint 8 开始时：写 US-041~043 完整用户故事
 
 ## Phase 3: 学习闭环 + 干预（Learning Brain 全局编排）
 

@@ -16,7 +16,9 @@
     "adminSettings": "系统配置",
     "parentOverview": "今日概览",
     "parentStats": "学习统计",
-    "mastery": "掌握地图"
+    "mastery": "掌握地图",
+    "parentReports": "学习报告",
+    "agentTraces": "Agent 追踪"
   },
   "auth": {
     "login": "登录",
@@ -488,5 +490,101 @@
     "noReviewsSubtext": "继续保持！",
     "startReview": "开始复习",
     "viewAll": "查看全部"
+  },
+  "report": {
+    "title": "学习报告",
+    "period": {
+      "7d": "近 7 天",
+      "30d": "近 30 天"
+    },
+    "noData": "暂无学习数据",
+    "summary": {
+      "newMastered": "新掌握",
+      "newRegressed": "退步",
+      "newErrors": "新增错题",
+      "reviewCompletion": "复习完成率",
+      "noReviewScheduled": "暂无复习安排"
+    },
+    "trend": {
+      "title": "掌握趋势",
+      "mastered": "已掌握"
+    },
+    "weakPoints": {
+      "title": "薄弱知识点",
+      "empty": "太棒了，暂无薄弱知识点！",
+      "attempts": "尝试 {count} 次",
+      "lastAttempt": "最后尝试"
+    },
+    "progress": {
+      "title": "知识点进展",
+      "interventions": "分析历史"
+    }
+  },
+  "agentTrace": {
+    "title": "Agent 追踪",
+    "list": {
+      "empty": "暂无追踪记录",
+      "agent": "Agent",
+      "user": "用户",
+      "status": "状态",
+      "steps": "步骤",
+      "tokens": "Token",
+      "duration": "耗时",
+      "createdAt": "创建时间"
+    },
+    "detail": {
+      "title": "追踪详情",
+      "summary": "摘要",
+      "terminationReason": "终止原因",
+      "totalTokens": "总 Token",
+      "totalDuration": "总耗时",
+      "stepTimeline": "步骤时间线"
+    },
+    "step": {
+      "skill": "Skill",
+      "input": "输入",
+      "output": "输出",
+      "error": "错误"
+    },
+    "status": {
+      "RUNNING": "运行中",
+      "COMPLETED": "已完成",
+      "TERMINATED": "已终止",
+      "FAILED": "失败"
+    },
+    "stepStatus": {
+      "SUCCESS": "成功",
+      "FAILED": "失败",
+      "TIMEOUT": "超时"
+    },
+    "stats": {
+      "title": "近 7 天统计",
+      "totalCalls": "总调用",
+      "successRate": "成功率",
+      "avgDuration": "平均耗时",
+      "avgTokens": "平均 Token"
+    },
+    "filter": {
+      "allAgents": "全部 Agent",
+      "allStatuses": "全部状态",
+      "dateRange": "日期范围"
+    },
+    "summary": {
+      "analyzing": "AI 正在分析...",
+      "errorPattern": "错误模式：{pattern}",
+      "weakKPs": "发现 {count} 个薄弱知识点",
+      "masteryUpdates": "更新 {count} 个掌握状态",
+      "viewDetail": "查看详情",
+      "failed": "分析失败",
+      "patterns": {
+        "CONCEPT_CONFUSION": "概念混淆",
+        "CALCULATION_ERROR": "计算错误",
+        "METHOD_WRONG": "方法不当",
+        "CARELESS": "粗心大意",
+        "OTHER": "其他"
+      }
+    },
+    "ms": "ms",
+    "steps": "步"
   }
 }

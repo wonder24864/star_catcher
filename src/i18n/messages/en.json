@@ -16,7 +16,9 @@
     "adminSettings": "System Config",
     "parentOverview": "Today's Overview",
     "parentStats": "Learning Stats",
-    "mastery": "Mastery Map"
+    "mastery": "Mastery Map",
+    "parentReports": "Reports",
+    "agentTraces": "Agent Traces"
   },
   "auth": {
     "login": "Login",
@@ -488,5 +490,101 @@
     "noReviewsSubtext": "Keep up the good work!",
     "startReview": "Start Review",
     "viewAll": "View All"
+  },
+  "report": {
+    "title": "Learning Report",
+    "period": {
+      "7d": "Last 7 Days",
+      "30d": "Last 30 Days"
+    },
+    "noData": "No learning data yet",
+    "summary": {
+      "newMastered": "Newly Mastered",
+      "newRegressed": "Regressed",
+      "newErrors": "New Errors",
+      "reviewCompletion": "Review Completion",
+      "noReviewScheduled": "No reviews scheduled"
+    },
+    "trend": {
+      "title": "Mastery Trend",
+      "mastered": "Mastered"
+    },
+    "weakPoints": {
+      "title": "Weak Points",
+      "empty": "Great job, no weak points!",
+      "attempts": "{count} attempts",
+      "lastAttempt": "Last attempt"
+    },
+    "progress": {
+      "title": "Knowledge Point Progress",
+      "interventions": "Intervention History"
+    }
+  },
+  "agentTrace": {
+    "title": "Agent Traces",
+    "list": {
+      "empty": "No trace records",
+      "agent": "Agent",
+      "user": "User",
+      "status": "Status",
+      "steps": "Steps",
+      "tokens": "Tokens",
+      "duration": "Duration",
+      "createdAt": "Created"
+    },
+    "detail": {
+      "title": "Trace Detail",
+      "summary": "Summary",
+      "terminationReason": "Termination Reason",
+      "totalTokens": "Total Tokens",
+      "totalDuration": "Total Duration",
+      "stepTimeline": "Step Timeline"
+    },
+    "step": {
+      "skill": "Skill",
+      "input": "Input",
+      "output": "Output",
+      "error": "Error"
+    },
+    "status": {
+      "RUNNING": "Running",
+      "COMPLETED": "Completed",
+      "TERMINATED": "Terminated",
+      "FAILED": "Failed"
+    },
+    "stepStatus": {
+      "SUCCESS": "Success",
+      "FAILED": "Failed",
+      "TIMEOUT": "Timeout"
+    },
+    "stats": {
+      "title": "Last 7 Days Stats",
+      "totalCalls": "Total Calls",
+      "successRate": "Success Rate",
+      "avgDuration": "Avg Duration",
+      "avgTokens": "Avg Tokens"
+    },
+    "filter": {
+      "allAgents": "All Agents",
+      "allStatuses": "All Statuses",
+      "dateRange": "Date Range"
+    },
+    "summary": {
+      "analyzing": "AI is analyzing...",
+      "errorPattern": "Error pattern: {pattern}",
+      "weakKPs": "Found {count} weak knowledge point(s)",
+      "masteryUpdates": "Updated {count} mastery state(s)",
+      "viewDetail": "View Detail",
+      "failed": "Analysis failed",
+      "patterns": {
+        "CONCEPT_CONFUSION": "Concept Confusion",
+        "CALCULATION_ERROR": "Calculation Error",
+        "METHOD_WRONG": "Wrong Method",
+        "CARELESS": "Carelessness",
+        "OTHER": "Other"
+      }
+    },
+    "ms": "ms",
+    "steps": "steps"
   }
 }

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { MathText } from "@/components/ui/math-text";
+import { AgentSummaryCard } from "@/components/agent-summary-card";
 
 const SUBJECT_COLORS: Record<string, string> = {
   MATH: "bg-blue-100 text-blue-800",
@@ -72,6 +73,7 @@ export default function ErrorDetailPage() {
 
   const question = eq as {
     id: string;
+    studentId: string;
     subject: string;
     content: string;
     studentAnswer: string | null;
@@ -87,6 +89,14 @@ export default function ErrorDetailPage() {
       parent: { nickname: string } | null;
     }>;
   };
+
+  const { data: agentTrace } = trpc.agentTrace.latestForQuestion.useQuery(
+    {
+      studentId: isParent ? question.studentId : undefined,
+      errorQuestionId: id,
+    },
+    { enabled: !!eq },
+  );
 
   return (
     <div className="max-w-2xl space-y-4">
@@ -143,6 +153,9 @@ export default function ErrorDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Agent Analysis Summary */}
+      <AgentSummaryCard trace={agentTrace} />
 
       {/* Parent notes section */}
       {(isParent || (question.parentNotes && question.parentNotes.length > 0)) && (

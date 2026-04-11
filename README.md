@@ -107,8 +107,8 @@ star_catcher/
 │   ├── ROADMAP.md             # 路线图
 │   ├── PHASE2-LAUNCH-PLAN.md  # Phase 2 启动计划 + 设计决策记录
 │   ├── adr/                   # 架构决策记录（11 个）
-│   ├── user-stories/          # 用户故事（10 个模块 + Phase 2 大纲）
-│   └── sprints/               # Sprint 计划（6 个：1, 2, 3, 4a, 4b, 5, 6）
+│   ├── user-stories/          # 用户故事（12 个模块）
+│   └── sprints/               # Sprint 计划（8 个：1, 2, 3, 4a, 4b, 5, 6, 7, 8）
 │
 │── Skill 示例 ────────────────────────────────────────────
 ├── skills/                    # Skill 插件源码 + 编译产物
@@ -128,14 +128,15 @@ star_catcher/
     │   │   ├── check/                 # 作业检查（新建/详情/结果）
     │   │   ├── errors/                # 错题管理（列表/详情）
     │   │   ├── mastery/               # 掌握地图（掌握度 + 间隔复习 + 复习对话框）
-    │   │   ├── parent/                # 家长视图（概览/统计/时间线）
-    │   │   ├── admin/                 # 管理后台（用户/配置/知识图谱/Skill）
+    │   │   ├── parent/                # 家长视图（概览/统计/时间线/学习报告）
+    │   │   ├── admin/                 # 管理后台（用户/配置/知识图谱/Skill/Agent 追踪）
     │   │   ├── family/                # 家庭组管理
     │   │   └── settings/              # 个人设置
     │   ├── api/trpc/[trpc]/       # tRPC 端点
     │   └── sw.ts                  # Service Worker（PWA 离线缓存）
     │
     ├── components/            # ── UI 组件 ──
+    │   ├── agent-summary-card.tsx   # AI 分析摘要卡片（家长/学生简化视图）
     │   ├── homework/              # 拍照 / 照片网格
     │   ├── dashboard/             # 首页组件（今日复习 Widget）
     │   ├── mastery/               # 掌握地图组件（复习对话框）
@@ -207,7 +208,7 @@ star_catcher/
     ├── server/                # ── tRPC 服务端 ──
     │   ├── trpc.ts                # 初始化 + 角色中间件 + SSE 配置
     │   ├── context.ts             # 上下文工厂
-    │   └── routers/               # 路由器（10 个业务 + 1 个订阅）
+    │   └── routers/               # 路由器（12 个业务 + 1 个订阅）
     │
     ├── worker/                # ── BullMQ Worker（独立 Docker 服务）──
     │   ├── index.ts               # 入口（监听 ai-jobs 队列）
@@ -217,7 +218,7 @@ star_catcher/
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）
     │   └── skill-build.ts         # Skill 构建（校验 + 编译 + Prisma 检查）
     │
-    ├── tests/                 # ── 测试（36 文件，596+ 用例）──
+    ├── tests/                 # ── 测试（43 文件，708+ 用例）──
     │   ├── acceptance/            # 验收测试（9 个用户故事模块）
     │   ├── unit/                  # 单元测试（含 Skill 运行时 / Agent 组件）
     │   ├── perf/                  # 性能测试（Knowledge Graph CTE 等）
