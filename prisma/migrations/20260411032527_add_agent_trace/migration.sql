@@ -56,11 +56,8 @@ CREATE INDEX "AgentTrace_agentName_createdAt_idx" ON "AgentTrace"("agentName", "
 -- CreateIndex
 CREATE INDEX "AgentTrace_status_idx" ON "AgentTrace"("status");
 
--- CreateIndex
+-- CreateIndex (also covers traceId-only lookups via B-tree left prefix)
 CREATE INDEX "AgentTraceStep_traceId_stepNo_idx" ON "AgentTraceStep"("traceId", "stepNo");
-
--- CreateIndex
-CREATE INDEX "AgentTraceStep_traceId_idx" ON "AgentTraceStep"("traceId");
 
 -- AddForeignKey
 ALTER TABLE "AgentTrace" ADD CONSTRAINT "AgentTrace_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

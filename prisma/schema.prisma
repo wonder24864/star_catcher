@@ -612,8 +612,7 @@ model AgentTraceStep {
 
   trace AgentTrace @relation(fields: [traceId], references: [id], onDelete: Cascade)
 
-  @@index([traceId, stepNo])
-  @@index([traceId])
+  @@index([traceId, stepNo]) // Also covers traceId-only lookups (B-tree left prefix)
 }
 
 // ==================== AI Call Logging ====================

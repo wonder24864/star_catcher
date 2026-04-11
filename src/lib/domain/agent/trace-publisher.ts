@@ -12,6 +12,7 @@
  * See: docs/adr/008-agent-architecture.md #6
  */
 import Redis from "ioredis";
+import type { AgentTerminationReason } from "./types";
 
 // ---------------------------------------------------------------------------
 // Event types
@@ -31,7 +32,7 @@ export interface AgentTraceCompleteEvent {
   type: "trace:completed";
   traceId: string;
   status: "COMPLETED" | "TERMINATED" | "FAILED";
-  terminationReason: string;
+  terminationReason: AgentTerminationReason;
   totalSteps: number;
   totalDurationMs: number;
   summary?: string;
@@ -116,7 +117,7 @@ export class AgentTracePublisher {
    */
   async publishTraceCompleted(
     status: "COMPLETED" | "TERMINATED" | "FAILED",
-    terminationReason: string,
+    terminationReason: AgentTerminationReason,
     totalSteps: number,
     totalDurationMs: number,
     summary?: string,
