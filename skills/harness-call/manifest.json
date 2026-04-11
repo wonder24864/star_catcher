@@ -1,0 +1,8 @@
+{
+  "name": "harness-call",
+  "version": "1.0.0",
+  "description": "Skill that calls AI via Harness pipeline, verifying IPC-to-Harness chain",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 30000
+}

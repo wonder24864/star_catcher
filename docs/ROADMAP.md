@@ -29,7 +29,7 @@
 
 | Sprint | 周期 | 范围 | 状态 |
 |--------|------|------|------|
-| Sprint 4a | Week 7 | Skill 插件基础设施（IPC 沙箱 + 打包 + 注册表）| 未开始 |
+| Sprint 4a | Week 7 | Skill 插件基础设施（IPC 沙箱 + 打包 + 注册表）| 已完成 |
 | Sprint 4b | Week 8 | Agent Runner + Memory + KG schema + Harness 新组件 | 未开始 |
 | Sprint 5 | Week 9 | Knowledge Graph + Question Understanding Agent | 未开始 |
 | Sprint 6 | Week 10 | Diagnosis Agent + Student Memory | 未开始 |

@@ -351,6 +351,38 @@ model SystemConfig {
   @@index([key])
 }
 
+// ==================== Skill Plugin System ====================
+// See docs/adr/008-agent-architecture.md
+
+model SkillDefinition {
+  id             String      @id @default(cuid())
+  name           String      @db.VarChar(64)  // kebab-case identifier
+  version        String      @db.VarChar(16)  // semver (e.g. 1.0.0)
+  description    String      @db.VarChar(500)
+  author         String      @db.VarChar(100)
+  functionSchema Json        // Canonical JSON Schema (provider-agnostic)
+  bundleUrl      String?     @db.VarChar(512) // MinIO bundle path
+  config         Json?       // Skill-specific config (timeout, cache TTL, etc.)
+  status         SkillStatus @default(DRAFT)
+  callCount      Int         @default(0)
+  avgDurationMs  Float       @default(0)
+  deletedAt      DateTime?   @db.Timestamptz // Soft delete (ADR-008)
+  createdAt      DateTime    @default(now()) @db.Timestamptz
+  updatedAt      DateTime    @updatedAt @db.Timestamptz
+
+  @@unique([name, version])
+  @@index([status])
+  @@index([name])
+  @@index([deletedAt, status]) // Soft-delete filtered queries
+}
+
+enum SkillStatus {
+  DRAFT
+  ACTIVE
+  DISABLED
+  DEPRECATED
+}
+
 // ==================== AI Call Logging ====================
 // All AI calls are logged via the Harness CallLogger (see ADR-001)
 

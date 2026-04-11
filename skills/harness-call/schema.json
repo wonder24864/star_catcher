@@ -1,0 +1,18 @@
+{
+  "name": "harness_call",
+  "description": "Call AI to grade an answer, testing the IPC to Harness pipeline chain",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "question": {
+        "type": "string",
+        "description": "The question text"
+      },
+      "studentAnswer": {
+        "type": "string",
+        "description": "The student's answer to grade"
+      }
+    },
+    "required": ["question", "studentAnswer"]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "echo",
+  "description": "Echo back the input data unchanged, for testing purposes",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "string",
+        "description": "Message to echo back"
+      }
+    },
+    "required": ["message"]
+  }
+}

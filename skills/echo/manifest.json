@@ -1,0 +1,8 @@
+{
+  "name": "echo",
+  "version": "1.0.0",
+  "description": "Simple echo skill for testing IPC full flow",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 5000
+}

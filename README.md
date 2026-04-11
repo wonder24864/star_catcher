@@ -110,6 +110,12 @@ star_catcher/
 │   ├── user-stories/          # 用户故事（9 个模块 + Phase 2 大纲）
 │   └── sprints/               # Sprint 计划（5 个：1, 2, 3, 4a, 4b）
 │
+│── Skill 示例 ────────────────────────────────────────────
+├── skills/                    # Skill 插件源码 + 编译产物
+│   ├── echo/                      # Echo Skill（IPC 流程测试用）
+│   ├── harness-call/              # AI 调用 Skill（IPC→Harness 链路测试用）
+│   └── diagnose-error/            # 错误诊断 Skill（业务示例）
+│
 │── 源码 ──────────────────────────────────────────────────
 └── src/
     │
@@ -156,6 +162,15 @@ star_catcher/
     │   │   │   ├── operations/        # 业务操作（OCR/判分/求助/学科检测）
     │   │   │   ├── prompts/           # Prompt 模板
     │   │   │   └── providers/         # AI 提供商（Azure OpenAI）
+    │   │   ├── skill/             # Skill 插件系统（Phase 2）
+    │   │   │   ├── types.ts           # IPC 协议 + 执行上下文类型
+    │   │   │   ├── runtime.ts         # SkillRuntime（worker_threads 生命周期）
+    │   │   │   ├── sandbox-worker.js  # 沙箱 Worker（vm 隔离执行）
+    │   │   │   ├── schema-adapter.ts  # Canonical JSON Schema → 多 Provider 转换
+    │   │   │   ├── bundle.ts          # Bundle 格式定义 + 校验
+    │   │   │   ├── registry.ts        # SkillRegistry（DB 缓存 + ACTIVE 过滤）
+    │   │   │   ├── scaffold.ts        # 脚手架（生成 Skill 模板文件）
+    │   │   │   └── build.ts           # 构建（校验 + esbuild 编译 + Prisma 检查）
     │   │   ├── auth.ts            # NextAuth 认证配置
     │   │   ├── scoring.ts         # 得分计算
     │   │   ├── content-hash.ts    # SHA256 去重哈希
@@ -169,16 +184,21 @@ star_catcher/
     ├── server/                # ── tRPC 服务端 ──
     │   ├── trpc.ts                # 初始化 + 角色中间件 + SSE 配置
     │   ├── context.ts             # 上下文工厂
-    │   └── routers/               # 路由器（9 个业务 + 1 个订阅）
+    │   └── routers/               # 路由器（10 个业务 + 1 个订阅）
     │
     ├── worker/                # ── BullMQ Worker（独立 Docker 服务）──
     │   ├── index.ts               # 入口（监听 ai-jobs 队列）
     │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成
     │
-    ├── tests/                 # ── 测试（23 文件，350+ 用例）──
+    ├── cli/                   # ── CLI 工具 ──
+    │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）
+    │   └── skill-build.ts         # Skill 构建（校验 + 编译 + Prisma 检查）
+    │
+    ├── tests/                 # ── 测试（28 文件，415+ 用例）──
     │   ├── acceptance/            # 验收测试（9 个用户故事模块）
-    │   ├── unit/                  # 单元测试
+    │   ├── unit/                  # 单元测试（含 Skill 运行时 / 安全 / E2E）
     │   ├── architecture/          # 架构守护（Harness 完整性 + i18n 覆盖）
+    │   ├── fixtures/skills/       # 测试用 Skill 夹具（echo/error/security）
     │   └── helpers/               # 测试辅助（mock-db/storage/auth/ai）
     │
     └── types/                 # TypeScript 类型声明

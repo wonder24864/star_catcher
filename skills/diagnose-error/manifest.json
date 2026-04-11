@@ -1,0 +1,8 @@
+{
+  "name": "diagnose-error",
+  "version": "1.0.0",
+  "description": "Diagnose student error patterns and identify knowledge point weaknesses",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 30000
+}

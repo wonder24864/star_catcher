@@ -16,7 +16,9 @@
     "test:acceptance": "vitest run --project acceptance",
     "test:architecture": "vitest run --project architecture",
     "worker": "npx tsx src/worker/index.ts",
-    "build:worker": "npx esbuild src/worker/index.ts --bundle --platform=node --outfile=dist/worker.js --packages=external --tsconfig=tsconfig.json"
+    "build:worker": "npx esbuild src/worker/index.ts --bundle --platform=node --outfile=dist/worker.js --packages=external --tsconfig=tsconfig.json",
+    "skill:scaffold": "npx tsx src/cli/skill-scaffold.ts",
+    "skill:build": "npx tsx src/cli/skill-build.ts"
   },
   "dependencies": {
     "@prisma/client": "^6",
@@ -55,11 +57,13 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/archiver": "^7.0.0",
     "@types/bcryptjs": "^3",
     "@types/katex": "^0.16.8",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "archiver": "^7.0.1",
     "babel-plugin-react-compiler": "1.0.0",
     "esbuild": "^0.28.0",
     "eslint": "^9",

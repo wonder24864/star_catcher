@@ -1,0 +1,26 @@
+{
+  "name": "diagnose_error",
+  "description": "Analyze a student's incorrect answer to identify the error pattern and underlying knowledge gap",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "question": {
+        "type": "string",
+        "description": "The original question text"
+      },
+      "correctAnswer": {
+        "type": "string",
+        "description": "The correct answer"
+      },
+      "studentAnswer": {
+        "type": "string",
+        "description": "The student's incorrect answer"
+      },
+      "subject": {
+        "type": "string",
+        "description": "Subject area (MATH, CHINESE, ENGLISH, etc.)"
+      }
+    },
+    "required": ["question", "correctAnswer", "studentAnswer", "subject"]
+  }
+}
