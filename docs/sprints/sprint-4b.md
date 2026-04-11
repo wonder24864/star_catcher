@@ -30,7 +30,7 @@
   - 多 Provider 降级切换
   - 产出：组件代码 + 状态机测试
 
-- [ ] 46. Knowledge Graph schema + 存储验证
+- [x] 46. Knowledge Graph schema + 存储验证
   - Prisma: KnowledgePoint, KnowledgeRelation, QuestionKnowledgeMapping
   - recursive CTE 性能测试
   - 产出：schema + migration + 性能数据 → 更新 ADR-009

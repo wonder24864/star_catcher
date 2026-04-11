@@ -41,6 +41,16 @@ function createPrismaClient() {
           return query(args);
         },
       },
+      knowledgePoint: {
+        async findMany({ args, query }) {
+          args.where = { ...args.where, deletedAt: null };
+          return query(args);
+        },
+        async findFirst({ args, query }) {
+          args.where = { ...args.where, deletedAt: null };
+          return query(args);
+        },
+      },
     },
   });
 }

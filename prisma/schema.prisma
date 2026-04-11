@@ -285,9 +285,10 @@ model ErrorQuestion {
   createdAt         DateTime     @default(now()) @db.Timestamptz
   updatedAt         DateTime     @updatedAt @db.Timestamptz
 
-  student         User              @relation(fields: [studentId], references: [id])
-  sessionQuestion SessionQuestion?  @relation(fields: [sessionQuestionId], references: [id])
-  parentNotes     ParentNote[]
+  student           User              @relation(fields: [studentId], references: [id])
+  sessionQuestion   SessionQuestion?  @relation(fields: [sessionQuestionId], references: [id])
+  parentNotes       ParentNote[]
+  knowledgeMappings QuestionKnowledgeMapping[]
 
   @@unique([studentId, contentHash])
   @@index([studentId, subject])
@@ -381,6 +382,88 @@ enum SkillStatus {
   ACTIVE
   DISABLED
   DEPRECATED
+}
+
+// ==================== Knowledge Graph ====================
+// See docs/adr/009-knowledge-graph-storage.md
+
+enum SchoolLevel {
+  PRIMARY   // 小学
+  JUNIOR    // 初中
+  SENIOR    // 高中
+}
+
+enum KnowledgeRelationType {
+  PREREQUISITE // 前置依赖（from 是 to 的前置）
+  PARALLEL     // 平行关系（同级并列知识点）
+  CONTAINS     // 包含关系（from 包含 to）
+}
+
+enum KnowledgeMappingSource {
+  AI_DETECTED     // AI 自动标注
+  ADMIN_VERIFIED  // 管理员人工确认
+}
+
+model KnowledgePoint {
+  id              String      @id @default(cuid())
+  externalId      String?     @unique @db.VarChar(128) // 教材版本标识
+  subject         Subject
+  grade           Grade?      // 某些知识点跨年级
+  schoolLevel     SchoolLevel
+  name            String      @db.VarChar(128)
+  description     String?     @db.Text
+  parentId        String?     // 自引用，树形层级
+  depth           Int         @default(0) // 层级深度（0=学科根节点）
+  difficulty      Int         @default(3) @db.SmallInt // 1-5
+  importance      Int         @default(3) @db.SmallInt // 1-5
+  examFrequency   Int         @default(3) @db.SmallInt // 1-5
+  metadata        Json?       // 灵活扩展属性
+  // embedding    Unsupported("vector(1536)")? // pgvector — Task 50 启用
+  createdAt       DateTime    @default(now()) @db.Timestamptz
+  updatedAt       DateTime    @updatedAt @db.Timestamptz
+  deletedAt       DateTime?   @db.Timestamptz
+
+  parent          KnowledgePoint?  @relation("KnowledgePointTree", fields: [parentId], references: [id])
+  children        KnowledgePoint[] @relation("KnowledgePointTree")
+  relationsFrom   KnowledgeRelation[] @relation("RelationFrom")
+  relationsTo     KnowledgeRelation[] @relation("RelationTo")
+  questionMappings QuestionKnowledgeMapping[]
+
+  @@index([subject, schoolLevel])
+  @@index([parentId])
+  @@index([deletedAt, subject]) // Soft-delete filtered queries
+}
+
+model KnowledgeRelation {
+  id          String                @id @default(cuid())
+  fromPointId String
+  toPointId   String
+  type        KnowledgeRelationType
+  strength    Float                 @default(1.0) // 0.0-1.0 关系强度
+  createdAt   DateTime              @default(now()) @db.Timestamptz
+
+  fromPoint   KnowledgePoint @relation("RelationFrom", fields: [fromPointId], references: [id], onDelete: Cascade)
+  toPoint     KnowledgePoint @relation("RelationTo", fields: [toPointId], references: [id], onDelete: Cascade)
+
+  @@unique([fromPointId, toPointId, type])
+  @@index([fromPointId, type])
+  @@index([toPointId, type])
+}
+
+model QuestionKnowledgeMapping {
+  id               String                 @id @default(cuid())
+  questionId       String
+  knowledgePointId String
+  mappingSource    KnowledgeMappingSource @default(AI_DETECTED)
+  confidence       Float                  @default(0.8) // 0.0-1.0
+  createdAt        DateTime               @default(now()) @db.Timestamptz
+
+  question         ErrorQuestion  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  knowledgePoint   KnowledgePoint @relation(fields: [knowledgePointId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, knowledgePointId])
+  @@index([knowledgePointId])
+  @@index([questionId])
 }
 
 // ==================== AI Call Logging ====================

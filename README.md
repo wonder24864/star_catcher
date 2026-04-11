@@ -201,9 +201,10 @@ star_catcher/
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）
     │   └── skill-build.ts         # Skill 构建（校验 + 编译 + Prisma 检查）
     │
-    ├── tests/                 # ── 测试（28 文件，415+ 用例）──
+    ├── tests/                 # ── 测试（32 文件，513+ 用例）──
     │   ├── acceptance/            # 验收测试（9 个用户故事模块）
-    │   ├── unit/                  # 单元测试（含 Skill 运行时 / 安全 / E2E）
+    │   ├── unit/                  # 单元测试（含 Skill 运行时 / Agent 组件）
+    │   ├── perf/                  # 性能测试（Knowledge Graph CTE 等）
     │   ├── architecture/          # 架构守护（Harness 完整性 + i18n 覆盖）
     │   ├── fixtures/skills/       # 测试用 Skill 夹具（echo/error/security）
     │   └── helpers/               # 测试辅助（mock-db/storage/auth/ai）
