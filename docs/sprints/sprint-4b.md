@@ -14,18 +14,18 @@
 
 ### Week 8
 
-- [ ] 43. Agent Runner 原型
+- [x] 43. Agent Runner 原型
   - Function calling 循环（通过 Schema Adapter 兼容多 Provider）
   - 从 SkillRegistry 动态组装 tools 数组
   - 调用 Skill 通过 SkillRuntime（IPC 沙箱）
   - 产出：Agent Runner 核心代码 + ≥ 3 步循环集成测试
 
-- [ ] 44. AgentStepLimiter + CostTracker
+- [x] 44. AgentStepLimiter + CostTracker
   - 最大步数限制 + Token 预算追踪
   - 超限强制终止 Agent 循环
   - 产出：两个 Harness 组件 + 终止边界测试
 
-- [ ] 45. CircuitBreaker 组件
+- [x] 45. CircuitBreaker 组件
   - 连续失败计数 → 熔断 → 半开 → 恢复
   - 多 Provider 降级切换
   - 产出：组件代码 + 状态机测试

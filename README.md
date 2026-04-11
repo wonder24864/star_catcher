@@ -171,6 +171,13 @@ star_catcher/
     │   │   │   ├── registry.ts        # SkillRegistry（DB 缓存 + ACTIVE 过滤）
     │   │   │   ├── scaffold.ts        # 脚手架（生成 Skill 模板文件）
     │   │   │   └── build.ts           # 构建（校验 + esbuild 编译 + Prisma 检查）
+    │   │   ├── agent/             # Agent Runner（Phase 2）
+    │   │   │   ├── types.ts           # Agent 定义 + Function Calling 类型
+    │   │   │   ├── runner.ts          # AgentRunner（function calling 循环）
+    │   │   │   ├── step-limiter.ts    # AgentStepLimiter（步数限制，ADR-008 ≤ 10）
+    │   │   │   ├── cost-tracker.ts    # CostTracker（Token 预算追踪）
+    │   │   │   ├── circuit-breaker.ts # CircuitBreaker（熔断 + 多 Provider 降级）
+    │   │   │   └── index.ts           # 公共导出
     │   │   ├── auth.ts            # NextAuth 认证配置
     │   │   ├── scoring.ts         # 得分计算
     │   │   ├── content-hash.ts    # SHA256 去重哈希
