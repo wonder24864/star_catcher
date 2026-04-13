@@ -1,0 +1,8 @@
+{
+  "name": "subject-detect",
+  "version": "1.0.0",
+  "description": "Auto-detect subject and content type from manually entered question text",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 15000
+}

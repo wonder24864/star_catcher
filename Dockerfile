@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# ─── Stage 1: Dependencies ───────────────────────────────────────────────────
+# ─── Stage 1: Dependencies ──────────────────────────────────────────────────
 FROM node:22-alpine AS deps
 WORKDIR /app
 
@@ -8,35 +8,28 @@ RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 
-RUN npm install --omit=dev && \
-    npm install prisma && \
-    npx prisma generate
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci && npx prisma generate
 
-# ─── Stage 2: Prisma CLI (parallel with builder, cached independently) ───────
-FROM node:22-alpine AS prisma-cli
-WORKDIR /app
-RUN npm init -y > /dev/null 2>&1 && \
-    npm install prisma@6 @prisma/client@6 --save-prod && \
-    npm cache clean --force
-
-# ─── Stage 3: Builder ────────────────────────────────────────────────────────
+# ─── Stage 2: Builder ───────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN npx prisma generate
-
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-RUN npm run build
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm run build
 
 # Build worker (standalone Node.js bundle for BullMQ)
-RUN npx esbuild src/worker/index.ts --bundle --platform=node --outfile=dist/worker.js --packages=external --tsconfig=tsconfig.json
+RUN npx esbuild src/worker/index.ts --bundle --platform=node \
+    --outfile=dist/worker.js --tsconfig=tsconfig.json \
+    --external:@prisma/client --external:.prisma/client
 
-# ─── Stage 4: Runner ─────────────────────────────────────────────────────────
+# ─── Stage 3: Runner ────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
 WORKDIR /app
 
@@ -47,22 +40,21 @@ ENV PORT=3000
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# 1) Prisma CLI deps first (cached layer, only rebuilds when prisma version changes)
-COPY --from=prisma-cli /app/node_modules ./node_modules
-
-# 2) Standalone output on top (merges into node_modules, keeps prisma CLI intact)
+# Standalone output
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# 3) Prisma schema + generated client
+# Prisma schema + generated client + CLI (for migrate deploy in entrypoint)
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# 4) Worker bundle (for star-catcher-worker service)
+# Worker bundle (for star-catcher-worker service)
 COPY --from=builder --chown=nextjs:nodejs /app/dist/worker.js ./worker.js
 
-# 5) Entrypoint
+# Entrypoint
 COPY scripts/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 

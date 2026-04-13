@@ -26,67 +26,45 @@ import { SkillRuntime } from "@/lib/domain/skill/runtime";
 import { AzureOpenAIFunctionCallingProvider } from "@/lib/domain/ai/providers/azure-openai-fc";
 import { diagnosisAgent } from "@/lib/domain/agent/definitions/diagnosis";
 import { publishJobResult, sessionChannel } from "@/lib/infra/events";
-import { diagnoseError } from "@/lib/domain/ai/operations/diagnose-error";
+import { callAIOperation } from "@/lib/domain/ai/operations/registry";
 import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
+import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
-import type { PrismaClient, Subject } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 
 const memory = new StudentMemoryImpl(db as unknown as PrismaClient);
 
-// ─── IPC Query Whitelist ─────────────────────────────
+// ─── Memory Read/Write Whitelists ────────────────────────
 
-const QUERY_WHITELIST: Record<
-  string,
-  (params: Record<string, unknown>) => Promise<unknown>
-> = {
-  searchKnowledgePoints: async (params) => {
-    const keywords = params.keywords as string[];
-    const subject = params.subject as string;
-    const grade = params.grade as string | undefined;
-    const schoolLevel = params.schoolLevel as string | undefined;
-    const limit = (params.limit as number) ?? 10;
+function buildMemoryWhitelists(memory: StudentMemoryImpl) {
+  const MEMORY_READ_WHITELIST: Record<
+    string,
+    (params: Record<string, unknown>) => Promise<unknown>
+  > = {
+    getMasteryState: (params) =>
+      memory.getMasteryState(params.studentId as string, params.knowledgePointId as string),
+    getWeakPoints: (params) =>
+      memory.getWeakPoints(params.studentId as string),
+  };
 
-    const andConditions: Record<string, unknown>[] = [
-      { deletedAt: null },
-      { subject: subject as Subject },
-    ];
-    if (grade) andConditions.push({ grade });
-    if (schoolLevel) andConditions.push({ schoolLevel });
+  const MEMORY_WRITE_WHITELIST: Record<
+    string,
+    (params: Record<string, unknown>, extra: { errorQuestionId: string; agentName: string }) => Promise<void>
+  > = {
+    logIntervention: async (params, extra) => {
+      await memory.logIntervention(
+        params.studentId as string,
+        params.knowledgePointId as string,
+        params.type as "DIAGNOSIS",
+        { ...(params.content as Record<string, unknown>), errorQuestionId: extra.errorQuestionId },
+        { agentId: extra.agentName },
+      );
+    },
+  };
 
-    if (keywords.length > 0) {
-      andConditions.push({
-        OR: keywords.flatMap((kw) => [
-          { name: { contains: kw, mode: "insensitive" as const } },
-          { description: { contains: kw, mode: "insensitive" as const } },
-        ]),
-      });
-    }
-
-    const results = await db.knowledgePoint.findMany({
-      where: { AND: andConditions },
-      take: limit,
-      orderBy: { depth: "asc" },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        difficulty: true,
-        depth: true,
-        parent: { select: { name: true } },
-      },
-    });
-
-    return results.map((r) => ({
-      id: r.id,
-      name: r.name,
-      description: r.description,
-      difficulty: r.difficulty,
-      depth: r.depth,
-      parentName: r.parent?.name ?? null,
-    }));
-  },
-};
+  return { MEMORY_READ_WHITELIST, MEMORY_WRITE_WHITELIST };
+}
 
 // ─── Diagnosis Extraction ──────────────────────────────
 
@@ -259,66 +237,29 @@ export async function handleDiagnosis(
       correlationId: `diag-${sessionId}-${errorQuestionId}`,
     };
 
+    const { MEMORY_READ_WHITELIST, MEMORY_WRITE_WHITELIST } = buildMemoryWhitelists(memory);
+
     const handlers: SkillIPCHandlers = {
       onCallAI: async (operation, data) => {
-        switch (operation) {
-          case "DIAGNOSE_ERROR": {
-            const result = await diagnoseError({
-              question: data.question as string,
-              correctAnswer: data.correctAnswer as string,
-              studentAnswer: data.studentAnswer as string,
-              subject: data.subject as string,
-              grade: data.grade as string | undefined,
-              knowledgePoints: knowledgePoints.length > 0
-                ? knowledgePoints.map((kp) => ({
-                    id: kp.id,
-                    name: kp.name,
-                    description: kp.description ?? undefined,
-                  }))
-                : undefined,
-              errorHistory: data.errorHistory as
-                | Array<{ question: string; studentAnswer: string; knowledgePointName: string; createdAt: string }>
-                | undefined,
-              locale: (data.locale as string) ?? locale,
-              context: aiContext,
-            });
-            if (!result.success) {
-              throw new Error(
-                result.error?.message ?? "diagnose operation failed",
-              );
-            }
-            return result.data;
-          }
-          default:
-            throw new Error(`Unknown AI operation: ${operation}`);
+        const result = await callAIOperation(operation, data, aiContext);
+        if (!result.success) {
+          throw new Error(result.error?.message ?? `${operation} operation failed`);
         }
+        return result.data;
       },
       onReadMemory: async (method, params) => {
-        const p = params as Record<string, string>;
-        switch (method) {
-          case "getMasteryState":
-            return memory.getMasteryState(p.studentId, p.knowledgePointId);
-          case "getWeakPoints":
-            return memory.getWeakPoints(p.studentId);
-          default:
-            throw new Error(`Unknown memory read method: ${method}`);
+        const readFn = MEMORY_READ_WHITELIST[method];
+        if (!readFn) {
+          throw new Error(`Unknown memory read method: ${method}`);
         }
+        return readFn(params);
       },
       onWriteMemory: async (method, params) => {
-        const p = params as Record<string, unknown>;
-        switch (method) {
-          case "logIntervention":
-            await memory.logIntervention(
-              p.studentId as string,
-              p.knowledgePointId as string,
-              p.type as "DIAGNOSIS",
-              { ...(p.content as Record<string, unknown>), errorQuestionId },
-              { agentId: diagnosisAgent.name },
-            );
-            break;
-          default:
-            throw new Error(`Unknown memory write method: ${method}`);
+        const writeFn = MEMORY_WRITE_WHITELIST[method];
+        if (!writeFn) {
+          throw new Error(`Unknown memory write method: ${method}`);
         }
+        await writeFn(params, { errorQuestionId, agentName: diagnosisAgent.name });
       },
       onQuery: async (queryName, data) => {
         const queryFn = QUERY_WHITELIST[queryName];
@@ -340,7 +281,7 @@ export async function handleDiagnosis(
         const name = skill.functionSchema.name.replace(/_/g, "-");
         return require("path").resolve(
           process.cwd(),
-          `skills/${name}/execute.js`,
+          `skills/${name}/index.js`,
         );
       },
     });

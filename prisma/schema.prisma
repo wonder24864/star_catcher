@@ -369,6 +369,7 @@ model SkillDefinition {
   bundleUrl      String?     @db.VarChar(512) // MinIO bundle path
   config         Json?       // Skill-specific config (timeout, cache TTL, etc.)
   status         SkillStatus @default(DRAFT)
+  source         SkillSource @default(CUSTOM)
   callCount      Int         @default(0)
   avgDurationMs  Float       @default(0)
   deletedAt      DateTime?   @db.Timestamptz // Soft delete (ADR-008)
@@ -386,6 +387,11 @@ enum SkillStatus {
   ACTIVE
   DISABLED
   DEPRECATED
+}
+
+enum SkillSource {
+  BUILTIN  // System built-in skills (cannot be disabled/deleted)
+  CUSTOM   // User-uploaded skills
 }
 
 // ==================== Knowledge Graph ====================

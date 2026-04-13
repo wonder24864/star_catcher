@@ -1,0 +1,30 @@
+{
+  "name": "grade_answer",
+  "description": "Grade a single student answer as correct or incorrect",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "questionContent": {
+        "type": "string",
+        "description": "The question text"
+      },
+      "studentAnswer": {
+        "type": "string",
+        "description": "The student's submitted answer"
+      },
+      "correctAnswer": {
+        "type": "string",
+        "description": "The expected correct answer (used internally, never returned to student)"
+      },
+      "subject": {
+        "type": "string",
+        "description": "Subject for context-appropriate grading"
+      },
+      "grade": {
+        "type": "string",
+        "description": "Grade level for rubric adaptation"
+      }
+    },
+    "required": ["questionContent", "studentAnswer"]
+  }
+}

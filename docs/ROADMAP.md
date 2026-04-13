@@ -81,6 +81,15 @@
 | D7 | KG 拖拽调整层级 | US-032 | 后端 update(parentId) 已支持，前端需引入拖拽库(dnd-kit)，UX 优化项 | Phase 4 |
 | D8 | 低置信度映射管理员确认流程 | US-033 | confidence 字段已记录分级，mappingSource 已区分 AI_DETECTED / ADMIN_VERIFIED。需增加管理界面筛选低置信度映射批量确认 | Phase 3 |
 
+## Phase 2 → Phase 3 过渡
+
+| Sprint | 周期 | 范围 | 状态 |
+|--------|------|------|------|
+| Sprint 9 | Week 13 | Skill 系统设计缺口修补 | 已完成 |
+
+> Sprint 9 修补 Phase 2 的 Skill 落地缺口：内置 Skill 注册、通用 IPC 路由、Phase 1 操作包装成 Skill。
+> 详见 `docs/sprints/sprint-9-skill-gap.md`
+
 ## Phase 3: 学习闭环 + 干预（Learning Brain 全局编排）
 
 > **重要**：Phase 3 在 Phase 2 基础设施上实现完整学习闭环。

@@ -1,0 +1,8 @@
+{
+  "name": "help-generate",
+  "version": "1.0.0",
+  "description": "Generate progressive help content (3 levels) for a wrong answer",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 30000
+}

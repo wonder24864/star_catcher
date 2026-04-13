@@ -99,72 +99,80 @@ export default function SkillsPage() {
         <p className="text-muted-foreground">{t("skills.empty")}</p>
       ) : (
         <div className="space-y-3">
-          {skills.map((skill) => (
-            <Card key={skill.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">
-                    {skill.name}{" "}
-                    <span className="text-muted-foreground text-sm font-normal">
-                      v{skill.version}
-                    </span>
-                  </CardTitle>
-                  <Badge variant={STATUS_BADGE_VARIANT[skill.status as SkillStatus]}>
-                    {t(`skills.status${skill.status.charAt(0) + skill.status.slice(1).toLowerCase()}` as Parameters<typeof t>[0])}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-3 text-sm">
-                  {skill.description}
-                </p>
-                <div className="flex items-center justify-between">
-                  <div className="text-muted-foreground flex gap-4 text-xs">
-                    <span>
-                      {t("skills.calls")}: {skill.callCount}
-                    </span>
-                    <span>
-                      {t("skills.avgDuration")}:{" "}
-                      {skill.avgDurationMs
-                        ? `${Math.round(skill.avgDurationMs)}${t("skills.ms")}`
-                        : "-"}
-                    </span>
-                    <span>
-                      {t("skills.author")}: {skill.author ?? "-"}
-                    </span>
+          {skills.map((skill) => {
+            const isBuiltin = (skill as { source?: string }).source === "BUILTIN";
+            return (
+              <Card key={skill.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">
+                      {skill.name}{" "}
+                      <span className="text-muted-foreground text-sm font-normal">
+                        v{skill.version}
+                      </span>
+                      {isBuiltin && (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {t("skills.builtin")}
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    <Badge variant={STATUS_BADGE_VARIANT[skill.status as SkillStatus]}>
+                      {t(`skills.status${skill.status.charAt(0) + skill.status.slice(1).toLowerCase()}` as Parameters<typeof t>[0])}
+                    </Badge>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedSkillId(skill.id)}
-                    >
-                      {t("skills.details")}
-                    </Button>
-                    {skill.status === "ACTIVE" ? (
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground mb-3 text-sm">
+                    {skill.description}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div className="text-muted-foreground flex gap-4 text-xs">
+                      <span>
+                        {t("skills.calls")}: {skill.callCount}
+                      </span>
+                      <span>
+                        {t("skills.avgDuration")}:{" "}
+                        {skill.avgDurationMs
+                          ? `${Math.round(skill.avgDurationMs)}${t("skills.ms")}`
+                          : "-"}
+                      </span>
+                      <span>
+                        {t("skills.author")}: {skill.author ?? "-"}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
                       <Button
-                        variant="secondary"
+                        variant="outline"
                         size="sm"
-                        onClick={() => disableMutation.mutate({ id: skill.id })}
-                        disabled={disableMutation.isPending}
+                        onClick={() => setSelectedSkillId(skill.id)}
                       >
-                        {t("skills.disable")}
+                        {t("skills.details")}
                       </Button>
-                    ) : skill.status !== "DEPRECATED" ? (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => enableMutation.mutate({ id: skill.id })}
-                        disabled={enableMutation.isPending}
-                      >
-                        {t("skills.enable")}
-                      </Button>
-                    ) : null}
+                      {!isBuiltin && skill.status === "ACTIVE" ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => disableMutation.mutate({ id: skill.id })}
+                          disabled={disableMutation.isPending}
+                        >
+                          {t("skills.disable")}
+                        </Button>
+                      ) : !isBuiltin && skill.status !== "DEPRECATED" && skill.status !== "ACTIVE" ? (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => enableMutation.mutate({ id: skill.id })}
+                          disabled={enableMutation.isPending}
+                        >
+                          {t("skills.enable")}
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -382,6 +390,22 @@ function SkillUploadDialog({
           <DialogTitle>{t("skills.upload")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Upload Guide */}
+          <Card className="bg-muted/50">
+            <CardContent className="pt-4 text-sm">
+              <h4 className="mb-2 font-medium">{t("skills.uploadGuideTitle")}</h4>
+              <pre className="text-muted-foreground whitespace-pre-wrap text-xs">
+{`my-skill-1.0.0.zip
+├── manifest.json   (name, version, author, timeout)
+├── schema.json     (Canonical JSON Schema)
+└── index.js        (module.exports.execute)`}
+              </pre>
+              <p className="text-muted-foreground mt-2 text-xs">
+                {t("skills.uploadGuide")}
+              </p>
+            </CardContent>
+          </Card>
+
           <Input
             type="file"
             accept=".zip"

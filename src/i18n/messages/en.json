@@ -18,7 +18,9 @@
     "parentStats": "Learning Stats",
     "mastery": "Mastery Map",
     "parentReports": "Reports",
-    "agentTraces": "Agent Traces"
+    "agentTraces": "Agent Traces",
+    "adminSkills": "Skills",
+    "adminKnowledgeGraph": "Knowledge Graph"
   },
   "auth": {
     "login": "Login",
@@ -381,7 +383,9 @@
       "title": "Import Textbook Knowledge Points",
       "bookTitle": "Book Title",
       "bookTitlePlaceholder": "e.g., PEP 7th Grade Math Vol.1",
-      "importing": "Extracting knowledge points..."
+      "importing": "Extracting knowledge points...",
+      "selectFile": "Select Textbook PDF",
+      "fillBookTitleFirst": "Please fill in the book title first"
     },
     "review": {
       "empty": "No pending reviews",
@@ -434,7 +438,11 @@
     "confirmDisable": "Disable this skill?",
     "uploadSuccess": "Skill uploaded successfully",
     "allStatuses": "All Statuses",
-    "ms": "ms"
+    "ms": "ms",
+    "builtin": "Built-in",
+    "cannotDisableBuiltin": "Built-in skills cannot be disabled",
+    "uploadGuideTitle": "Bundle Format",
+    "uploadGuide": "Available APIs in execute: ctx.callAI(), ctx.readMemory(), ctx.writeMemory(), ctx.query(). Build with: npx tsx src/cli/skill-build.ts skills/<name>"
   },
   "mastery": {
     "title": "Mastery Map",
@@ -545,6 +553,18 @@
       "title": "Knowledge Point Progress",
       "interventions": "Intervention History"
     }
+  },
+  "subjects": {
+    "MATH": "Math",
+    "CHINESE": "Chinese",
+    "ENGLISH": "English",
+    "PHYSICS": "Physics",
+    "CHEMISTRY": "Chemistry",
+    "BIOLOGY": "Biology",
+    "HISTORY": "History",
+    "GEOGRAPHY": "Geography",
+    "POLITICS": "Politics",
+    "OTHER": "Other"
   },
   "agentTrace": {
     "title": "Agent Traces",

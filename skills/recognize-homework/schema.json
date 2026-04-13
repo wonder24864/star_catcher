@@ -1,0 +1,20 @@
+{
+  "name": "recognize_homework",
+  "description": "Recognize homework images via OCR and extract structured questions with answers",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "imageUrls": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Presigned URLs for the homework images (ordered)"
+      },
+      "hasExif": {
+        "type": "boolean",
+        "description": "Whether images have EXIF orientation data",
+        "default": false
+      }
+    },
+    "required": ["imageUrls"]
+  }
+}

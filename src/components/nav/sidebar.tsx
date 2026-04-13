@@ -32,6 +32,8 @@ export function Sidebar() {
     { label: t("nav.family"), href: "/family", roles: ["STUDENT", "PARENT"] },
     { label: t("nav.settings"), href: "/settings", roles: ["STUDENT", "PARENT", "ADMIN"] },
     { label: t("nav.adminUsers"), href: "/admin/users", roles: ["ADMIN"] },
+    { label: t("nav.adminSkills"), href: "/admin/skills", roles: ["ADMIN"] },
+    { label: t("nav.adminKnowledgeGraph"), href: "/admin/knowledge-graph", roles: ["ADMIN"] },
     { label: t("nav.agentTraces"), href: "/admin/agent-traces", roles: ["ADMIN"] },
     { label: t("nav.adminSettings"), href: "/admin/settings", roles: ["ADMIN"] },
   ];

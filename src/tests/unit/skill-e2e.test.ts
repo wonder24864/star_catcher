@@ -249,6 +249,15 @@ describe("Diagnose Error Skill — Full Pipeline", () => {
     expect(buildResult.success).toBe(true);
 
     const handlers = createMockHandlers();
+    // Override callAI to return a proper diagnosis result with weakKnowledgePoints
+    handlers.onCallAI = vi.fn().mockResolvedValue({
+      errorPattern: "fraction_addition_error",
+      errorDescription: "Added numerators and denominators separately",
+      weakKnowledgePoints: [
+        { knowledgePointId: "kp-1", severity: "HIGH", reasoning: "Cannot add fractions" },
+      ],
+      recommendation: "Review fraction addition rules",
+    });
     const runtime = new SkillRuntime(handlers, { workerPath: WORKER_PATH });
 
     const result = await runtime.execute(
@@ -258,13 +267,20 @@ describe("Diagnose Error Skill — Full Pipeline", () => {
         correctAnswer: "5/4",
         studentAnswer: "4/6",
         subject: "MATH",
+        knowledgePointIds: ["kp-1"],
       },
       testContext,
     );
 
     expect(result.success).toBe(true);
 
-    // Verify the full chain
+    // Verify ctx.query was called to resolve KP IDs
+    expect(handlers.onQuery).toHaveBeenCalledWith(
+      "findKnowledgePointsByIds",
+      expect.objectContaining({ ids: ["kp-1"] }),
+    );
+
+    // Verify AI call
     expect(handlers.onCallAI).toHaveBeenCalledWith(
       "DIAGNOSE_ERROR",
       expect.objectContaining({

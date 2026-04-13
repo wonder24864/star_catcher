@@ -204,7 +204,7 @@ export const skillRouter = router({
       return updated;
     }),
 
-  /** Disable a skill */
+  /** Disable a skill (BUILTIN skills cannot be disabled) */
   disable: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -215,6 +215,12 @@ export const skillRouter = router({
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Skill not found",
+        });
+      }
+      if (skill.source === "BUILTIN") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Cannot disable a built-in skill",
         });
       }
 

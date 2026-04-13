@@ -1,0 +1,35 @@
+{
+  "name": "help_generate",
+  "description": "Generate progressive help content for a wrong answer (level 1 = direction, level 2 = key steps, level 3 = full solution)",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "questionContent": {
+        "type": "string",
+        "description": "The question text"
+      },
+      "studentAnswer": {
+        "type": "string",
+        "description": "The student's current (incorrect) answer"
+      },
+      "correctAnswer": {
+        "type": "string",
+        "description": "The correct answer (used to generate accurate help, never exposed at L1/L2)"
+      },
+      "helpLevel": {
+        "type": "string",
+        "enum": ["1", "2", "3"],
+        "description": "Help level: 1 = direction, 2 = key steps, 3 = full solution"
+      },
+      "subject": {
+        "type": "string",
+        "description": "Subject for context-appropriate tutoring"
+      },
+      "grade": {
+        "type": "string",
+        "description": "Grade level for age-appropriate language"
+      }
+    },
+    "required": ["questionContent", "studentAnswer", "helpLevel"]
+  }
+}

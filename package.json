@@ -16,13 +16,14 @@
     "test:acceptance": "vitest run --project acceptance",
     "test:architecture": "vitest run --project architecture",
     "worker": "npx tsx src/worker/index.ts",
-    "build:worker": "npx esbuild src/worker/index.ts --bundle --platform=node --outfile=dist/worker.js --packages=external --tsconfig=tsconfig.json",
+    "build:worker": "npx esbuild src/worker/index.ts --bundle --platform=node --outfile=dist/worker.js --tsconfig=tsconfig.json --external:@prisma/client --external:.prisma/client",
     "skill:scaffold": "npx tsx src/cli/skill-scaffold.ts",
     "skill:build": "npx tsx src/cli/skill-build.ts"
   },
   "dependencies": {
     "@prisma/client": "^6",
     "@serwist/next": "^9.5.7",
+    "@swc/helpers": "^0.5.21",
     "@tanstack/react-query": "^5.96.2",
     "@trpc/client": "^11.13.0",
     "@trpc/next": "^11.13.0",
@@ -74,5 +75,8 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
   }
 }

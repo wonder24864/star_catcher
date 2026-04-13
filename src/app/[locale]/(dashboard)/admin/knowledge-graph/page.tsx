@@ -609,8 +609,9 @@ function ImportTab() {
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <input
+        <div className="space-y-1">
+          <label className="text-sm font-medium">{t("knowledgeGraph.import.selectFile")}</label>
+          <Input
             type="file"
             accept=".pdf"
             onChange={(e) => {
@@ -618,8 +619,10 @@ function ImportTab() {
               if (file) handleImport(file);
             }}
             disabled={importing || !bookTitle.trim()}
-            className="text-sm"
           />
+          {!bookTitle.trim() && (
+            <p className="text-xs text-muted-foreground">{t("knowledgeGraph.import.fillBookTitleFirst")}</p>
+          )}
         </div>
         {importing && (
           <p className="text-sm text-muted-foreground">{t("knowledgeGraph.import.importing")}</p>

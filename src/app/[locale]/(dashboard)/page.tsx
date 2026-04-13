@@ -1,35 +1,21 @@
-"use client";
+import { auth } from "@/lib/domain/auth";
+import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
+import { StudentHome } from "@/components/dashboard/student-home";
 
-import { useSession } from "next-auth/react";
-import { useTranslations } from "next-intl";
-import { useStudentStore } from "@/lib/stores/student-store";
-import { TodayReviews } from "@/components/dashboard/today-reviews";
+export default async function HomePage() {
+  const session = await auth();
+  const locale = await getLocale();
+  const role = session?.user?.role;
 
-export default function HomePage() {
-  const t = useTranslations();
-  const { data: session } = useSession();
-  const { selectedStudentId } = useStudentStore();
+  if (role === "ADMIN") {
+    redirect(`/${locale}/admin`);
+  }
 
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  const isStudent = role === "STUDENT";
-  const isParent = role === "PARENT";
+  if (role === "PARENT") {
+    redirect(`/${locale}/parent/overview`);
+  }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{t("app.name")}</h1>
-        <p className="mt-2 text-muted-foreground">
-          {session?.user?.name
-            ? `${t("nav.home")} - ${session.user.name}`
-            : t("app.tagline")}
-        </p>
-      </div>
-
-      {(isStudent || isParent) && (
-        <TodayReviews
-          studentId={isParent ? selectedStudentId ?? undefined : undefined}
-        />
-      )}
-    </div>
-  );
+  // STUDENT — show student home
+  return <StudentHome userName={session?.user?.name ?? undefined} />;
 }

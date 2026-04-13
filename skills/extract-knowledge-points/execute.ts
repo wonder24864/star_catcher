@@ -16,6 +16,7 @@ interface SkillContext {
   callAI(operation: string, params: Record<string, unknown>): Promise<unknown>;
   readMemory(method: string, params: Record<string, unknown>): Promise<unknown>;
   writeMemory(method: string, params: Record<string, unknown>): Promise<void>;
+  query(queryName: string, params: Record<string, unknown>): Promise<unknown>;
   config: Readonly<Record<string, unknown>>;
   context: Readonly<{
     studentId: string;

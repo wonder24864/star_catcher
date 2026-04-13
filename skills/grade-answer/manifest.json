@@ -1,0 +1,8 @@
+{
+  "name": "grade-answer",
+  "version": "1.0.0",
+  "description": "Grade a student's answer as correct or incorrect via AI",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 30000
+}

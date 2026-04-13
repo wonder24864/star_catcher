@@ -1,0 +1,8 @@
+{
+  "name": "recognize-homework",
+  "version": "1.0.0",
+  "description": "OCR recognition of homework images to extract questions and answers",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 30000
+}

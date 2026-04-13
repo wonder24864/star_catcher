@@ -108,16 +108,20 @@ star_catcher/
 │   ├── PHASE2-LAUNCH-PLAN.md  # Phase 2 启动计划 + 设计决策记录
 │   ├── adr/                   # 架构决策记录（11 个）
 │   ├── user-stories/          # 用户故事（12 个模块）
-│   └── sprints/               # Sprint 计划（8 个：1, 2, 3, 4a, 4b, 5, 6, 7, 8）
+│   └── sprints/               # Sprint 计划（9 个：1, 2, 3, 4a, 4b, 5, 6, 7, 8, 9）
 │
-│── Skill 示例 ────────────────────────────────────────────
-├── skills/                    # Skill 插件源码 + 编译产物
+│── Skill 插件 ────────────────────────────────────────────
+├── skills/                    # Skill 插件源码 + 编译产物（10 个内置 Skill）
 │   ├── echo/                      # Echo Skill（IPC 流程测试用）
 │   ├── harness-call/              # AI 调用 Skill（IPC→Harness 链路测试用）
-│   ├── diagnose-error/            # 错误诊断 Skill（业务示例）
+│   ├── recognize-homework/        # OCR 识别 Skill（拍照 → 结构化题目）
+│   ├── grade-answer/              # 答案评分 Skill（判定正误）
+│   ├── help-generate/             # 渐进提示 Skill（3 级求助）
+│   ├── subject-detect/            # 学科检测 Skill（自动识别学科）
 │   ├── extract-knowledge-points/  # 教材目录提取 Skill（AI → 知识点层级树）
 │   ├── search-knowledge-points/   # 知识点搜索 Skill（纯 DB 查询，IPC query）
-│   └── classify-question-knowledge/ # 题目知识点分类 Skill（AI 置信度评分）
+│   ├── classify-question-knowledge/ # 题目知识点分类 Skill（AI 置信度评分）
+│   └── diagnose-error/            # 错误诊断 Skill（错误模式分析 + 薄弱诊断）
 │
 │── 源码 ──────────────────────────────────────────────────
 └── src/
@@ -180,7 +184,7 @@ star_catcher/
     │   ├── domain/            # 业务逻辑
     │   │   ├── ai/                # AI Harness 管道
     │   │   │   ├── harness/           # 管道组件（7 个）
-    │   │   │   ├── operations/        # 业务操作（OCR/判分/求助/学科检测）
+    │   │   │   ├── operations/        # 业务操作（7 个）+ registry.ts（通用路由）
     │   │   │   ├── prompts/           # Prompt 模板
     │   │   │   └── providers/         # AI 提供商（Azure OpenAI / FC 适配器）
     │   │   ├── skill/             # Skill 插件系统（Phase 2）
@@ -232,7 +236,7 @@ star_catcher/
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）
     │   └── skill-build.ts         # Skill 构建（校验 + 编译 + Prisma 检查）
     │
-    ├── tests/                 # ── 测试（43 文件，708+ 用例）──
+    ├── tests/                 # ── 测试（44 文件，718+ 用例）──
     │   ├── acceptance/            # 验收测试（9 个用户故事模块）
     │   ├── unit/                  # 单元测试（含 Skill 运行时 / Agent 组件）
     │   ├── perf/                  # 性能测试（Knowledge Graph CTE 等）

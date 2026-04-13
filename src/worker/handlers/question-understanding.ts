@@ -26,70 +26,11 @@ import { AzureOpenAIFunctionCallingProvider } from "@/lib/domain/ai/providers/az
 import { questionUnderstandingAgent } from "@/lib/domain/agent/definitions/question-understanding";
 import { publishJobResult, sessionChannel } from "@/lib/infra/events";
 import { enqueueDiagnosis } from "@/lib/infra/queue";
-import { classifyQuestionKnowledge } from "@/lib/domain/ai/operations/classify-question-knowledge";
+import { callAIOperation } from "@/lib/domain/ai/operations/registry";
+import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
 import type { Subject } from "@prisma/client";
-
-// ─── IPC Query Whitelist ─────────────────────────────
-
-/**
- * Whitelisted DB queries that Skills can execute via IPC.
- * Each query is a named function that validates params and returns data.
- */
-const QUERY_WHITELIST: Record<
-  string,
-  (params: Record<string, unknown>) => Promise<unknown>
-> = {
-  searchKnowledgePoints: async (params) => {
-    const keywords = params.keywords as string[];
-    const subject = params.subject as string;
-    const grade = params.grade as string | undefined;
-    const schoolLevel = params.schoolLevel as string | undefined;
-    const limit = (params.limit as number) ?? 10;
-
-    // Build AND conditions for Prisma
-    const andConditions: Record<string, unknown>[] = [
-      { deletedAt: null },
-      { subject: subject as Subject },
-    ];
-    if (grade) andConditions.push({ grade });
-    if (schoolLevel) andConditions.push({ schoolLevel });
-
-    // Keyword search: match against name or description
-    if (keywords.length > 0) {
-      andConditions.push({
-        OR: keywords.flatMap((kw) => [
-          { name: { contains: kw, mode: "insensitive" as const } },
-          { description: { contains: kw, mode: "insensitive" as const } },
-        ]),
-      });
-    }
-
-    const results = await db.knowledgePoint.findMany({
-      where: { AND: andConditions },
-      take: limit,
-      orderBy: { depth: "asc" },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        difficulty: true,
-        depth: true,
-        parent: { select: { name: true } },
-      },
-    });
-
-    return results.map((r) => ({
-      id: r.id,
-      name: r.name,
-      description: r.description,
-      difficulty: r.difficulty,
-      depth: r.depth,
-      parentName: r.parent?.name ?? null,
-    }));
-  },
-};
 
 // ─── Mapping Extraction ──────────────────────────────
 
@@ -229,31 +170,11 @@ export async function handleQuestionUnderstanding(
 
     const handlers: SkillIPCHandlers = {
       onCallAI: async (operation, data) => {
-        // Route to Harness operations by name
-        switch (operation) {
-          case "CLASSIFY_QUESTION_KNOWLEDGE": {
-            const result = await classifyQuestionKnowledge({
-              questionText: data.questionText as string,
-              questionSubject: data.questionSubject as string,
-              questionGrade: data.questionGrade as string | undefined,
-              candidates: data.candidates as Array<{
-                id: string;
-                name: string;
-                description?: string;
-              }>,
-              locale: (data.locale as string) ?? locale,
-              context: aiContext,
-            });
-            if (!result.success) {
-              throw new Error(
-                result.error?.message ?? "classify operation failed",
-              );
-            }
-            return result.data;
-          }
-          default:
-            throw new Error(`Unknown AI operation: ${operation}`);
+        const result = await callAIOperation(operation, data, aiContext);
+        if (!result.success) {
+          throw new Error(result.error?.message ?? `${operation} operation failed`);
         }
+        return result.data;
       },
       onReadMemory: async () => null,
       onWriteMemory: async () => {},
@@ -274,11 +195,11 @@ export async function handleQuestionUnderstanding(
       registry,
       runtime,
       resolveBundlePath: (skill) => {
-        // Skills are stored in skills/<name>/execute.js at project root
+        // Skills are stored in skills/<name>/index.js at project root
         const name = skill.functionSchema.name.replace(/_/g, "-");
         return require("path").resolve(
           process.cwd(),
-          `skills/${name}/execute.js`,
+          `skills/${name}/index.js`,
         );
       },
     });

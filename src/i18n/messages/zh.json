@@ -18,7 +18,9 @@
     "parentStats": "学习统计",
     "mastery": "掌握地图",
     "parentReports": "学习报告",
-    "agentTraces": "Agent 追踪"
+    "agentTraces": "Agent 追踪",
+    "adminSkills": "Skill 管理",
+    "adminKnowledgeGraph": "知识图谱"
   },
   "auth": {
     "login": "登录",
@@ -381,7 +383,9 @@
       "title": "导入教材知识点",
       "bookTitle": "教材名称",
       "bookTitlePlaceholder": "如：人教版七年级数学上册",
-      "importing": "正在提取知识点..."
+      "importing": "正在提取知识点...",
+      "selectFile": "选择教材 PDF",
+      "fillBookTitleFirst": "请先填写教材名称"
     },
     "review": {
       "empty": "暂无待审核知识点",
@@ -434,7 +438,11 @@
     "confirmDisable": "确定禁用此 Skill？",
     "uploadSuccess": "Skill 上传成功",
     "allStatuses": "全部状态",
-    "ms": "ms"
+    "ms": "ms",
+    "builtin": "系统内置",
+    "cannotDisableBuiltin": "系统内置 Skill 无法禁用",
+    "uploadGuideTitle": "Bundle 格式说明",
+    "uploadGuide": "execute 中可用 API：ctx.callAI()、ctx.readMemory()、ctx.writeMemory()、ctx.query()。构建命令：npx tsx src/cli/skill-build.ts skills/<名称>"
   },
   "mastery": {
     "title": "掌握地图",
@@ -545,6 +553,18 @@
       "title": "知识点进展",
       "interventions": "分析历史"
     }
+  },
+  "subjects": {
+    "MATH": "数学",
+    "CHINESE": "语文",
+    "ENGLISH": "英语",
+    "PHYSICS": "物理",
+    "CHEMISTRY": "化学",
+    "BIOLOGY": "生物",
+    "HISTORY": "历史",
+    "GEOGRAPHY": "地理",
+    "POLITICS": "政治",
+    "OTHER": "其他"
   },
   "agentTrace": {
     "title": "Agent 追踪",
