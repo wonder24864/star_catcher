@@ -22,12 +22,12 @@ git clone <repo-url>
 cd star_catcher
 
 # 复制环境配置
-cp .env.example .env
+cp deploy/.env.dev.example .env
 # 编辑 .env，填入 Azure OpenAI 凭证和密码
 
 # 启动基础服务（PostgreSQL、Redis、MinIO、App）
 # 所有容器使用 star-catcher-* 前缀
-docker compose -p star-catcher up -d
+docker compose -p star-catcher -f deploy/docker-compose.dev.yml --env-file .env up -d
 
 # 安装依赖
 npm install
@@ -87,12 +87,18 @@ star_catcher/
 ├── next.config.ts             # Next.js 配置（i18n + PWA）
 ├── vitest.config.ts           # 测试框架配置
 ├── components.json            # shadcn/ui 组件路径
-├── .env.example               # 环境变量模板
 │
 │── 部署 ──────────────────────────────────────────────────
-├── Dockerfile                 # 多阶段构建（App + Worker）
-├── docker-compose.yml         # 一键部署（App + Worker + PG + Redis + MinIO）
-├── scripts/docker-entrypoint.sh
+├── Dockerfile                 # 多阶段构建（App + Worker + Seed）
+├── deploy/
+│   ├── docker-compose.dev.yml     # 开发环境（build + 端口全开）
+│   ├── docker-compose.prod.yml    # 生产环境（预构建镜像 + 健康检查 + 资源限制）
+│   ├── .env.dev.example           # 开发环境变量模板
+│   ├── .env.prod.example          # 生产环境变量模板
+│   └── scripts/
+│       ├── docker-entrypoint.sh       # 容器入口（迁移 + 种子）
+│       ├── deploy.sh                  # 一键部署到 NAS
+│       └── backup-db.sh              # PostgreSQL 定时备份
 │
 │── 数据 ──────────────────────────────────────────────────
 ├── prisma/schema.prisma       # 数据模型（唯一真相源）

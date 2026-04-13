@@ -46,7 +46,7 @@ Thumbs.db
 .claude/
 Makefile
 
-# Local Docker overrides (base docker-compose.yml IS committed)
+# Local Docker overrides (base compose files in deploy/ ARE committed)
 docker-compose.local.yml
 docker-compose.override.yml
 

@@ -30,6 +30,11 @@ RUN npx esbuild src/worker/index.ts --bundle --platform=node \
     --external:@prisma/client --external:.prisma/client \
     --external:pino --external:pino-pretty
 
+# Build seed script (for production database seeding)
+RUN npx esbuild prisma/seed.ts --bundle --platform=node \
+    --outfile=dist/seed.js --tsconfig=tsconfig.json \
+    --external:@prisma/client --external:.prisma/client
+
 # ─── Stage 3: Runner ────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -107,8 +112,12 @@ COPY --from=builder /app/node_modules/split2 ./node_modules/split2
 # Worker bundle (for star-catcher-worker service)
 COPY --from=builder --chown=nextjs:nodejs /app/dist/worker.js ./worker.js
 
+# Seed script + skills directory (for initial database seeding via RUN_SEED=1)
+COPY --from=builder --chown=nextjs:nodejs /app/dist/seed.js ./seed.js
+COPY --from=builder /app/skills ./skills
+
 # Entrypoint
-COPY scripts/docker-entrypoint.sh ./
+COPY deploy/scripts/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 USER nextjs

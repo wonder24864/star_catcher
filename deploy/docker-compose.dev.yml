@@ -2,7 +2,7 @@ name: star-catcher
 
 services:
   star-catcher-app:
-    build: .
+    build: ..
     container_name: star-catcher-app
     ports:
       - "3000:3000"
@@ -35,7 +35,7 @@ services:
     restart: unless-stopped
 
   star-catcher-worker:
-    build: .
+    build: ..
     container_name: star-catcher-worker
     command: ["node", "worker.js"]
     environment:
