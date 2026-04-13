@@ -1,6 +1,9 @@
 import type { AIOperationType } from "@prisma/client";
 import type { AIUsage } from "../types";
 import { db } from "@/lib/infra/db";
+import { createLogger } from "@/lib/infra/logger";
+
+const log = createLogger("call-logger");
 
 interface CallLogEntry {
   userId?: string;
@@ -37,6 +40,6 @@ export async function logAICall(entry: CallLogEntry): Promise<void> {
       },
     });
   } catch (e) {
-    console.error("[call-logger] Failed to log AI call:", e);
+    log.error({ err: e }, "Failed to log AI call");
   }
 }

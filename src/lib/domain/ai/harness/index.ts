@@ -19,6 +19,7 @@ import { validateOutput } from "./output-validator";
 import { checkContentSafety } from "./content-guardrail";
 import { logAICall } from "./call-logger";
 import { getFallbackResult } from "./fallback-handler";
+import { createLogger } from "@/lib/infra/logger";
 
 /**
  * Execute an AI operation through the full Harness pipeline.
@@ -59,7 +60,7 @@ export async function executeOperation<T>(
     }
   } catch (e) {
     // Rate limiter failure is non-fatal — continue without limiting
-    console.warn("[harness] Rate limiter error, continuing:", e);
+    createLogger("harness").warn({ err: e }, "Rate limiter error, continuing");
   }
 
   // --- Pre-call: Prompt Injection Guard ---

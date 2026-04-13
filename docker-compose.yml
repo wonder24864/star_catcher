@@ -26,6 +26,8 @@ services:
       - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME:-Star Catcher}
       - NEXT_PUBLIC_DEFAULT_LOCALE=${NEXT_PUBLIC_DEFAULT_LOCALE:-zh}
       - ADMIN_DEFAULT_PASSWORD=${ADMIN_DEFAULT_PASSWORD}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - LOG_PRETTY=${LOG_PRETTY:-true}
     depends_on:
       - star-catcher-db
       - star-catcher-redis
@@ -50,6 +52,9 @@ services:
       - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT}
       - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION:-2024-12-01-preview}
       - AI_PROVIDER=azure
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - LOG_PRETTY=${LOG_PRETTY:-true}
+      - WORKER_MODE=true
     depends_on:
       - star-catcher-db
       - star-catcher-redis

@@ -383,7 +383,7 @@ export const masteryRouter = router({
       for (const s of overdueSchedules) {
         const kp = kpMap.get(s.knowledgePointId);
         if (!kp) {
-          console.warn(`[todayReviews] KnowledgePoint ${s.knowledgePointId} not found for student ${studentId}`);
+          ctx.log.warn({ knowledgePointId: s.knowledgePointId, studentId }, "KnowledgePoint not found for review");
           continue;
         }
         items.push({

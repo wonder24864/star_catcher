@@ -28,6 +28,7 @@ import { publishJobResult, sessionChannel } from "@/lib/infra/events";
 import { enqueueDiagnosis } from "@/lib/infra/queue";
 import { callAIOperation } from "@/lib/domain/ai/operations/registry";
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
+import { createLogger } from "@/lib/infra/logger";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
 import type { Subject } from "@prisma/client";
@@ -115,16 +116,18 @@ export async function handleQuestionUnderstanding(
     locale,
   } = job.data;
 
-  const logPrefix = `[question-understanding] Job ${job.id}`;
+  const log = createLogger("worker:question-understanding").child({
+    jobId: job.id,
+    correlationId: `qu-${sessionId}-${questionId}`,
+    sessionId,
+  });
 
   // ── 1. Idempotency: skip if mappings already exist ──
   const existingCount = await db.questionKnowledgeMapping.count({
     where: { questionId },
   });
   if (existingCount > 0) {
-    console.log(
-      `${logPrefix} — skipping, ${existingCount} mappings already exist for question ${questionId}`,
-    );
+    log.info({ questionId, existingCount }, "Skipping, mappings already exist");
     return;
   }
 
@@ -133,9 +136,7 @@ export async function handleQuestionUnderstanding(
     where: { deletedAt: null, subject: subject as Subject },
   });
   if (kpCount === 0) {
-    console.log(
-      `${logPrefix} — skipping, no knowledge points found for subject "${subject}"`,
-    );
+    log.info({ subject }, "Skipping, no knowledge points for subject");
     await publishJobResult(sessionChannel(sessionId), {
       type: "question-understanding",
       status: "completed",
@@ -356,20 +357,17 @@ Find the relevant knowledge points and classify their relevance.`;
             userId,
             locale,
           });
-          console.log(
-            `${logPrefix} — enqueued diagnosis for errorQuestion ${errorQuestion.id}`,
-          );
+          log.info({ errorQuestionId: errorQuestion.id }, "Enqueued diagnosis");
         }
       } catch (chainError) {
         // Don't fail QUA if diagnosis enqueue fails
-        console.warn(
-          `${logPrefix} — failed to enqueue diagnosis: ${chainError instanceof Error ? chainError.message : chainError}`,
-        );
+        log.warn({ err: chainError }, "Failed to enqueue diagnosis");
       }
     }
 
-    console.log(
-      `${logPrefix} — completed: ${validMappings.length} mappings, ${result.totalSteps} steps, ${result.totalDurationMs}ms`,
+    log.info(
+      { mappings: validMappings.length, totalSteps: result.totalSteps, durationMs: result.totalDurationMs },
+      "Question understanding completed",
     );
   } catch (error) {
     // ── Error: update trace + publish failure ──

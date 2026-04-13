@@ -911,5 +911,7 @@ export function createMockContext(
   db: MockDb,
   session: Context["session"] = null
 ): Context {
-  return { db: db as unknown as Context["db"], session };
+  const pino = require("pino");
+  const noop = pino({ level: "silent" });
+  return { db: db as unknown as Context["db"], session, requestId: "test", log: noop };
 }

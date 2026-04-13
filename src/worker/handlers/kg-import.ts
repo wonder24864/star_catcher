@@ -12,6 +12,7 @@ import { db } from "@/lib/infra/db";
 import { getObjectBuffer } from "@/lib/infra/storage";
 import { extractKnowledgePoints } from "@/lib/domain/ai/operations/extract-knowledge-points";
 import { publishJobResult, sessionChannel } from "@/lib/infra/events";
+import { createLogger } from "@/lib/infra/logger";
 
 /**
  * Extract table-of-contents text from PDF buffer.
@@ -28,6 +29,7 @@ export async function handleKGImport(
   job: Job<KGImportJobData>,
 ): Promise<void> {
   const { fileUrl, bookTitle, subject, grade, schoolLevel, userId, locale } = job.data;
+  const kgLog = createLogger("worker:kg-import").child({ jobId: job.id, correlationId: `kg-import-${job.id}`, bookTitle });
   const channel = sessionChannel(`kg-import-${userId}`);
 
   try {
@@ -185,12 +187,10 @@ export async function handleKGImport(
       data: { totalExtracted: extractedPoints.length, totalNew, totalDuplicate },
     });
 
-    console.log(
-      `[kg-import] Completed: ${totalNew} new, ${totalDuplicate} duplicates from "${bookTitle}"`,
-    );
+    kgLog.info({ totalNew, totalDuplicate, bookTitle }, "KG import completed");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error(`[kg-import] Failed: ${message}`);
+    kgLog.error({ err: error }, "KG import failed");
 
     try {
       await publishJobResult(channel, {
@@ -199,7 +199,7 @@ export async function handleKGImport(
         error: message,
       });
     } catch (publishErr) {
-      console.error("[kg-import] Failed to publish error event:", publishErr);
+      kgLog.error({ err: publishErr }, "Failed to publish error event");
     }
 
     throw error; // Re-throw for BullMQ retry

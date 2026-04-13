@@ -11,6 +11,7 @@
  */
 import { Worker } from "worker_threads";
 import path from "path";
+import { createLogger } from "@/lib/infra/logger";
 import type {
   SkillRuntimeConfig,
   SkillIPCHandlers,
@@ -103,16 +104,16 @@ export class SkillRuntime {
             durationMs: Date.now() - startTime,
           });
         } else if (msg.type === "log") {
-          const prefix = `[skill:${context.traceId}]`;
+          const skillLog = createLogger("skill-runtime").child({ traceId: context.traceId });
           switch (msg.level) {
             case "warn":
-              console.warn(prefix, msg.message);
+              skillLog.warn(msg.message);
               break;
             case "error":
-              console.error(prefix, msg.message);
+              skillLog.error(msg.message);
               break;
             default:
-              console.log(prefix, msg.message);
+              skillLog.debug(msg.message);
           }
         }
       });

@@ -7,9 +7,13 @@
  * See docs/adr/003-bullmq-async-ai.md
  */
 
+// Mark as worker before logger initializes (affects base.service field)
+process.env.WORKER_MODE = "true";
+
 import { Worker, type Job } from "bullmq";
 import { createBullMQConnection } from "@/lib/infra/queue/connection";
 import type { AIJobData, AIJobName } from "@/lib/infra/queue/types";
+import { createLogger } from "@/lib/infra/logger";
 import { handleOcrRecognize } from "./handlers/ocr-recognize";
 import { handleCorrectionPhotos } from "./handlers/correction-photos";
 import { handleHelpGenerate } from "./handlers/help-generate";
@@ -17,14 +21,15 @@ import { handleKGImport } from "./handlers/kg-import";
 import { handleQuestionUnderstanding } from "./handlers/question-understanding";
 import { handleDiagnosis } from "./handlers/diagnosis";
 
-console.log("[worker] Starting AI jobs worker...");
+const log = createLogger("worker");
+
+log.info("Starting AI jobs worker...");
 
 const worker = new Worker<AIJobData, void, AIJobName>(
   "ai-jobs",
   async (job: Job<AIJobData, void, AIJobName>) => {
-    console.log(
-      `[worker] Processing job ${job.id} (${job.name}), attempt ${job.attemptsMade + 1}`,
-    );
+    const jobLog = log.child({ jobId: job.id, jobName: job.name, attempt: job.attemptsMade + 1 });
+    jobLog.info("Processing job");
 
     switch (job.name) {
       case "ocr-recognize":
@@ -60,7 +65,7 @@ const worker = new Worker<AIJobData, void, AIJobName>(
         );
         break;
       default:
-        console.warn(`[worker] Unknown job name: ${job.name}`);
+        jobLog.warn("Unknown job name");
     }
   },
   {
@@ -72,22 +77,20 @@ const worker = new Worker<AIJobData, void, AIJobName>(
 );
 
 worker.on("completed", (job) => {
-  console.log(`[worker] Job ${job.id} (${job.name}) completed`);
+  log.info({ jobId: job.id, jobName: job.name }, "Job completed");
 });
 
 worker.on("failed", (job, error) => {
-  console.error(
-    `[worker] Job ${job?.id} (${job?.name}) failed: ${error.message}`,
-  );
+  log.error({ jobId: job?.id, jobName: job?.name, err: error }, "Job failed");
 });
 
 worker.on("error", (error) => {
-  console.error("[worker] Worker error:", error);
+  log.error({ err: error }, "Worker error");
 });
 
 // Graceful shutdown
 async function shutdown(signal: string) {
-  console.log(`[worker] Received ${signal}, shutting down...`);
+  log.info({ signal }, "Received signal, shutting down...");
   await worker.close();
   process.exit(0);
 }
@@ -95,4 +98,4 @@ async function shutdown(signal: string) {
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
-console.log("[worker] AI jobs worker started, waiting for jobs...");
+log.info("AI jobs worker started, waiting for jobs...");

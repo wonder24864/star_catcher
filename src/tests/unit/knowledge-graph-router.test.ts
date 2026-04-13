@@ -238,7 +238,8 @@ beforeEach(() => {
 });
 
 function getCaller(session = adminSession) {
-  const ctx: Context = { db: db as unknown as Context["db"], session };
+  const pino = require("pino");
+  const ctx: Context = { db: db as unknown as Context["db"], session, requestId: "test", log: pino({ level: "silent" }) };
   return createCaller(ctx);
 }
 

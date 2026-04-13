@@ -8,6 +8,7 @@
  * See: docs/adr/010-student-memory-layer.md
  */
 import type { PrismaClient } from "@prisma/client";
+import { createLogger } from "@/lib/infra/logger";
 import {
   MASTERY_TRANSITIONS,
   InvalidTransitionError,
@@ -538,10 +539,9 @@ export class StudentMemoryImpl implements StudentMemory {
         });
       }
     } catch (error) {
-      console.warn(
-        `[StudentMemory] auto-transition failed for ${studentId}/${knowledgePointId}: ${
-          error instanceof Error ? error.message : error
-        }`,
+      createLogger("student-memory").warn(
+        { studentId, knowledgePointId, err: error },
+        "Auto-transition failed",
       );
     } finally {
       this._autoTransitioning = false;

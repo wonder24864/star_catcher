@@ -601,9 +601,9 @@ export const homeworkRouter = router({
             userId: ctx.session.userId,
             locale: ctx.session.locale ?? "zh-CN",
           }).catch((err) => {
-            console.error(
-              `[completeSession] Failed to enqueue question-understanding for ${entry.errorQuestionId}:`,
-              err,
+            ctx.log.error(
+              { errorQuestionId: entry.errorQuestionId, err },
+              "Failed to enqueue question-understanding",
             );
           });
         }
@@ -718,8 +718,9 @@ export const homeworkRouter = router({
               }
             }
           } catch (masteryError) {
-            console.warn(
-              `[submitCorrections] mastery update failed for question ${grade.questionId}: ${masteryError instanceof Error ? masteryError.message : masteryError}`,
+            ctx.log.warn(
+              { questionId: grade.questionId, err: masteryError },
+              "Mastery update failed",
             );
           }
         }

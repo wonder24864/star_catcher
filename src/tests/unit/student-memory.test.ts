@@ -943,22 +943,14 @@ describe("StudentMemoryImpl", () => {
         id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, createdAt: new Date(),
       });
 
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
       const result = await memory.updateMasteryState("s1", "kp-1", {
         from: "NEW_ERROR",
         to: "CORRECTED",
         reason: "Student corrected",
       });
 
-      // Explicit transition still returns CORRECTED
+      // Explicit transition still returns CORRECTED despite auto-transition failure
       expect(result.status).toBe("CORRECTED");
-      // Warning was logged
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("auto-transition failed"),
-      );
-
-      warnSpy.mockRestore();
     });
   });
 });

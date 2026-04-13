@@ -8,6 +8,7 @@
 
 import type { Job } from "bullmq";
 import type { CorrectionPhotosJobData } from "@/lib/infra/queue/types";
+import { createLogger } from "@/lib/infra/logger";
 import { db } from "@/lib/infra/db";
 import { getObjectAsBase64DataUrl } from "@/lib/infra/storage";
 import { recognizeHomework } from "@/lib/domain/ai/operations/recognize-homework";
@@ -171,7 +172,7 @@ export async function handleCorrectionPhotos(
 
     if (lockResult.count === 0) {
       // Conflict — still publish result so frontend knows
-      console.warn(`[correction-photos] Optimistic lock conflict for session ${sessionId}`);
+      createLogger("worker:correction-photos").warn({ sessionId }, "Optimistic lock conflict");
     }
 
     // Publish success event

@@ -35,6 +35,10 @@ function createPublicMinioClient() {
     useSSL: process.env.MINIO_USE_SSL === "true",
     accessKey: process.env.MINIO_ACCESS_KEY!,
     secretKey: process.env.MINIO_SECRET_KEY!,
+    // Explicit region prevents SDK from auto-detecting via network,
+    // which would fail because publicEndpoint (localhost) is unreachable
+    // from inside Docker containers.
+    region: process.env.MINIO_REGION || "us-east-1",
   });
 }
 

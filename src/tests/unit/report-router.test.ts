@@ -61,7 +61,8 @@ const studentSession = { userId: "student-1", role: "STUDENT", grade: null, loca
 const parentSession = { userId: "parent-1", role: "PARENT", grade: null, locale: "zh" };
 
 function createCtx(session: Record<string, unknown>) {
-  return { db: mockDb as never, session: session as never };
+  const pino = require("pino");
+  return { db: mockDb as never, session: session as never, requestId: "test", log: pino({ level: "silent" }) };
 }
 
 beforeEach(() => {

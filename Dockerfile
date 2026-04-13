@@ -27,7 +27,8 @@ RUN --mount=type=cache,target=/app/.next/cache \
 # Build worker (standalone Node.js bundle for BullMQ)
 RUN npx esbuild src/worker/index.ts --bundle --platform=node \
     --outfile=dist/worker.js --tsconfig=tsconfig.json \
-    --external:@prisma/client --external:.prisma/client
+    --external:@prisma/client --external:.prisma/client \
+    --external:pino --external:pino-pretty
 
 # ─── Stage 3: Runner ────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
@@ -74,6 +75,34 @@ COPY --from=builder /app/node_modules/strnum ./node_modules/strnum
 COPY --from=builder /app/node_modules/decode-uri-component ./node_modules/decode-uri-component
 COPY --from=builder /app/node_modules/filter-obj ./node_modules/filter-obj
 COPY --from=builder /app/node_modules/split-on-first ./node_modules/split-on-first
+# pino + pino-pretty + transitive dependencies
+COPY --from=builder /app/node_modules/pino ./node_modules/pino
+COPY --from=builder /app/node_modules/pino-pretty ./node_modules/pino-pretty
+COPY --from=builder /app/node_modules/pino-abstract-transport ./node_modules/pino-abstract-transport
+COPY --from=builder /app/node_modules/pino-std-serializers ./node_modules/pino-std-serializers
+COPY --from=builder /app/node_modules/@pinojs ./node_modules/@pinojs
+COPY --from=builder /app/node_modules/atomic-sleep ./node_modules/atomic-sleep
+COPY --from=builder /app/node_modules/on-exit-leak-free ./node_modules/on-exit-leak-free
+COPY --from=builder /app/node_modules/process-warning ./node_modules/process-warning
+COPY --from=builder /app/node_modules/quick-format-unescaped ./node_modules/quick-format-unescaped
+COPY --from=builder /app/node_modules/real-require ./node_modules/real-require
+COPY --from=builder /app/node_modules/safe-stable-stringify ./node_modules/safe-stable-stringify
+COPY --from=builder /app/node_modules/sonic-boom ./node_modules/sonic-boom
+COPY --from=builder /app/node_modules/thread-stream ./node_modules/thread-stream
+COPY --from=builder /app/node_modules/secure-json-parse ./node_modules/secure-json-parse
+COPY --from=builder /app/node_modules/colorette ./node_modules/colorette
+COPY --from=builder /app/node_modules/dateformat ./node_modules/dateformat
+COPY --from=builder /app/node_modules/fast-copy ./node_modules/fast-copy
+COPY --from=builder /app/node_modules/fast-safe-stringify ./node_modules/fast-safe-stringify
+COPY --from=builder /app/node_modules/help-me ./node_modules/help-me
+COPY --from=builder /app/node_modules/joycon ./node_modules/joycon
+COPY --from=builder /app/node_modules/minimist ./node_modules/minimist
+COPY --from=builder /app/node_modules/strip-json-comments ./node_modules/strip-json-comments
+COPY --from=builder /app/node_modules/pump ./node_modules/pump
+COPY --from=builder /app/node_modules/end-of-stream ./node_modules/end-of-stream
+COPY --from=builder /app/node_modules/once ./node_modules/once
+COPY --from=builder /app/node_modules/wrappy ./node_modules/wrappy
+COPY --from=builder /app/node_modules/split2 ./node_modules/split2
 
 # Worker bundle (for star-catcher-worker service)
 COPY --from=builder --chown=nextjs:nodejs /app/dist/worker.js ./worker.js

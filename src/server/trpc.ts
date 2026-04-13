@@ -1,10 +1,13 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { db } from "@/lib/infra/db";
+import type { Logger } from "pino";
 
 export type Context = {
   db: typeof db;
   session: { userId: string; role: string; grade: string | null; locale: string } | null;
+  requestId: string;
+  log: Logger;
 };
 
 const t = initTRPC.context<Context>().create({

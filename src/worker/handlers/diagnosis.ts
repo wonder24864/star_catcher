@@ -29,6 +29,7 @@ import { publishJobResult, sessionChannel } from "@/lib/infra/events";
 import { callAIOperation } from "@/lib/domain/ai/operations/registry";
 import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
+import { createLogger } from "@/lib/infra/logger";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
 import type { PrismaClient } from "@prisma/client";
@@ -138,7 +139,11 @@ export async function handleDiagnosis(
     locale,
   } = job.data;
 
-  const logPrefix = `[diagnosis] Job ${job.id}`;
+  const log = createLogger("worker:diagnosis").child({
+    jobId: job.id,
+    correlationId: `diag-${sessionId}-${errorQuestionId}`,
+    sessionId,
+  });
 
   // ── 1. Idempotency: skip if diagnosis already exists ──
   const existingDiagnosis = await db.interventionHistory.count({
@@ -152,17 +157,13 @@ export async function handleDiagnosis(
     },
   });
   if (existingDiagnosis > 0) {
-    console.log(
-      `${logPrefix} — skipping, diagnosis already exists for errorQuestion ${errorQuestionId}`,
-    );
+    log.info({ errorQuestionId }, "Skipping, diagnosis already exists");
     return;
   }
 
   // ── 2. KP mapping check ──
   if (!knowledgePointIds.length) {
-    console.log(
-      `${logPrefix} — skipping, no knowledge points mapped for question ${questionId}`,
-    );
+    log.info({ questionId }, "Skipping, no knowledge points mapped");
     await publishJobResult(sessionChannel(sessionId), {
       type: "diagnosis",
       status: "completed",
@@ -384,9 +385,7 @@ ${errorHistoryForAgent.length > 0 ? `Error history (last 30 days):\n${errorHisto
             { agentId: diagnosisAgent.name },
           );
         } catch (error) {
-          console.warn(
-            `${logPrefix} — failed to ensure mastery state for KP ${weakKP.knowledgePointId}: ${error instanceof Error ? error.message : error}`,
-          );
+          log.warn({ knowledgePointId: weakKP.knowledgePointId, err: error }, "Failed to ensure mastery state");
         }
       }
     }
@@ -433,8 +432,9 @@ ${errorHistoryForAgent.length > 0 ? `Error history (last 30 days):\n${errorHisto
       },
     });
 
-    console.log(
-      `${logPrefix} — completed: pattern=${diagnosis?.errorPattern ?? "none"}, ${masteryUpdates} mastery updates, ${result.totalSteps} steps, ${result.totalDurationMs}ms`,
+    log.info(
+      { errorPattern: diagnosis?.errorPattern, masteryUpdates, totalSteps: result.totalSteps, durationMs: result.totalDurationMs },
+      "Diagnosis completed",
     );
   } catch (error) {
     // ── Error: update trace + publish failure ──
