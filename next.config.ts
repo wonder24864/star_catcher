@@ -14,6 +14,7 @@ const withSerwist = withSerwistInit({
 const nextConfig: NextConfig = {
   reactCompiler: true,
   output: "standalone",
+  serverExternalPackages: ["minio"],
 };
 
 export default withSerwist(withNextIntl(nextConfig));
