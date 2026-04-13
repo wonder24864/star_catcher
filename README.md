@@ -91,10 +91,12 @@ star_catcher/
 │── 部署 ──────────────────────────────────────────────────
 ├── Dockerfile                 # 多阶段构建（App + Worker + Seed）
 ├── deploy/
-│   ├── docker-compose.dev.yml     # 开发环境（build + 端口全开）
-│   ├── docker-compose.prod.yml    # 生产环境（预构建镜像 + 健康检查 + 资源限制）
-│   ├── .env.dev.example           # 开发环境变量模板
-│   ├── .env.prod.example          # 生产环境变量模板
+│   ├── DEPLOY-DEV.md                  # 开发环境搭建指南
+│   ├── DEPLOY-PROD.md                 # 生产部署指南（NAS）
+│   ├── docker-compose.dev.yml         # 开发环境（build + 端口全开）
+│   ├── docker-compose.prod.yml        # 生产环境（预构建镜像 + 健康检查 + 资源限制）
+│   ├── .env.dev.example               # 开发环境变量模板
+│   ├── .env.prod.example              # 生产环境变量模板
 │   └── scripts/
 │       ├── docker-entrypoint.sh       # 容器入口（迁移 + 种子）
 │       ├── deploy.sh                  # 一键部署到 NAS
