@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ const SUBJECT_COLORS: Record<string, string> = {
 
 export default function ErrorDetailPage() {
   const t = useTranslations();
+  const locale = useLocale();
   const params = useParams();
   const id = params.id as string;
   const { data: session } = useSession();
@@ -68,40 +69,42 @@ export default function ErrorDetailPage() {
     onError: () => toast.error(t("error.serverError")),
   });
 
-  if (isLoading) return <p className="text-muted-foreground">{t("common.loading")}</p>;
-  if (!eq) return <p className="text-muted-foreground">{t("common.noData")}</p>;
-
-  const question = eq as {
-    id: string;
-    studentId: string;
-    subject: string;
-    content: string;
-    studentAnswer: string | null;
-    correctAnswer: string | null;
-    aiKnowledgePoint: string | null;
-    isMastered: boolean;
-    totalAttempts: number;
-    createdAt: string | Date;
-    parentNotes: Array<{
-      id: string;
-      content: string;
-      createdAt: string | Date;
-      parent: { nickname: string } | null;
-    }>;
-  };
+  const question = eq as
+    | {
+        id: string;
+        studentId: string;
+        subject: string;
+        content: string;
+        studentAnswer: string | null;
+        correctAnswer: string | null;
+        aiKnowledgePoint: string | null;
+        isMastered: boolean;
+        totalAttempts: number;
+        createdAt: string | Date;
+        parentNotes: Array<{
+          id: string;
+          content: string;
+          createdAt: string | Date;
+          parent: { nickname: string } | null;
+        }>;
+      }
+    | undefined;
 
   const { data: agentTrace } = trpc.agentTrace.latestForQuestion.useQuery(
     {
-      studentId: isParent ? question.studentId : undefined,
+      studentId: isParent ? question?.studentId : undefined,
       errorQuestionId: id,
     },
     { enabled: !!eq },
   );
 
+  if (isLoading) return <p className="text-muted-foreground">{t("common.loading")}</p>;
+  if (!question) return <p className="text-muted-foreground">{t("common.noData")}</p>;
+
   return (
     <div className="max-w-2xl space-y-4">
       {/* Back link */}
-      <Link href="/errors" className="text-sm text-muted-foreground hover:underline">
+      <Link href={`/${locale}/errors`} className="text-sm text-muted-foreground hover:underline">
         ← {t("common.back")}
       </Link>
 

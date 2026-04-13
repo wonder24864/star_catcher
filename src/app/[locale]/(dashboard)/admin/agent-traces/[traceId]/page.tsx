@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { trpc } from "@/lib/trpc/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,7 @@ const STEP_STATUS_COLORS: Record<string, string> = {
 
 export default function AgentTraceDetailPage() {
   const t = useTranslations();
+  const locale = useLocale();
   const params = useParams();
   const traceId = params.traceId as string;
 
@@ -51,7 +52,7 @@ export default function AgentTraceDetailPage() {
   return (
     <div className="max-w-4xl space-y-6">
       {/* Back link */}
-      <Link href="/admin/agent-traces" className="text-sm text-muted-foreground hover:underline">
+      <Link href={`/${locale}/admin/agent-traces`} className="text-sm text-muted-foreground hover:underline">
         ← {t("agentTrace.title")}
       </Link>
 

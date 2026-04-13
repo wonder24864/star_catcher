@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 
 type TabItem = {
@@ -16,6 +16,7 @@ type TabItem = {
 /** Bottom tab bar — shown on mobile (< md), hidden on desktop. */
 export function BottomNav() {
   const t = useTranslations();
+  const locale = useLocale();
   const pathname = usePathname();
   const { data: session } = useSession();
   const role = session?.user?.role;
@@ -81,7 +82,7 @@ export function BottomNav() {
         return (
           <Link
             key={tab.href}
-            href={tab.href}
+            href={`/${locale}${tab.href}`}
             className={cn(
               "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition-colors",
               active
