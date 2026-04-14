@@ -83,6 +83,8 @@ export async function handleWeaknessProfile(
 
   // 2. Read intervention history per KP
   const interventionsByKP = new Map<string, InterventionRecord[]>();
+  const semesterStart = tier === "PERIODIC" ? computeSemesterStart(new Date()) : null;
+
   for (const wp of weakPoints) {
     let history = await memory.getInterventionHistory(
       studentId,
@@ -90,8 +92,7 @@ export async function handleWeaknessProfile(
     );
 
     // For PERIODIC tier, filter by semester boundary
-    if (tier === "PERIODIC") {
-      const semesterStart = computeSemesterStart(new Date());
+    if (semesterStart) {
       history = history.filter((h) => h.createdAt >= semesterStart);
     }
 

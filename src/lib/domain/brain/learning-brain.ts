@@ -110,13 +110,18 @@ export async function runLearningBrain(
   // 2. Read overdue reviews
   const overdueReviews = await memory.getOverdueReviews(studentId);
 
-  // 3. Read PERIODIC WeaknessProfile for trend data
-  const profile = await memory.getWeaknessProfile(studentId, "PERIODIC");
-  const worseningKPIds = profile
-    ? profile.data.weakPoints
+  // 3. Read PERIODIC WeaknessProfile for trend data (best-effort, never blocks core logic)
+  let worseningKPIds: string[] = [];
+  try {
+    const profile = await memory.getWeaknessProfile(studentId, "PERIODIC");
+    if (profile) {
+      worseningKPIds = profile.data.weakPoints
         .filter((wp) => wp.trend === "WORSENING")
-        .map((wp) => wp.kpId)
-    : [];
+        .map((wp) => wp.kpId);
+    }
+  } catch {
+    // WeaknessProfile is enhancement data — if unavailable, proceed without it
+  }
 
   const eventsProcessed = weakPoints.length + overdueReviews.length;
 
