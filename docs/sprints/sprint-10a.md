@@ -1,6 +1,6 @@
 # Sprint 10a: SemanticCache + ObservabilityTracer 基础设施 (Week 14)
 
-**Status**: IN_PROGRESS
+**Status**: COMPLETED
 
 **目标**: 搭建 Phase 3 基础设施前半 — SemanticCache 集成 + OpenTelemetry 观测 + BullMQ Handler/Schedule Registry 重构 + Harness 组件管道重构。
 
@@ -262,17 +262,17 @@ Worker 启动时调 registerSchedules() → queue.upsertJobScheduler()
 
 ## 验证清单
 
-- [ ] SemanticCache 端到端：embedding 写入 + cosine 查询返回相似结果
-- [ ] OTel span 在 Jaeger UI 可视化（Harness 组件 + Pipeline 层）
-- [ ] Handler Registry 路由所有现有 job（无 switch 残留）
-- [ ] Schedule Registry 注册 learning-brain + weakness-profile cron
-- [ ] Harness 组件管道: executeOperation 签名不变，现有调用方零改动
-- [ ] npm test 全量通过
-- [ ] tsc --noEmit 无错误
-- [ ] 无 `any` 类型、无 `@ts-ignore`
-- [ ] i18n 新增 key 覆盖 zh + en
-- [ ] .env.example 新增所有环境变量
-- [ ] README 目录树更新
+- [x] SemanticCache 端到端：embedding 写入 + cosine 查询返回相似结果
+- [x] OTel span 在 Jaeger UI 可视化（Harness 组件 + Pipeline 层）
+- [x] Handler Registry 路由所有现有 job（无 switch 残留）
+- [x] Schedule Registry 注册 learning-brain + weakness-profile cron
+- [x] Harness 组件管道: executeOperation 签名不变，现有调用方零改动
+- [x] npm test 全量通过
+- [x] tsc --noEmit 无错误
+- [x] 无 `any` 类型、无 `@ts-ignore`
+- [x] i18n 新增 key 覆盖 zh + en
+- [x] .env.example 新增所有环境变量
+- [x] README 目录树更新
 
 ## 变更文件清单
 
