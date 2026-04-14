@@ -27,10 +27,12 @@ import { questionUnderstandingAgent } from "@/lib/domain/agent/definitions/quest
 import { publishJobResult, sessionChannel } from "@/lib/infra/events";
 import { enqueueDiagnosis } from "@/lib/infra/queue";
 import { callAIOperation } from "@/lib/domain/ai/operations/registry";
+import { createMemoryWriteInterceptor } from "@/lib/domain/agent/memory-write-interceptor";
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import { createLogger } from "@/lib/infra/logger";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
+import type { PrismaClient } from "@prisma/client";
 import type { Subject } from "@prisma/client";
 
 // ─── Mapping Extraction ──────────────────────────────
@@ -169,6 +171,16 @@ export async function handleQuestionUnderstanding(
       correlationId: `qu-${sessionId}-${questionId}`,
     };
 
+    const onWriteMemory = createMemoryWriteInterceptor(
+      {
+        agentName: questionUnderstandingAgent.name,
+        manifest: questionUnderstandingAgent.memoryWriteManifest,
+        db: db as unknown as PrismaClient,
+        userId,
+      },
+      async () => {},
+    );
+
     const handlers: SkillIPCHandlers = {
       onCallAI: async (operation, data) => {
         const result = await callAIOperation(operation, data, aiContext);
@@ -178,7 +190,7 @@ export async function handleQuestionUnderstanding(
         return result.data;
       },
       onReadMemory: async () => null,
-      onWriteMemory: async () => {},
+      onWriteMemory,
       onQuery: async (queryName, data) => {
         const queryFn = QUERY_WHITELIST[queryName];
         if (!queryFn) {

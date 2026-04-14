@@ -28,6 +28,7 @@ import { diagnosisAgent } from "@/lib/domain/agent/definitions/diagnosis";
 import { publishJobResult, sessionChannel } from "@/lib/infra/events";
 import { callAIOperation } from "@/lib/domain/ai/operations/registry";
 import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
+import { createMemoryWriteInterceptor } from "@/lib/domain/agent/memory-write-interceptor";
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import { createLogger } from "@/lib/infra/logger";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
@@ -36,36 +37,17 @@ import type { PrismaClient } from "@prisma/client";
 
 const memory = new StudentMemoryImpl(db as unknown as PrismaClient);
 
-// ─── Memory Read/Write Whitelists ────────────────────────
+// ─── Memory Read Whitelist ──────────────────────────────
 
-function buildMemoryWhitelists(memory: StudentMemoryImpl) {
-  const MEMORY_READ_WHITELIST: Record<
-    string,
-    (params: Record<string, unknown>) => Promise<unknown>
-  > = {
-    getMasteryState: (params) =>
-      memory.getMasteryState(params.studentId as string, params.knowledgePointId as string),
-    getWeakPoints: (params) =>
-      memory.getWeakPoints(params.studentId as string),
-  };
-
-  const MEMORY_WRITE_WHITELIST: Record<
-    string,
-    (params: Record<string, unknown>, extra: { errorQuestionId: string; agentName: string }) => Promise<void>
-  > = {
-    logIntervention: async (params, extra) => {
-      await memory.logIntervention(
-        params.studentId as string,
-        params.knowledgePointId as string,
-        params.type as "DIAGNOSIS",
-        { ...(params.content as Record<string, unknown>), errorQuestionId: extra.errorQuestionId },
-        { agentId: extra.agentName },
-      );
-    },
-  };
-
-  return { MEMORY_READ_WHITELIST, MEMORY_WRITE_WHITELIST };
-}
+const MEMORY_READ_WHITELIST: Record<
+  string,
+  (params: Record<string, unknown>) => Promise<unknown>
+> = {
+  getMasteryState: (params) =>
+    memory.getMasteryState(params.studentId as string, params.knowledgePointId as string),
+  getWeakPoints: (params) =>
+    memory.getWeakPoints(params.studentId as string),
+};
 
 // ─── Diagnosis Extraction ──────────────────────────────
 
@@ -238,7 +220,30 @@ export async function handleDiagnosis(
       correlationId: `diag-${sessionId}-${errorQuestionId}`,
     };
 
-    const { MEMORY_READ_WHITELIST, MEMORY_WRITE_WHITELIST } = buildMemoryWhitelists(memory);
+    const onWriteMemory = createMemoryWriteInterceptor(
+      {
+        agentName: diagnosisAgent.name,
+        manifest: diagnosisAgent.memoryWriteManifest,
+        db: db as unknown as PrismaClient,
+        userId,
+      },
+      async (method, params) => {
+        if (method === "logIntervention") {
+          await memory.logIntervention(
+            params.studentId as string,
+            params.knowledgePointId as string,
+            params.type as "DIAGNOSIS",
+            {
+              ...(params.content as Record<string, unknown>),
+              errorQuestionId,
+            },
+            { agentId: diagnosisAgent.name },
+          );
+        } else {
+          throw new Error(`Unhandled memory write method: ${method}`);
+        }
+      },
+    );
 
     const handlers: SkillIPCHandlers = {
       onCallAI: async (operation, data) => {
@@ -255,13 +260,7 @@ export async function handleDiagnosis(
         }
         return readFn(params);
       },
-      onWriteMemory: async (method, params) => {
-        const writeFn = MEMORY_WRITE_WHITELIST[method];
-        if (!writeFn) {
-          throw new Error(`Unknown memory write method: ${method}`);
-        }
-        await writeFn(params, { errorQuestionId, agentName: diagnosisAgent.name });
-      },
+      onWriteMemory,
       onQuery: async (queryName, data) => {
         const queryFn = QUERY_WHITELIST[queryName];
         if (!queryFn) {

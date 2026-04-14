@@ -33,7 +33,7 @@ interface ScheduleEntry {
 export const SCHEDULE_REGISTRY: ScheduleEntry[] = [
   {
     key: "learning-brain-daily",
-    pattern: "0 6 * * *", // Daily at 06:00 UTC (D12: before student's day)
+    pattern: process.env.BRAIN_CRON_PATTERN ?? "0 22 * * *", // Default UTC 22:00 = Beijing 06:00 (D12)
     jobName: "learning-brain",
     data: { studentId: "__all__", userId: "system", locale: "zh" },
     description: "Daily Learning Brain run for all students",

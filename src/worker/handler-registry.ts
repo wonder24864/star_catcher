@@ -17,6 +17,7 @@ import type {
   KGImportJobData,
   QuestionUnderstandingJobData,
   DiagnosisJobData,
+  LearningBrainJobData,
 } from "@/lib/infra/queue/types";
 import { handleOcrRecognize } from "./handlers/ocr-recognize";
 import { handleCorrectionPhotos } from "./handlers/correction-photos";
@@ -24,6 +25,7 @@ import { handleHelpGenerate } from "./handlers/help-generate";
 import { handleKGImport } from "./handlers/kg-import";
 import { handleQuestionUnderstanding } from "./handlers/question-understanding";
 import { handleDiagnosis } from "./handlers/diagnosis";
+import { handleLearningBrain } from "./handlers/learning-brain";
 import { createLogger } from "@/lib/infra/logger";
 
 const log = createLogger("worker");
@@ -55,10 +57,8 @@ export const JOB_HANDLERS: Record<AIJobName, JobHandler> = {
   "diagnosis": (job) =>
     handleDiagnosis(job as Job<DiagnosisJobData>),
 
-  // Phase 3 stubs — implementations in later sprints
-  "learning-brain": async (job) => {
-    log.info({ jobId: job.id }, "learning-brain stub: not yet implemented");
-  },
+  "learning-brain": (job) =>
+    handleLearningBrain(job as Job<LearningBrainJobData>),
 
   "weakness-profile": async (job) => {
     log.info({ jobId: job.id }, "weakness-profile stub: not yet implemented");

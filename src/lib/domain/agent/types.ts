@@ -23,6 +23,13 @@ export interface AgentDefinition {
   termination: AgentTerminationConfig;
   /** AI model parameters (optional) */
   modelConfig?: AgentModelConfig;
+  /**
+   * Memory write method whitelist enforced by MemoryWriteInterceptor.
+   * - undefined: allow all writes (backward compat for agents without manifest)
+   * - []: deny all writes (agent outputs suggestions only, handler validates)
+   * - ["logIntervention", ...]: only listed methods allowed
+   */
+  memoryWriteManifest?: string[];
 }
 
 export interface AgentTerminationConfig {

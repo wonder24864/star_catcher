@@ -218,8 +218,13 @@ star_catcher/
     │   │   │   ├── cost-tracker.ts    # CostTracker（Token 预算追踪）
     │   │   │   ├── circuit-breaker.ts # CircuitBreaker（熔断 + 多 Provider 降级）
     │   │   │   ├── trace-publisher.ts # AgentTracePublisher（Redis Pub/Sub 推送）
+    │   │   │   ├── memory-write-interceptor.ts # memoryWriteManifest 拦截器
     │   │   │   ├── definitions/       # Agent 定义（代码声明，非 DB）
-    │   │   │   │   └── question-understanding.ts  # 题目理解 Agent
+    │   │   │   │   ├── question-understanding.ts  # 题目理解 Agent
+    │   │   │   │   └── diagnosis.ts               # 诊断 Agent
+    │   │   │   └── index.ts           # 公共导出
+    │   │   ├── brain/             # Learning Brain 编排器（Phase 3）
+    │   │   │   ├── learning-brain.ts  # 确定性决策逻辑（不调 AI）
     │   │   │   └── index.ts           # 公共导出
     │   │   ├── memory/            # Student Memory 层（Phase 2）
     │   │   │   ├── types.ts           # 状态机定义 + Memory 接口
@@ -228,6 +233,7 @@ star_catcher/
     │   │   ├── spaced-repetition/ # SM-2 间隔复习算法（Phase 2）
     │   │   │   ├── sm2.ts             # SM-2 纯函数（calculateSM2 + mapQuality）
     │   │   │   └── index.ts           # 公共导出
+    │   │   ├── admin-log.ts        # AdminLog 领域工具函数（审计日志）
     │   │   ├── auth.ts            # NextAuth 认证配置
     │   │   ├── scoring.ts         # 得分计算
     │   │   ├── content-hash.ts    # SHA256 去重哈希
@@ -247,13 +253,13 @@ star_catcher/
     │   ├── index.ts               # 入口（Handler Registry + Schedule Registry）
     │   ├── handler-registry.ts    # AIJobName → Handler 注册表（Rule 9）
     │   ├── schedule-registry.ts   # 声明式定时任务注册（Rule 9）
-    │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成 / 题目理解 / 诊断
+    │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成 / 题目理解 / 诊断 / Learning Brain
     │
     ├── cli/                   # ── CLI 工具 ──
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）
     │   └── skill-build.ts         # Skill 构建（校验 + 编译 + Prisma 检查）
     │
-    ├── tests/                 # ── 测试（48 文件，754+ 用例）──
+    ├── tests/                 # ── 测试（51 文件，777+ 用例）──
     │   ├── acceptance/            # 验收测试（9 个用户故事模块）
     │   ├── unit/                  # 单元测试（含 Skill 运行时 / Agent 组件）
     │   ├── harness/               # Harness 管道 + SemanticCache 测试

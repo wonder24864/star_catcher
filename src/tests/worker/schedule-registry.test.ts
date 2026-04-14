@@ -62,7 +62,7 @@ describe("Schedule Registry", () => {
   test("learning-brain is scheduled daily", () => {
     const brain = SCHEDULE_REGISTRY.find((e) => e.key === "learning-brain-daily");
     expect(brain).toBeDefined();
-    expect(brain!.pattern).toBe("0 6 * * *");
+    expect(brain!.pattern).toBe("0 22 * * *"); // UTC 22:00 = Beijing 06:00
     expect(brain!.jobName).toBe("learning-brain");
   });
 

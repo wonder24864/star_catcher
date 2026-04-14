@@ -15,6 +15,7 @@ vi.mock("@/worker/handlers/help-generate", () => ({ handleHelpGenerate: vi.fn() 
 vi.mock("@/worker/handlers/kg-import", () => ({ handleKGImport: vi.fn() }));
 vi.mock("@/worker/handlers/question-understanding", () => ({ handleQuestionUnderstanding: vi.fn() }));
 vi.mock("@/worker/handlers/diagnosis", () => ({ handleDiagnosis: vi.fn() }));
+vi.mock("@/worker/handlers/learning-brain", () => ({ handleLearningBrain: vi.fn() }));
 
 import { JOB_HANDLERS, routeJob } from "@/worker/handler-registry";
 import type { AIJobName } from "@/lib/infra/queue/types";
@@ -59,7 +60,6 @@ describe("Handler Registry", () => {
 
   test("Phase 3 stub handlers complete without throwing", async () => {
     const stubs: AIJobName[] = [
-      "learning-brain",
       "weakness-profile",
       "intervention-planning",
       "mastery-evaluation",

@@ -50,4 +50,6 @@ Important:
     temperature: 0.2,
     maxOutputTokens: 2048,
   },
+
+  memoryWriteManifest: [],
 };

@@ -14,6 +14,9 @@ import type {
   QuestionUnderstandingJobData,
   DiagnosisJobData,
   KGImportJobData,
+  LearningBrainJobData,
+  InterventionPlanningJobData,
+  MasteryEvaluationJobData,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -122,6 +125,58 @@ export async function enqueueKGImport(
 ): Promise<string> {
   const job = await getQueue().add("kg-import", data, {
     attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
+    removeOnComplete: 100,
+    removeOnFail: 200,
+  });
+  return job.id!;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 enqueue functions
+// ---------------------------------------------------------------------------
+
+/**
+ * Enqueue Learning Brain job (single student or __all__ fanout).
+ * Timeout: 5min, Retries: 2
+ */
+export async function enqueueLearningBrain(
+  data: LearningBrainJobData,
+): Promise<string> {
+  const job = await getQueue().add("learning-brain", data, {
+    attempts: 2,
+    backoff: { type: "exponential", delay: 5000 },
+    removeOnComplete: 100,
+    removeOnFail: 200,
+  });
+  return job.id!;
+}
+
+/**
+ * Enqueue intervention planning agent job.
+ * Timeout: 60s, Retries: 3 (Agent may need multiple AI calls)
+ */
+export async function enqueueInterventionPlanning(
+  data: InterventionPlanningJobData,
+): Promise<string> {
+  const job = await getQueue().add("intervention-planning", data, {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
+    removeOnComplete: 100,
+    removeOnFail: 200,
+  });
+  return job.id!;
+}
+
+/**
+ * Enqueue mastery evaluation agent job.
+ * Timeout: 60s, Retries: 2
+ */
+export async function enqueueMasteryEvaluation(
+  data: MasteryEvaluationJobData,
+): Promise<string> {
+  const job = await getQueue().add("mastery-evaluation", data, {
+    attempts: 2,
     backoff: { type: "exponential", delay: 2000 },
     removeOnComplete: 100,
     removeOnFail: 200,
