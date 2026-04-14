@@ -12,6 +12,7 @@ import {
   enqueueQuestionUnderstanding,
 } from "@/lib/infra/queue";
 import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
+import { gradeToSchoolLevel } from "@/lib/domain/school-level";
 import type { PrismaClient } from "@prisma/client";
 import {
   createSessionSchema,
@@ -88,11 +89,8 @@ function getDefaultMaxHelpLevel(grade: string | null | undefined): number {
   return 3;
 }
 
-function inferSchoolLevel(grade: string): "PRIMARY" | "JUNIOR" | "SENIOR" {
-  if (grade.startsWith("PRIMARY_")) return "PRIMARY";
-  if (grade.startsWith("JUNIOR_")) return "JUNIOR";
-  return "SENIOR";
-}
+// Re-export shared utility (extracted in Sprint 11, Task 103b)
+const inferSchoolLevel = gradeToSchoolLevel;
 
 export const homeworkRouter = router({
   /**

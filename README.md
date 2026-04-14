@@ -123,7 +123,7 @@ star_catcher/
 │   └── sprints/               # Sprint 计划（Phase 2: 1~9, Phase 3: 10a~16 DRAFT）
 │
 │── Skill 插件 ────────────────────────────────────────────
-├── skills/                    # Skill 插件源码 + 编译产物（10 个内置 Skill）
+├── skills/                    # Skill 插件源码 + 编译产物（11 个内置 Skill）
 │   ├── echo/                      # Echo Skill（IPC 流程测试用）
 │   ├── harness-call/              # AI 调用 Skill（IPC→Harness 链路测试用）
 │   ├── recognize-homework/        # OCR 识别 Skill（拍照 → 结构化题目）
@@ -133,7 +133,8 @@ star_catcher/
 │   ├── extract-knowledge-points/  # 教材目录提取 Skill（AI → 知识点层级树）
 │   ├── search-knowledge-points/   # 知识点搜索 Skill（纯 DB 查询，IPC query）
 │   ├── classify-question-knowledge/ # 题目知识点分类 Skill（AI 置信度评分）
-│   └── diagnose-error/            # 错误诊断 Skill（错误模式分析 + 薄弱诊断）
+│   ├── diagnose-error/            # 错误诊断 Skill（错误模式分析 + 薄弱诊断）
+│   └── weakness-profile/         # 薄弱分析 Skill（MasteryState 聚合 → severity/trend）
 │
 │── 源码 ──────────────────────────────────────────────────
 └── src/
@@ -230,6 +231,10 @@ star_catcher/
     │   │   │   ├── types.ts           # 状态机定义 + Memory 接口
     │   │   │   ├── student-memory.ts  # StudentMemoryImpl（状态机 + SM-2 复习 + 自动转换）
     │   │   │   └── index.ts           # 公共导出
+    │   │   ├── weakness/          # 薄弱分析计算（Phase 3）
+    │   │   │   ├── compute-profile.ts # severity/trend 计算纯函数（handler 侧）
+    │   │   │   └── semester.ts        # 学期日期计算（中国学制 2月/9月分界）
+    │   │   ├── school-level.ts    # 年级→学段映射 + 学段比较工具
     │   │   ├── spaced-repetition/ # SM-2 间隔复习算法（Phase 2）
     │   │   │   ├── sm2.ts             # SM-2 纯函数（calculateSM2 + mapQuality）
     │   │   │   └── index.ts           # 公共导出

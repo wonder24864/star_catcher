@@ -23,7 +23,11 @@ import type {
   ReviewResult,
   InterventionKind,
   InterventionRecord,
+  WeaknessTier,
+  WeaknessProfileData,
+  WeaknessProfileView,
 } from "./types";
+import { isLowerSchoolLevel } from "@/lib/domain/school-level";
 import {
   calculateSM2,
   DEFAULT_EASE_FACTOR,
@@ -150,6 +154,7 @@ export class StudentMemoryImpl implements StudentMemory {
     const rows = await this.db.masteryState.findMany({
       where: {
         studentId,
+        archived: false,
         status: { in: weakStatuses },
         ...(options?.subject
           ? { knowledgePoint: { subject: options.subject as never } }
@@ -292,10 +297,20 @@ export class StudentMemoryImpl implements StudentMemory {
   }
 
   async getOverdueReviews(studentId: string): Promise<ReviewScheduleView[]> {
+    // Exclude reviews for archived KPs (grade transition D20)
+    const archivedKPs = await this.db.masteryState.findMany({
+      where: { studentId, archived: true },
+      select: { knowledgePointId: true },
+    });
+    const archivedKPIds = archivedKPs.map((r) => r.knowledgePointId);
+
     const rows = await this.db.reviewSchedule.findMany({
       where: {
         studentId,
         nextReviewAt: { lte: new Date() },
+        ...(archivedKPIds.length > 0
+          ? { knowledgePointId: { notIn: archivedKPIds } }
+          : {}),
       },
       orderBy: { nextReviewAt: "asc" },
     });
@@ -310,6 +325,7 @@ export class StudentMemoryImpl implements StudentMemory {
     type: InterventionKind,
     content: unknown,
     source?: { agentId?: string; skillId?: string },
+    options?: { foundationalWeakness?: boolean },
   ): Promise<InterventionRecord> {
     const row = await this.db.interventionHistory.create({
       data: {
@@ -319,6 +335,7 @@ export class StudentMemoryImpl implements StudentMemory {
         content: content as never,
         agentId: source?.agentId ?? null,
         skillId: source?.skillId ?? null,
+        foundationalWeakness: options?.foundationalWeakness ?? false,
       },
     });
     return this.toInterventionRecord(row);
@@ -557,6 +574,102 @@ export class StudentMemoryImpl implements StudentMemory {
     }
   }
 
+  // ─── Weakness Profile ─────────────────────────
+
+  async getWeaknessProfile(
+    studentId: string,
+    tier: WeaknessTier,
+  ): Promise<WeaknessProfileView | null> {
+    const row = await this.db.weaknessProfile.findFirst({
+      where: {
+        studentId,
+        tier,
+        OR: [
+          { validUntil: null },
+          { validUntil: { gte: new Date() } },
+        ],
+      },
+      orderBy: { generatedAt: "desc" },
+    });
+    if (!row) return null;
+    return {
+      id: row.id,
+      studentId: row.studentId,
+      tier: row.tier as WeaknessTier,
+      data: row.data as unknown as WeaknessProfileData,
+      generatedAt: row.generatedAt,
+      validUntil: row.validUntil,
+    };
+  }
+
+  async saveWeaknessProfile(
+    studentId: string,
+    tier: WeaknessTier,
+    data: WeaknessProfileData,
+    validUntil?: Date,
+  ): Promise<WeaknessProfileView> {
+    const row = await this.db.weaknessProfile.create({
+      data: {
+        studentId,
+        tier,
+        data: JSON.parse(JSON.stringify(data)),
+        generatedAt: new Date(),
+        validUntil: validUntil ?? null,
+      },
+    });
+    return {
+      id: row.id,
+      studentId: row.studentId,
+      tier: row.tier as WeaknessTier,
+      data: row.data as unknown as WeaknessProfileData,
+      generatedAt: row.generatedAt,
+      validUntil: row.validUntil,
+    };
+  }
+
+  // ─── Grade Transition ────────────────────────
+
+  async archiveMasteryBySchoolLevel(
+    studentId: string,
+    schoolLevel: "PRIMARY" | "JUNIOR" | "SENIOR",
+  ): Promise<{ archivedCount: number }> {
+    // Find all KP IDs in the given school level
+    const kps = await this.db.knowledgePoint.findMany({
+      where: { schoolLevel, deletedAt: null },
+      select: { id: true },
+    });
+    const kpIds = kps.map((k) => k.id);
+
+    if (kpIds.length === 0) return { archivedCount: 0 };
+
+    const result = await this.db.masteryState.updateMany({
+      where: {
+        studentId,
+        knowledgePointId: { in: kpIds },
+        archived: false,
+      },
+      data: { archived: true },
+    });
+
+    return { archivedCount: result.count };
+  }
+
+  async checkFoundationalWeakness(
+    studentId: string,
+    knowledgePointId: string,
+    currentSchoolLevel: "PRIMARY" | "JUNIOR" | "SENIOR",
+  ): Promise<boolean> {
+    const kp = await this.db.knowledgePoint.findUnique({
+      where: { id: knowledgePointId },
+      select: { schoolLevel: true },
+    });
+    if (!kp) return false;
+    return isLowerSchoolLevel(
+      kp.schoolLevel as "PRIMARY" | "JUNIOR" | "SENIOR",
+      currentSchoolLevel,
+    );
+  }
+
   // ─── Mapping ──────────────────────────────────
 
   private toMasteryView(row: {
@@ -569,6 +682,7 @@ export class StudentMemoryImpl implements StudentMemory {
     lastAttemptAt: Date | null;
     masteredAt: Date | null;
     version: number;
+    archived: boolean;
   }): MasteryStateView {
     return {
       id: row.id,
@@ -580,6 +694,7 @@ export class StudentMemoryImpl implements StudentMemory {
       lastAttemptAt: row.lastAttemptAt,
       masteredAt: row.masteredAt,
       version: row.version,
+      archived: row.archived,
     };
   }
 
@@ -609,6 +724,7 @@ export class StudentMemoryImpl implements StudentMemory {
     content: unknown;
     agentId: string | null;
     skillId: string | null;
+    foundationalWeakness: boolean;
     createdAt: Date;
   }): InterventionRecord {
     return {
@@ -617,6 +733,7 @@ export class StudentMemoryImpl implements StudentMemory {
       content: row.content,
       agentId: row.agentId,
       skillId: row.skillId,
+      foundationalWeakness: row.foundationalWeakness,
       createdAt: row.createdAt,
     };
   }

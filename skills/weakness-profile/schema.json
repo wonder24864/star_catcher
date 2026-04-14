@@ -1,0 +1,19 @@
+{
+  "name": "weakness_profile",
+  "description": "Generate a WeaknessProfile for a student by aggregating mastery state data. PERIODIC tier analyzes current semester, GLOBAL tier analyzes full history. Returns structured weakness data without writing to database.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "tier": {
+        "type": "string",
+        "enum": ["PERIODIC", "GLOBAL"],
+        "description": "Analysis scope: PERIODIC (current semester) or GLOBAL (full history)"
+      },
+      "semesterStartDate": {
+        "type": "string",
+        "description": "ISO date string for semester start boundary (required for PERIODIC tier, ignored for GLOBAL)"
+      }
+    },
+    "required": ["tier"]
+  }
+}

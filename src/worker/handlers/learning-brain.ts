@@ -49,10 +49,11 @@ async function releaseLock(studentId: string): Promise<void> {
  * Active = has non-MASTERED MasteryState OR has overdue ReviewSchedule.
  */
 async function getActiveStudentIds(): Promise<string[]> {
-  // Students with non-MASTERED mastery states
+  // Students with non-MASTERED, non-archived mastery states
   const masteryStudents = await (db as any).masteryState.findMany({
     where: {
       status: { not: "MASTERED" },
+      archived: false,
     },
     select: { studentId: true },
     distinct: ["studentId"],

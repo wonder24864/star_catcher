@@ -50,3 +50,5 @@
 | US-044 | AI 响应语义缓存 | [semantic-cache.md](semantic-cache.md) | Sprint 10a |
 | US-045 | AI Harness 可观测性追踪 | [observability.md](observability.md) | Sprint 10a |
 | US-046 | Learning Brain 事件调度 | [learning-brain.md](learning-brain.md) | Sprint 10b |
+| US-047 | 三层薄弱分析 | [weakness-analysis.md](weakness-analysis.md) | Sprint 11 |
+| US-048 | 年级过渡策略 | [weakness-analysis.md](weakness-analysis.md) | Sprint 11 |

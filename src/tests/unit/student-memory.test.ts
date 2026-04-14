@@ -126,6 +126,7 @@ function createMockMasteryRow(overrides: Partial<{
   lastAttemptAt: Date | null;
   masteredAt: Date | null;
   version: number;
+  archived: boolean;
   createdAt: Date;
   updatedAt: Date;
 }> = {}) {
@@ -139,6 +140,7 @@ function createMockMasteryRow(overrides: Partial<{
     lastAttemptAt: null,
     masteredAt: null,
     version: 1,
+    archived: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -165,9 +167,18 @@ function createMockPrisma() {
         content: {},
         agentId: null,
         skillId: null,
+        foundationalWeakness: false,
         createdAt: new Date(),
       }),
       findMany: vi.fn().mockResolvedValue([]),
+    },
+    weaknessProfile: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn(),
+    },
+    knowledgePoint: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn().mockResolvedValue(null),
     },
   };
 }
@@ -206,6 +217,7 @@ describe("StudentMemoryImpl", () => {
         lastAttemptAt: null,
         masteredAt: null,
         version: 1,
+        archived: false,
       });
     });
   });
@@ -951,6 +963,234 @@ describe("StudentMemoryImpl", () => {
 
       // Explicit transition still returns CORRECTED despite auto-transition failure
       expect(result.status).toBe("CORRECTED");
+    });
+  });
+
+  // ── getWeakPoints archived filter ──
+
+  describe("getWeakPoints archived filter", () => {
+    test("excludes archived mastery states", async () => {
+      const activeRow = createMockMasteryRow({ id: "ms-active", status: "NEW_ERROR", archived: false });
+      const archivedRow = createMockMasteryRow({ id: "ms-archived", status: "NEW_ERROR", archived: true });
+
+      // findMany should only return non-archived rows
+      mockDb.masteryState.findMany.mockResolvedValue([activeRow]);
+
+      const result = await memory.getWeakPoints("student-1");
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe("ms-active");
+
+      // Verify archived: false is in the where clause
+      expect(mockDb.masteryState.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ archived: false }),
+        }),
+      );
+    });
+  });
+
+  // ── getOverdueReviews archived filter ──
+
+  describe("getOverdueReviews archived filter", () => {
+    test("excludes reviews for archived KPs", async () => {
+      // Mock: one archived KP
+      mockDb.masteryState.findMany.mockResolvedValue([
+        { knowledgePointId: "kp-archived" },
+      ]);
+
+      const reviewRow = {
+        id: "review-1",
+        studentId: "student-1",
+        knowledgePointId: "kp-active",
+        nextReviewAt: new Date("2020-01-01"),
+        intervalDays: 1,
+        easeFactor: 2.5,
+        consecutiveCorrect: 0,
+      };
+      mockDb.reviewSchedule.findMany.mockResolvedValue([reviewRow]);
+
+      const result = await memory.getOverdueReviews("student-1");
+      expect(result).toHaveLength(1);
+
+      // Verify notIn filter was applied
+      expect(mockDb.reviewSchedule.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            knowledgePointId: { notIn: ["kp-archived"] },
+          }),
+        }),
+      );
+    });
+
+    test("no archived KPs skips notIn filter", async () => {
+      mockDb.masteryState.findMany.mockResolvedValue([]);
+      mockDb.reviewSchedule.findMany.mockResolvedValue([]);
+
+      await memory.getOverdueReviews("student-1");
+
+      // Verify no notIn filter when no archived KPs
+      const call = mockDb.reviewSchedule.findMany.mock.calls[0]![0];
+      expect(call.where.knowledgePointId).toBeUndefined();
+    });
+  });
+
+  // ── getWeaknessProfile ──
+
+  describe("getWeaknessProfile", () => {
+    test("returns null when no profile exists", async () => {
+      mockDb.weaknessProfile.findFirst.mockResolvedValue(null);
+      const result = await memory.getWeaknessProfile("s1", "PERIODIC");
+      expect(result).toBeNull();
+    });
+
+    test("returns profile with correct mapping", async () => {
+      const now = new Date();
+      const validUntil = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      mockDb.weaknessProfile.findFirst.mockResolvedValue({
+        id: "wp-1",
+        studentId: "s1",
+        tier: "PERIODIC",
+        data: { weakPoints: [{ kpId: "kp-1", severity: "HIGH", trend: "WORSENING", errorCount: 5, lastErrorAt: null }] },
+        generatedAt: now,
+        validUntil,
+      });
+
+      const result = await memory.getWeaknessProfile("s1", "PERIODIC");
+      expect(result).not.toBeNull();
+      expect(result!.tier).toBe("PERIODIC");
+      expect(result!.data.weakPoints).toHaveLength(1);
+      expect(result!.data.weakPoints[0]!.severity).toBe("HIGH");
+    });
+  });
+
+  // ── saveWeaknessProfile ──
+
+  describe("saveWeaknessProfile", () => {
+    test("creates profile with correct data", async () => {
+      const data = { weakPoints: [{ kpId: "kp-1", severity: "HIGH" as const, trend: "STABLE" as const, errorCount: 3, lastErrorAt: null }] };
+      const now = new Date();
+
+      mockDb.weaknessProfile.create.mockResolvedValue({
+        id: "wp-new",
+        studentId: "s1",
+        tier: "PERIODIC",
+        data,
+        generatedAt: now,
+        validUntil: null,
+      });
+
+      const result = await memory.saveWeaknessProfile("s1", "PERIODIC", data);
+      expect(result.id).toBe("wp-new");
+      expect(result.tier).toBe("PERIODIC");
+
+      expect(mockDb.weaknessProfile.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            studentId: "s1",
+            tier: "PERIODIC",
+          }),
+        }),
+      );
+    });
+  });
+
+  // ── archiveMasteryBySchoolLevel ──
+
+  describe("archiveMasteryBySchoolLevel", () => {
+    test("archives mastery states for matching school level KPs", async () => {
+      mockDb.knowledgePoint.findMany.mockResolvedValue([
+        { id: "kp-p1" },
+        { id: "kp-p2" },
+      ]);
+      mockDb.masteryState.updateMany.mockResolvedValue({ count: 2 });
+
+      const result = await memory.archiveMasteryBySchoolLevel("s1", "PRIMARY");
+      expect(result.archivedCount).toBe(2);
+
+      expect(mockDb.masteryState.updateMany).toHaveBeenCalledWith({
+        where: {
+          studentId: "s1",
+          knowledgePointId: { in: ["kp-p1", "kp-p2"] },
+          archived: false,
+        },
+        data: { archived: true },
+      });
+    });
+
+    test("returns 0 when no KPs in school level", async () => {
+      mockDb.knowledgePoint.findMany.mockResolvedValue([]);
+
+      const result = await memory.archiveMasteryBySchoolLevel("s1", "SENIOR");
+      expect(result.archivedCount).toBe(0);
+      expect(mockDb.masteryState.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── checkFoundationalWeakness ──
+
+  describe("checkFoundationalWeakness", () => {
+    test("returns true when KP is from lower school level", async () => {
+      mockDb.knowledgePoint.findUnique.mockResolvedValue({ schoolLevel: "PRIMARY" });
+
+      const result = await memory.checkFoundationalWeakness("s1", "kp-1", "JUNIOR");
+      expect(result).toBe(true);
+    });
+
+    test("returns false when KP is from same school level", async () => {
+      mockDb.knowledgePoint.findUnique.mockResolvedValue({ schoolLevel: "JUNIOR" });
+
+      const result = await memory.checkFoundationalWeakness("s1", "kp-1", "JUNIOR");
+      expect(result).toBe(false);
+    });
+
+    test("returns false when KP not found", async () => {
+      mockDb.knowledgePoint.findUnique.mockResolvedValue(null);
+
+      const result = await memory.checkFoundationalWeakness("s1", "kp-missing", "JUNIOR");
+      expect(result).toBe(false);
+    });
+  });
+
+  // ── logIntervention with foundationalWeakness ──
+
+  describe("logIntervention foundationalWeakness", () => {
+    test("passes foundationalWeakness flag to DB", async () => {
+      mockDb.interventionHistory.create.mockResolvedValue({
+        id: "int-fw",
+        type: "DIAGNOSIS",
+        content: {},
+        agentId: null,
+        skillId: null,
+        foundationalWeakness: true,
+        createdAt: new Date(),
+      });
+
+      const result = await memory.logIntervention(
+        "s1", "kp-1", "DIAGNOSIS", {},
+        undefined,
+        { foundationalWeakness: true },
+      );
+      expect(result.foundationalWeakness).toBe(true);
+
+      expect(mockDb.interventionHistory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            foundationalWeakness: true,
+          }),
+        }),
+      );
+    });
+
+    test("defaults foundationalWeakness to false when not provided", async () => {
+      await memory.logIntervention("s1", "kp-1", "DIAGNOSIS", {});
+
+      expect(mockDb.interventionHistory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            foundationalWeakness: false,
+          }),
+        }),
+      );
     });
   });
 });

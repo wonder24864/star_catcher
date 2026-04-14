@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { hash } from "bcryptjs";
 import { router, adminProcedure } from "../trpc";
+import { enqueueWeaknessProfile } from "@/lib/infra/queue";
 
 /** Generate a random temp password: 8 chars, letters + digits */
 function genTempPassword(): string {
@@ -234,5 +235,26 @@ export const adminRouter = router({
       });
 
       return { success: true };
+    }),
+
+  /**
+   * Trigger weakness profile analysis for a student.
+   * Used for GLOBAL (semester-end) or manual PERIODIC re-analysis.
+   */
+  triggerWeaknessProfile: adminProcedure
+    .input(
+      z.object({
+        studentId: z.string().min(1),
+        tier: z.enum(["PERIODIC", "GLOBAL"]).default("GLOBAL"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const jobId = await enqueueWeaknessProfile({
+        studentId: input.studentId,
+        userId: ctx.session.userId,
+        locale: "zh",
+        tier: input.tier,
+      });
+      return { jobId };
     }),
 });

@@ -554,9 +554,10 @@ model InterventionHistory {
   knowledgePointId String
   type             InterventionType
   content          Json?            // 干预详情
-  agentId          String?          @db.VarChar(64) // 来源 Agent
-  skillId          String?          @db.VarChar(64) // 来源 Skill
-  createdAt        DateTime         @default(now()) @db.Timestamptz
+  agentId              String?  @db.VarChar(64) // 来源 Agent
+  skillId              String?  @db.VarChar(64) // 来源 Skill
+  foundationalWeakness Boolean  @default(false) // KP 属于更低学段（年级过渡 D20）
+  createdAt            DateTime @default(now()) @db.Timestamptz
 
   student        User           @relation("StudentIntervention", fields: [studentId], references: [id])
   knowledgePoint KnowledgePoint @relation(fields: [knowledgePointId], references: [id])

@@ -53,6 +53,7 @@ export interface InterventionRecord {
   content: unknown;
   agentId: string | null;
   skillId: string | null;
+  foundationalWeakness: boolean;
   createdAt: Date;
 }
 
@@ -69,6 +70,7 @@ export interface MasteryStateView {
   lastAttemptAt: Date | null;
   masteredAt: Date | null;
   version: number;
+  archived: boolean;
 }
 
 /** Read-view of ReviewSchedule */
@@ -89,6 +91,36 @@ export interface ReviewResult {
   /** Non-null if a state transition occurred (e.g., REVIEWING→MASTERED) */
   transition: MasteryTransition | null;
 }
+
+// ─── Weakness Profile Types ──────────────────────
+
+export type WeaknessTier = "REALTIME" | "PERIODIC" | "GLOBAL";
+
+export type WeaknessTrend = "IMPROVING" | "STABLE" | "WORSENING";
+
+export interface WeakPointEntry {
+  kpId: string;
+  severity: "HIGH" | "MEDIUM" | "LOW";
+  trend: WeaknessTrend;
+  errorCount: number;
+  lastErrorAt: Date | null;
+}
+
+export interface WeaknessProfileData {
+  weakPoints: WeakPointEntry[];
+  summary?: string;
+}
+
+export interface WeaknessProfileView {
+  id: string;
+  studentId: string;
+  tier: WeaknessTier;
+  data: WeaknessProfileData;
+  generatedAt: Date;
+  validUntil: Date | null;
+}
+
+// ─── Memory Layer Interface ─────────────────────
 
 /**
  * StudentMemory — the interface exposed to Skills via IPC.
@@ -148,12 +180,38 @@ export interface StudentMemory {
     type: InterventionKind,
     content: unknown,
     source?: { agentId?: string; skillId?: string },
+    options?: { foundationalWeakness?: boolean },
   ): Promise<InterventionRecord>;
 
   getInterventionHistory(
     studentId: string,
     knowledgePointId: string,
   ): Promise<InterventionRecord[]>;
+
+  // ── Weakness Profile ──
+  getWeaknessProfile(
+    studentId: string,
+    tier: WeaknessTier,
+  ): Promise<WeaknessProfileView | null>;
+
+  saveWeaknessProfile(
+    studentId: string,
+    tier: WeaknessTier,
+    data: WeaknessProfileData,
+    validUntil?: Date,
+  ): Promise<WeaknessProfileView>;
+
+  // ── Grade Transition ──
+  archiveMasteryBySchoolLevel(
+    studentId: string,
+    schoolLevel: "PRIMARY" | "JUNIOR" | "SENIOR",
+  ): Promise<{ archivedCount: number }>;
+
+  checkFoundationalWeakness(
+    studentId: string,
+    knowledgePointId: string,
+    currentSchoolLevel: "PRIMARY" | "JUNIOR" | "SENIOR",
+  ): Promise<boolean>;
 }
 
 // ─── Errors ─────────────────────────────────────

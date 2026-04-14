@@ -60,7 +60,6 @@ describe("Handler Registry", () => {
 
   test("Phase 3 stub handlers complete without throwing", async () => {
     const stubs: AIJobName[] = [
-      "weakness-profile",
       "intervention-planning",
       "mastery-evaluation",
     ];

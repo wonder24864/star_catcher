@@ -35,6 +35,10 @@ function createMockMemory(
     processReviewResult: vi.fn(),
     logIntervention: vi.fn(),
     getInterventionHistory: vi.fn(),
+    getWeaknessProfile: vi.fn().mockResolvedValue(null),
+    saveWeaknessProfile: vi.fn(),
+    archiveMasteryBySchoolLevel: vi.fn(),
+    checkFoundationalWeakness: vi.fn(),
   };
 }
 
@@ -53,6 +57,7 @@ function makeMastery(
     lastAttemptAt: new Date(),
     masteredAt: null,
     version: 1,
+    archived: false,
     ...overrides,
   };
 }
@@ -227,5 +232,103 @@ describe("Learning Brain", () => {
 
     expect(memory.getWeakPoints).toHaveBeenCalledWith("student-1");
     expect(memory.getOverdueReviews).toHaveBeenCalledWith("student-1");
+    expect(memory.getWeaknessProfile).toHaveBeenCalledWith("student-1", "PERIODIC");
+  });
+
+  // ── WeaknessProfile trend integration (Sprint 11) ──
+
+  test("worsening trend alone triggers intervention-planning", async () => {
+    const memory = createMockMemory([], []); // no weak points, no overdue reviews
+    (memory.getWeaknessProfile as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "wp-1",
+      studentId: "student-1",
+      tier: "PERIODIC",
+      data: {
+        weakPoints: [
+          { kpId: "kp-trend-1", severity: "MEDIUM", trend: "WORSENING", errorCount: 3, lastErrorAt: null },
+          { kpId: "kp-trend-2", severity: "LOW", trend: "STABLE", errorCount: 1, lastErrorAt: null },
+        ],
+      },
+      generatedAt: new Date(),
+      validUntil: null,
+    });
+    const mockRedis = createMockRedis(false);
+
+    const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
+
+    expect(decision.agentsToLaunch).toHaveLength(1);
+    expect(decision.agentsToLaunch[0]!.jobName).toBe("intervention-planning");
+    expect(decision.agentsToLaunch[0]!.data).toMatchObject({
+      knowledgePointIds: ["kp-trend-1"], // only WORSENING KPs
+    });
+  });
+
+  test("weak points + worsening trend merges and deduplicates KP IDs", async () => {
+    const weakPoints = [
+      makeMastery({ knowledgePointId: "kp-1", status: "NEW_ERROR" }),
+      makeMastery({ knowledgePointId: "kp-2", status: "REGRESSED" }),
+    ];
+    const memory = createMockMemory(weakPoints, []);
+    (memory.getWeaknessProfile as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "wp-1",
+      studentId: "student-1",
+      tier: "PERIODIC",
+      data: {
+        weakPoints: [
+          { kpId: "kp-1", severity: "HIGH", trend: "WORSENING", errorCount: 5, lastErrorAt: null }, // overlaps with weak point
+          { kpId: "kp-3", severity: "MEDIUM", trend: "WORSENING", errorCount: 3, lastErrorAt: null }, // new
+        ],
+      },
+      generatedAt: new Date(),
+      validUntil: null,
+    });
+    const mockRedis = createMockRedis(false);
+
+    const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
+
+    expect(decision.agentsToLaunch).toHaveLength(1);
+    const kpIds = decision.agentsToLaunch[0]!.data.knowledgePointIds as string[];
+    expect(kpIds).toHaveLength(3); // kp-1, kp-2, kp-3 (deduplicated)
+    expect(new Set(kpIds)).toEqual(new Set(["kp-1", "kp-2", "kp-3"]));
+  });
+
+  test("worsening trend + cooldown → skipped", async () => {
+    const memory = createMockMemory([], []);
+    (memory.getWeaknessProfile as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "wp-1",
+      studentId: "student-1",
+      tier: "PERIODIC",
+      data: {
+        weakPoints: [
+          { kpId: "kp-trend-1", severity: "HIGH", trend: "WORSENING", errorCount: 5, lastErrorAt: null },
+        ],
+      },
+      generatedAt: new Date(),
+      validUntil: null,
+    });
+    const mockRedis = createMockRedis(true); // cooldown active
+
+    const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
+
+    expect(decision.agentsToLaunch).toEqual([]);
+    expect(decision.skipped).toHaveLength(1);
+    expect(decision.skipped[0]!.jobName).toBe("intervention-planning");
+  });
+
+  test("null profile → existing behavior preserved", async () => {
+    const weakPoints = [
+      makeMastery({ knowledgePointId: "kp-1", status: "NEW_ERROR" }),
+    ];
+    const memory = createMockMemory(weakPoints, []);
+    // getWeaknessProfile already returns null by default
+    const mockRedis = createMockRedis(false);
+
+    const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
+
+    expect(decision.agentsToLaunch).toHaveLength(1);
+    expect(decision.agentsToLaunch[0]!.jobName).toBe("intervention-planning");
+    expect(decision.agentsToLaunch[0]!.data).toMatchObject({
+      knowledgePointIds: ["kp-1"],
+    });
   });
 });

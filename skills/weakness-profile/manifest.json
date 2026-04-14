@@ -1,0 +1,8 @@
+{
+  "name": "weakness-profile",
+  "version": "1.0.0",
+  "description": "Analyze student weakness patterns across knowledge points. Aggregates MasteryState data into severity/trend profiles for PERIODIC (semester) and GLOBAL (all-time) tiers.",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 60000
+}

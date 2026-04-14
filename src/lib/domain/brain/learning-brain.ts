@@ -110,10 +110,22 @@ export async function runLearningBrain(
   // 2. Read overdue reviews
   const overdueReviews = await memory.getOverdueReviews(studentId);
 
+  // 3. Read PERIODIC WeaknessProfile for trend data
+  const profile = await memory.getWeaknessProfile(studentId, "PERIODIC");
+  const worseningKPIds = profile
+    ? profile.data.weakPoints
+        .filter((wp) => wp.trend === "WORSENING")
+        .map((wp) => wp.kpId)
+    : [];
+
   const eventsProcessed = weakPoints.length + overdueReviews.length;
 
-  // 3. Intervention planning (with 24h cooldown)
-  if (weakPoints.length > 0) {
+  // 4. Merge intervention KP IDs (weak points + worsening trend)
+  const weakKPIds = weakPoints.map((wp) => wp.knowledgePointId);
+  const allInterventionKPIds = [...new Set([...weakKPIds, ...worseningKPIds])];
+
+  // 5. Intervention planning (with 24h cooldown)
+  if (allInterventionKPIds.length > 0) {
     const cooledDown = await hasRecentInterventionPlanning(redis, studentId);
 
     if (cooledDown) {
@@ -122,16 +134,22 @@ export async function runLearningBrain(
         reason: `Skipped: intervention-planning ran within last ${COOLDOWN_SECONDS / 3600}h for student ${studentId}`,
       });
     } else {
-      const knowledgePointIds = weakPoints.map((wp) => wp.knowledgePointId);
+      const reasonParts: string[] = [];
+      if (weakKPIds.length > 0) {
+        reasonParts.push(`${weakKPIds.length} weak point(s)`);
+      }
+      if (worseningKPIds.length > 0) {
+        reasonParts.push(`${worseningKPIds.length} worsening trend(s)`);
+      }
       agentsToLaunch.push({
         jobName: "intervention-planning",
-        data: { studentId, knowledgePointIds, userId, locale },
-        reason: `${weakPoints.length} active weak point(s): ${knowledgePointIds.slice(0, 5).join(", ")}${knowledgePointIds.length > 5 ? "..." : ""}`,
+        data: { studentId, knowledgePointIds: allInterventionKPIds, userId, locale },
+        reason: reasonParts.join(" + "),
       });
     }
   }
 
-  // 4. Mastery evaluation (one per overdue KP, no cooldown)
+  // 6. Mastery evaluation (one per overdue KP, no cooldown)
   for (const review of overdueReviews) {
     agentsToLaunch.push({
       jobName: "mastery-evaluation",

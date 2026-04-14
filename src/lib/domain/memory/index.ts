@@ -21,4 +21,9 @@ export type {
   ReviewResult,
   InterventionKind,
   InterventionRecord,
+  WeaknessTier,
+  WeaknessTrend,
+  WeakPointEntry,
+  WeaknessProfileData,
+  WeaknessProfileView,
 } from "./types";

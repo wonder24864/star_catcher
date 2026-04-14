@@ -77,6 +77,7 @@ export interface WeaknessProfileJobData {
   studentId: string;
   userId: string;
   locale: string;
+  tier?: "PERIODIC" | "GLOBAL";
 }
 
 export interface InterventionPlanningJobData {

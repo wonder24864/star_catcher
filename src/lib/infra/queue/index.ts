@@ -15,6 +15,7 @@ import type {
   DiagnosisJobData,
   KGImportJobData,
   LearningBrainJobData,
+  WeaknessProfileJobData,
   InterventionPlanningJobData,
   MasteryEvaluationJobData,
 } from "./types";
@@ -144,6 +145,22 @@ export async function enqueueLearningBrain(
   data: LearningBrainJobData,
 ): Promise<string> {
   const job = await getQueue().add("learning-brain", data, {
+    attempts: 2,
+    backoff: { type: "exponential", delay: 5000 },
+    removeOnComplete: 100,
+    removeOnFail: 200,
+  });
+  return job.id!;
+}
+
+/**
+ * Enqueue weakness profile analysis job.
+ * Timeout: 2min, Retries: 2
+ */
+export async function enqueueWeaknessProfile(
+  data: WeaknessProfileJobData,
+): Promise<string> {
+  const job = await getQueue().add("weakness-profile", data, {
     attempts: 2,
     backoff: { type: "exponential", delay: 5000 },
     removeOnComplete: 100,
