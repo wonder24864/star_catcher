@@ -65,13 +65,46 @@ export interface DiagnosisJobData {
   locale: string;
 }
 
+// Phase 3 job data types
+
+export interface LearningBrainJobData {
+  studentId: string;
+  userId: string;
+  locale: string;
+}
+
+export interface WeaknessProfileJobData {
+  studentId: string;
+  userId: string;
+  locale: string;
+}
+
+export interface InterventionPlanningJobData {
+  studentId: string;
+  knowledgePointIds: string[];
+  userId: string;
+  locale: string;
+}
+
+export interface MasteryEvaluationJobData {
+  studentId: string;
+  knowledgePointId: string;
+  reviewScheduleId: string;
+  userId: string;
+  locale: string;
+}
+
 export type AIJobData =
   | OcrRecognizeJobData
   | CorrectionPhotosJobData
   | HelpGenerateJobData
   | KGImportJobData
   | QuestionUnderstandingJobData
-  | DiagnosisJobData;
+  | DiagnosisJobData
+  | LearningBrainJobData
+  | WeaknessProfileJobData
+  | InterventionPlanningJobData
+  | MasteryEvaluationJobData;
 
 /** Job names matching ADR-003 timeout/retry configuration */
 export type AIJobName =
@@ -80,4 +113,8 @@ export type AIJobName =
   | "help-generate"
   | "kg-import"
   | "question-understanding"
-  | "diagnosis";
+  | "diagnosis"
+  | "learning-brain"
+  | "weakness-profile"
+  | "intervention-planning"
+  | "mastery-evaluation";

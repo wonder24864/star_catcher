@@ -59,11 +59,13 @@ npm run dev
 所有 AI 调用必须经过 Harness 管道（不允许直接调用 Provider）：
 
 ```
-业务代码 -> Operations 层 -> AI Harness 管道 -> AI Provider
+业务代码 -> Operations 层 -> AI Harness 组件管道 -> AI Provider
                               |
-                              ├── 调用前: 限流器、注入防御、Prompt 管理器
-                              ├── 调用后: 输出校验(Zod)、内容安全(K-12)、调用日志
-                              └── 异常:   降级处理（优雅退化）
+                              ├── 限流器 → 注入防御 → Prompt 管理器
+                              ├── 语义缓存查询 → AI 调用 → 输出校验(Zod)
+                              ├── 内容安全(K-12) → 语义缓存存储
+                              ├── 日志记录（always）+ OTel 追踪
+                              └── 每个组件实现 HarnessComponent 接口
 ```
 
 ### AI 架构演进
@@ -189,12 +191,15 @@ star_catcher/
     │   │   ├── redis.ts           # Redis 客户端
     │   │   ├── storage/           # MinIO 文件存储
     │   │   ├── queue/             # BullMQ 异步队列（连接/类型/入队）
+    │   │   ├── telemetry/         # OpenTelemetry 观测（initTelemetry + withSpan）
     │   │   └── events.ts          # Redis Pub/Sub 事件桥
     │   │
     │   ├── domain/            # 业务逻辑
     │   │   ├── ai/                # AI Harness 管道
-    │   │   │   ├── harness/           # 管道组件（7 个）
-    │   │   │   ├── operations/        # 业务操作（7 个）+ registry.ts（通用路由）
+    │   │   │   ├── harness/           # 组件管道（8 个组件 + SemanticCache）
+    │   │   │   │   └── components/        # 管道组件类（RateLimiter/InjectionGuard/...）
+    │   │   │   ├── embedding/         # EmbeddingProvider 抽象层（Azure/未来 Ollama）
+    │   │   │   ├── operations/        # 业务操作（13 个）+ registry.ts（通用路由）
     │   │   │   ├── prompts/           # Prompt 模板
     │   │   │   └── providers/         # AI 提供商（Azure OpenAI / FC 适配器）
     │   │   ├── skill/             # Skill 插件系统（Phase 2）
@@ -239,16 +244,20 @@ star_catcher/
     │   └── routers/               # 路由器（12 个业务 + 1 个订阅）
     │
     ├── worker/                # ── BullMQ Worker（独立 Docker 服务）──
-    │   ├── index.ts               # 入口（监听 ai-jobs 队列）
+    │   ├── index.ts               # 入口（Handler Registry + Schedule Registry）
+    │   ├── handler-registry.ts    # AIJobName → Handler 注册表（Rule 9）
+    │   ├── schedule-registry.ts   # 声明式定时任务注册（Rule 9）
     │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成 / 题目理解 / 诊断
     │
     ├── cli/                   # ── CLI 工具 ──
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）
     │   └── skill-build.ts         # Skill 构建（校验 + 编译 + Prisma 检查）
     │
-    ├── tests/                 # ── 测试（44 文件，718+ 用例）──
+    ├── tests/                 # ── 测试（48 文件，754+ 用例）──
     │   ├── acceptance/            # 验收测试（9 个用户故事模块）
     │   ├── unit/                  # 单元测试（含 Skill 运行时 / Agent 组件）
+    │   ├── harness/               # Harness 管道 + SemanticCache 测试
+    │   ├── worker/                # Handler Registry + Schedule Registry 测试
     │   ├── perf/                  # 性能测试（Knowledge Graph CTE 等）
     │   ├── architecture/          # 架构守护（Harness 完整性 + i18n 覆盖）
     │   ├── fixtures/skills/       # 测试用 Skill 夹具（echo/error/security）

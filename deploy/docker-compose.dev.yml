@@ -97,6 +97,16 @@ services:
       - "9001:9001"
     restart: unless-stopped
 
+  star-catcher-jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: star-catcher-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4318:4318"    # OTLP HTTP receiver
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    restart: unless-stopped
+
 volumes:
   star-catcher-pgdata:
   star-catcher-redisdata:

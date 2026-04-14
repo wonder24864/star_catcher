@@ -19,7 +19,9 @@ describe('AI Harness Integrity', () => {
       'src/lib/domain/ai/provider-factory.ts',  // Only file that instantiates providers
       'src/lib/domain/ai/singleton.ts',         // Global harness instance creation
       'src/lib/domain/ai/types.ts',             // Type definitions
-      'src/lib/domain/ai/harness/index.ts',     // Harness factory (delegates to provider)
+      'src/lib/domain/ai/harness/index.ts',     // Harness pipeline assembly
+      'src/lib/domain/ai/harness/component.ts', // HarnessContext references AIProvider
+      'src/lib/domain/ai/harness/pipeline.ts',  // Pipeline executor references AIProvider
     ]
     // Note: other harness/ files (call-logger, rate-limiter, etc.) should NOT
     // import AIProvider directly — they receive it via dependency injection.
@@ -68,13 +70,19 @@ describe('AI Harness Integrity', () => {
     const fs = require('fs')
     const path = require('path')
 
+    // After component pipeline refactor, index.ts assembles the pipeline
+    // and the ContentGuardrailComponent lives in its own file
     const pipelineCode = fs.readFileSync(
       path.join(process.cwd(), 'src/lib/domain/ai/harness/index.ts'),
       'utf-8'
     )
+    expect(pipelineCode).toContain('ContentGuardrailComponent')
 
-    // ContentGuardrail must be imported and called in the pipeline
-    expect(pipelineCode).toContain('checkContentSafety')
-    expect(pipelineCode).toContain('CONTENT_GUARDRAIL_BLOCKED')
+    const componentCode = fs.readFileSync(
+      path.join(process.cwd(), 'src/lib/domain/ai/harness/components/content-guardrail.ts'),
+      'utf-8'
+    )
+    expect(componentCode).toContain('checkContentSafety')
+    expect(componentCode).toContain('CONTENT_GUARDRAIL_BLOCKED')
   })
 })

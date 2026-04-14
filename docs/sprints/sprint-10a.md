@@ -1,6 +1,6 @@
 # Sprint 10a: SemanticCache + ObservabilityTracer 基础设施 (Week 14)
 
-**Status**: DRAFT
+**Status**: IN_PROGRESS
 
 **目标**: 搭建 Phase 3 基础设施前半 — SemanticCache 集成 + OpenTelemetry 观测 + BullMQ Handler/Schedule Registry 重构 + Harness 组件管道重构。
 

@@ -46,3 +46,6 @@
 | US-041 | 家长周报/月报 | [parent-reports.md](parent-reports.md) | Sprint 8 |
 | US-042 | Agent Trace 管理员视图 | [agent-trace-views.md](agent-trace-views.md) | Sprint 8 |
 | US-043 | Agent 分析简化视图 | [agent-trace-views.md](agent-trace-views.md) | Sprint 8 |
+| — | — | **Phase 3 基础设施** | — |
+| US-044 | AI 响应语义缓存 | [semantic-cache.md](semantic-cache.md) | Sprint 10a |
+| US-045 | AI Harness 可观测性追踪 | [observability.md](observability.md) | Sprint 10a |

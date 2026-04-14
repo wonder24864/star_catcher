@@ -21,6 +21,11 @@
     "skill:build": "npx tsx src/cli/skill-build.ts"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.214.0",
+    "@opentelemetry/resources": "^2.6.1",
+    "@opentelemetry/sdk-node": "^0.214.0",
+    "@opentelemetry/semantic-conventions": "^1.40.0",
     "@prisma/client": "^6",
     "@serwist/next": "^9.5.7",
     "@swc/helpers": "^0.5.21",

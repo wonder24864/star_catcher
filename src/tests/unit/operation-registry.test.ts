@@ -104,6 +104,17 @@ describe("Operation Registry", () => {
     );
   });
 
+  test.each([
+    "WEAKNESS_PROFILE",
+    "INTERVENTION_PLAN",
+    "MASTERY_EVALUATE",
+    "FIND_SIMILAR",
+    "GENERATE_EXPLANATION",
+    "EVAL_JUDGE",
+  ])("Phase 3 stub %s throws not-yet-implemented", async (op) => {
+    await expect(callAIOperation(op, {}, ctx)).rejects.toThrow("not yet implemented");
+  });
+
   test("throws on unknown operation", async () => {
     await expect(
       callAIOperation("NONEXISTENT", {}, ctx),

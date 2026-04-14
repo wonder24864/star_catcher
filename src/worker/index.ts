@@ -2,74 +2,43 @@
  * BullMQ Worker entry point.
  *
  * Runs as a separate process (star-catcher-worker in Docker).
- * Listens on the "ai-jobs" queue and routes jobs to handlers.
+ * Listens on the "ai-jobs" queue and routes jobs via Handler Registry.
  *
  * See docs/adr/003-bullmq-async-ai.md
+ * See docs/sprints/sprint-10a.md (Task 93 — Handler Registry + Schedule Registry)
  */
 
 // Mark as worker before logger initializes (affects base.service field)
 process.env.WORKER_MODE = "true";
 
-import { Worker, type Job } from "bullmq";
+// OTel initialization (must be early, before other imports)
+import { initTelemetry } from "@/lib/infra/telemetry";
+initTelemetry("star-catcher-worker");
+
+import { Worker, Queue, type Job } from "bullmq";
 import { createBullMQConnection } from "@/lib/infra/queue/connection";
 import type { AIJobData, AIJobName } from "@/lib/infra/queue/types";
 import { createLogger } from "@/lib/infra/logger";
-import { handleOcrRecognize } from "./handlers/ocr-recognize";
-import { handleCorrectionPhotos } from "./handlers/correction-photos";
-import { handleHelpGenerate } from "./handlers/help-generate";
-import { handleKGImport } from "./handlers/kg-import";
-import { handleQuestionUnderstanding } from "./handlers/question-understanding";
-import { handleDiagnosis } from "./handlers/diagnosis";
+import { routeJob } from "./handler-registry";
+import { registerSchedules } from "./schedule-registry";
 
 const log = createLogger("worker");
 
 log.info("Starting AI jobs worker...");
+
+const connection = createBullMQConnection();
+
+// ── Worker ──
 
 const worker = new Worker<AIJobData, void, AIJobName>(
   "ai-jobs",
   async (job: Job<AIJobData, void, AIJobName>) => {
     const jobLog = log.child({ jobId: job.id, jobName: job.name, attempt: job.attemptsMade + 1 });
     jobLog.info("Processing job");
-
-    switch (job.name) {
-      case "ocr-recognize":
-        await handleOcrRecognize(job as Job<AIJobData & { sessionId: string }>);
-        break;
-      case "correction-photos":
-        await handleCorrectionPhotos(
-          job as Job<AIJobData & { sessionId: string; imageIds: string[] }>,
-        );
-        break;
-      case "help-generate":
-        await handleHelpGenerate(
-          job as Job<
-            AIJobData & {
-              sessionId: string;
-              questionId: string;
-              level: 1 | 2 | 3;
-            }
-          >,
-        );
-        break;
-      case "kg-import":
-        await handleKGImport(job as unknown as Job<import("@/lib/infra/queue/types").KGImportJobData>);
-        break;
-      case "question-understanding":
-        await handleQuestionUnderstanding(
-          job as unknown as Job<import("@/lib/infra/queue/types").QuestionUnderstandingJobData>,
-        );
-        break;
-      case "diagnosis":
-        await handleDiagnosis(
-          job as unknown as Job<import("@/lib/infra/queue/types").DiagnosisJobData>,
-        );
-        break;
-      default:
-        jobLog.warn("Unknown job name");
-    }
+    await routeJob(job);
   },
   {
-    connection: createBullMQConnection(),
+    connection,
     concurrency: 3,
     removeOnComplete: { count: 100 },
     removeOnFail: { count: 200 },
@@ -88,10 +57,19 @@ worker.on("error", (error) => {
   log.error({ err: error }, "Worker error");
 });
 
-// Graceful shutdown
+// ── Schedule Registry ──
+
+const queue = new Queue<AIJobData, void, AIJobName>("ai-jobs", { connection });
+registerSchedules(queue).catch((e) => {
+  log.error({ err: e }, "Failed to register schedules");
+});
+
+// ── Graceful shutdown ──
+
 async function shutdown(signal: string) {
   log.info({ signal }, "Received signal, shutting down...");
   await worker.close();
+  await queue.close();
   process.exit(0);
 }
 

@@ -57,6 +57,10 @@ export interface AIHarnessResult<T> {
   };
   /** True if this is a fallback/degraded result */
   fallback?: boolean;
+  /** True if result came from semantic cache */
+  cacheHit?: boolean;
+  /** Semantic cache entry ID (if cache hit) */
+  cacheId?: string;
   /** Token usage from the AI call */
   usage?: AIUsage;
   /** Duration in milliseconds */

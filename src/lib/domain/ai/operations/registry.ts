@@ -111,6 +111,26 @@ const OPERATION_REGISTRY: Record<AIOperationType, OperationAdapter> = {
       locale: data.locale as string | undefined,
       context,
     }),
+
+  // Phase 3 stubs — implementations in later sprints
+  WEAKNESS_PROFILE: () => {
+    throw new Error("WEAKNESS_PROFILE operation not yet implemented");
+  },
+  INTERVENTION_PLAN: () => {
+    throw new Error("INTERVENTION_PLAN operation not yet implemented");
+  },
+  MASTERY_EVALUATE: () => {
+    throw new Error("MASTERY_EVALUATE operation not yet implemented");
+  },
+  FIND_SIMILAR: () => {
+    throw new Error("FIND_SIMILAR operation not yet implemented");
+  },
+  GENERATE_EXPLANATION: () => {
+    throw new Error("GENERATE_EXPLANATION operation not yet implemented");
+  },
+  EVAL_JUDGE: () => {
+    throw new Error("EVAL_JUDGE operation not yet implemented");
+  },
 };
 
 /**
