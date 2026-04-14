@@ -476,16 +476,16 @@ enum InterventionType {
 
 以下在 Sprint 10a 开始前完成（预计 1-2 天）：
 
-- [ ] 阅读 ADR-011 全文 + ARCHITECTURE.md S6.5，确认方向一致
-- [ ] docker-compose.yml 切换 `postgres:16-alpine` -> `pgvector/pgvector:pg16`
-- [ ] 验证 `CREATE EXTENSION IF NOT EXISTS vector` 可执行
-- [ ] 设计并确认 Prisma schema 增量（本文S八）
-- [ ] 确认 BullMQ RepeatableJob API：`Queue.upsertJobScheduler(id, { pattern: '0 6 * * *' }, { name, data })`
-- [ ] 更新 CLAUDE.md 新增 Rule 8/9
-- [ ] 确认现有 11 个 Skill 全部 ACTIVE 可用
-- [ ] 设计 Brain 执行日志格式：AdminLog action=`brain-run`, details JSON
-- [ ] 确认 Docker 可拉取 Jaeger all-in-one 镜像 (`jaegertracing/all-in-one:latest`)
-- [ ] 评估 @dnd-kit/core 包大小和 tree 兼容性
+- [x] 阅读 ADR-011 全文 + ARCHITECTURE.md S6.5，确认方向一致
+- [x] docker-compose.yml 切换 `postgres:16-alpine` -> `pgvector/pgvector:pg16`
+- [x] 验证 `CREATE EXTENSION IF NOT EXISTS vector` 可执行（向量距离 `<->` 运算正常）
+- [x] 设计并确认 Prisma schema 增量（本文S八）— 3 新模型 + 4 字段扩展 + 6 枚举追加，与现有 schema 无冲突
+- [x] 确认 BullMQ RepeatableJob API：`Queue.upsertJobScheduler(id, { pattern: '0 6 * * *' }, { name, data })` — v5.73.3 可用
+- [x] 更新 CLAUDE.md 新增 Rule 8/9
+- [x] 确认现有 10 个 Skill 全部 ACTIVE 可用（8 业务 + 2 测试工具，原文 11 为笔误已修正）
+- [x] 设计 Brain 执行日志格式：AdminLog action=`brain-run`, details `{ studentId, eventsProcessed, agentsLaunched, duration }`
+- [x] 确认 Docker 可拉取 Jaeger all-in-one 镜像 (`jaegertracing/all-in-one:latest`)
+- [x] 评估 @dnd-kit/core 包大小和 tree 兼容性 — ~10-12kB gzip, React 18 兼容, ESM tree-shaking, 适合使用
 
 ---
 
