@@ -1,7 +1,7 @@
 # ADR-011: 学习闭环架构（跨 Phase 2-3）
 
 ## Status
-Accepted (Phase 2-3)
+Accepted (Phase 2-3) — Phase 3 设计决策已确认（2026-04-13），见 PHASE3-LAUNCH-PLAN.md D11-D23
 
 ## Context
 
@@ -78,3 +78,20 @@ Phase 2 实现闭环的前半段 + 状态追踪：
 - Phase 3 依赖 Phase 2 的所有基础设施
 - 闭环完整性要到 Phase 3 才能真正验证
 - Learning Brain 的事件系统是 Phase 3 的重大工程
+
+## Phase 3 设计决策确认（2026-04-13）
+
+Phase 3 启动计划已确认，关键设计决策：
+
+- **D11**: Learning Brain = BullMQ RepeatableJob + 确定性代码（不调 AI）
+- **D12**: Brain 每日 1 次 cron `0 6 * * *`
+- **D13**: 并发控制 = Redis SETNX per-student, TTL 5min
+- **D17**: Mastery Eval Agent 输出建议，handler 验证后写 Memory（保持 Memory 层唯一写入点）
+- **D18**: SM-2 保留 + AI 调整因子增强
+
+新增工程机制：
+- **Handler Registry**: Worker job 路由从 switch 重构为注册表
+- **Schedule Registry**: 定时任务声明式注册
+- **memoryWriteManifest**: AgentDefinition 新增 Memory 写入方法白名单 + MemoryWriteInterceptor 拦截器
+
+完整决策列表（D11-D23）见 `docs/PHASE3-LAUNCH-PLAN.md` §六。

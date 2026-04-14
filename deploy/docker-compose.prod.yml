@@ -98,7 +98,7 @@ services:
     restart: unless-stopped
 
   star-catcher-db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: star-catcher-db
     environment:
       - POSTGRES_USER=star_catcher

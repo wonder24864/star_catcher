@@ -68,18 +68,18 @@
 ### Phase 2 推迟到后续 Phase 的事项
 
 > 以下事项在 REQUIREMENTS.md 或 PHASE2-LAUNCH-PLAN.md 中标注为 Phase 2+，
-> 但经评估推迟到后续 Phase。Phase 3 开始时应逐项评估是否纳入。
+> 但经评估推迟到后续 Phase。Phase 3 启动时已逐项评估，仅 D3 继续推迟。
 
-| # | 事项 | 来源 | 推迟原因 | 建议 Phase |
+| # | 事项 | 来源 | 推迟原因 | 最终 Phase |
 |---|------|------|---------|-----------|
-| D1 | 三层薄弱分析（定期+全局） | REQUIREMENTS §9 | 实时层(30天)已实现，定期(学期)和全局(历史)需要 Learning Brain 编排定时任务 | Phase 3 |
-| D2 | 年级过渡策略 | REQUIREMENTS §9 | 需要学段归档逻辑 + 跨学段知识追溯，依赖 Learning Brain 全局视角 | Phase 3 |
-| D3 | 教材多版本管理 | REQUIREMENTS §8 | 当前单版本导入已满足 MVP，多版本对比需扩展 KG schema（版本字段+关系映射） | Phase 5 |
-| D4 | SemanticCache 集成 | PHASE2-LAUNCH-PLAN D10 | pgvector Spike 已通过，但 Schema Adapter 优先级更高。需实现为 Harness 管道组件 | Phase 3 |
-| D5 | ObservabilityTracer (OpenTelemetry) | REQUIREMENTS §2 | 标注为"推荐"非"必须"，当前 CallLogger + AgentTrace 已覆盖可观测性需求 | Phase 5 |
-| D6 | EvalFramework (AI 输出质量评估) | REQUIREMENTS §2 | 标注为"推荐"非"必须"，需要标注数据集和评估管道，工作量大 | Phase 5 |
-| D7 | KG 拖拽调整层级 | US-032 | 后端 update(parentId) 已支持，前端需引入拖拽库(dnd-kit)，UX 优化项 | Phase 4 |
-| D8 | 低置信度映射管理员确认流程 | US-033 | confidence 字段已记录分级，mappingSource 已区分 AI_DETECTED / ADMIN_VERIFIED。需增加管理界面筛选低置信度映射批量确认 | Phase 3 |
+| D1 | 三层薄弱分析（定期+全局） | REQUIREMENTS §9 | 实时层(30天)已实现，定期(学期)和全局(历史)需要 Learning Brain 编排定时任务 | **Phase 3 Sprint 11** ✅ 纳入 |
+| D2 | 年级过渡策略 | REQUIREMENTS §9 | 需要学段归档逻辑 + 跨学段知识追溯，依赖 Learning Brain 全局视角 | **Phase 3 Sprint 11** ✅ 纳入 |
+| D3 | 教材多版本管理 | REQUIREMENTS §8 | 当前单版本导入已满足 MVP，多版本对比需扩展 KG schema（版本字段+关系映射） | Phase 5（继续推迟） |
+| D4 | SemanticCache 集成 | PHASE2-LAUNCH-PLAN D10 | pgvector Spike 已通过，但 Schema Adapter 优先级更高。需实现为 Harness 管道组件 | **Phase 3 Sprint 10a** ✅ 纳入 |
+| D5 | ObservabilityTracer (OpenTelemetry) | REQUIREMENTS §2 | Phase 3 新增 Brain->Agent->Skill 多级调用链，需完整分布式 trace | **Phase 3 Sprint 10a** ✅ 纳入 |
+| D6 | EvalFramework (AI 输出质量评估) | REQUIREMENTS §2 | Phase 3 新增 4 个 AI 操作，需标注数据集+评估管道保障质量 | **Phase 3 Sprint 16** ✅ 纳入 |
+| D7 | KG 拖拽调整层级 | US-032 | 后端 update(parentId) 已支持，前端引入 dnd-kit | **Phase 3 Sprint 15** ✅ 纳入 |
+| D8 | 低置信度映射管理员确认流程 | US-033 | confidence 字段已记录分级，需管理界面筛选+批量确认 | **Phase 3 Sprint 15** ✅ 纳入 |
 
 ## Phase 2 → Phase 3 过渡
 
@@ -94,16 +94,19 @@
 
 > **重要**：Phase 3 在 Phase 2 基础设施上实现完整学习闭环。
 > 核心新增：**Learning Brain**（事件驱动全局编排器），见 ADR-011。
-> **注意**：开始前须检查上方"Phase 2 推迟事项"表，评估 D1/D2/D4/D8 是否纳入本 Phase。
+> 推迟事项决策：D1/D2/D4/D5/D6/D7/D8 全部纳入，仅 D3（教材多版本）推迟到 Phase 5。
+> 详见 `docs/PHASE3-LAUNCH-PLAN.md`
 
-| 方向 | 内容 |
-|------|------|
-| Learning Brain | 事件驱动全局编排器：新错题/复习到期/掌握下降 → 自动选择 Agent |
-| 事件系统 | DB 变更事件触发 Brain 循环 |
-| 干预规划 Agent | 长期学习规划 + 干预策略选择 |
-| 今日任务包 | 类似题推荐 + 练习卡 + 讲解卡 |
-| 掌握评估 Agent | 复习后重新评估掌握状态 |
-| 完整闭环 | 错题 → 诊断 → 推荐 → 练习 → 评估 → 掌握/回退 |
+| Sprint | 周期 | 范围 | 状态 |
+|--------|------|------|------|
+| Sprint 10a | Week 14 | SemanticCache + ObservabilityTracer + Handler Registry | [ ] |
+| Sprint 10b | Week 15 | Learning Brain 编排器 + memoryWriteManifest | [ ] |
+| Sprint 11 | Week 16 | 薄弱分析增强（定期+全局）+ 年级过渡 | [ ] |
+| Sprint 12 | Week 17 | 干预规划 Agent + 今日任务包 | [ ] |
+| Sprint 13 | Week 18 | 类似题检索 + 讲解卡 | [ ] |
+| Sprint 14 | Week 19 | 掌握评估 Agent + 闭环完成 + 家长控制 | [ ] |
+| Sprint 15 | Week 20 | 管理员 UI (D7 KG拖拽 + D8 映射确认) + Brain 监控 | [ ] |
+| Sprint 16 | Week 21 | EvalFramework + 全量集成测试 + Phase 3 收尾 | [ ] |
 
 ## Phase 4: 家长仪表盘 + 体验优化
 
