@@ -19,8 +19,8 @@
 ## 设计要点
 
 - ErrorQuestion 新增 `embedding` 列（`Unsupported("vector(1536)")?`）。DB schema 见 `docs/phase3-db-schema.md`
-- 双路检索合并去重：(1) 知识点维度 — 同 KP 下其他错题；(2) 内容维度 — pgvector cosine on embedding。设计决策见 PHASE3-LAUNCH-PLAN.md §六 D15
-- 讲解卡格式由 AI 自动选：小学低年级默认 interactive，高中默认 static。设计决策见 §六 D16
+- 双路检索合并去重：(1) 知识点维度 — 同 KP 下其他错题；(2) 内容维度 — pgvector cosine on embedding。设计决策见 PHASE3-LAUNCH-PLAN.md §四 D15
+- 讲解卡格式由 AI 自动选：小学低年级默认 interactive，高中默认 static。设计决策见 §四 D16
 - ExplanationCard: `{ format: 'static'|'interactive'|'conversational', title, steps: Array<{content, question?, expectedAnswer?}>, metadata }`
 
 ## 验证清单

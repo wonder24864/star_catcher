@@ -114,9 +114,11 @@ star_catcher/
 │   ├── BUSINESS-RULES.md      # 业务规则
 │   ├── ROADMAP.md             # 路线图
 │   ├── PHASE2-LAUNCH-PLAN.md  # Phase 2 启动计划 + 设计决策记录
+│   ├── PHASE3-LAUNCH-PLAN.md  # Phase 3 启动计划（精简索引 — 模块/决策/验收）
+│   ├── phase3-db-schema.md    # Phase 3 DB 模型设计（Sprint 10a 迁移用）
 │   ├── adr/                   # 架构决策记录（11 个）
 │   ├── user-stories/          # 用户故事（12 个模块）
-│   └── sprints/               # Sprint 计划（9 个：1, 2, 3, 4a, 4b, 5, 6, 7, 8, 9）
+│   └── sprints/               # Sprint 计划（Phase 2: 1~9, Phase 3: 10a~16 DRAFT）
 │
 │── Skill 插件 ────────────────────────────────────────────
 ├── skills/                    # Skill 插件源码 + 编译产物（10 个内置 Skill）

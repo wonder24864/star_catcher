@@ -18,8 +18,8 @@
 
 ## 设计要点
 
-- Mastery Evaluation Agent 不直接修改 MasteryState，输出建议（recommended transitions）。Handler 验证后调 Memory 层执行。设计决策见 PHASE3-LAUNCH-PLAN.md §六 D17
-- SM-2 增强参数：`{ errorType: 'calculation'|'concept'|'careless'|'method', masterySpeed: number, currentWorkload: number, examProximityDays?: number }`。设计决策见 §六 D18
+- Mastery Evaluation Agent 不直接修改 MasteryState，输出建议（recommended transitions）。Handler 验证后调 Memory 层执行。设计决策见 PHASE3-LAUNCH-PLAN.md §四 D17
+- SM-2 增强参数：`{ errorType: 'calculation'|'concept'|'careless'|'method', masterySpeed: number, currentWorkload: number, examProximityDays?: number }`。设计决策见 §四 D18
 - 闭环触发链：DailyTask.status=COMPLETED -> tRPC mutation -> enqueue `mastery-evaluation` -> Agent -> Memory update
 
 ## 验证清单

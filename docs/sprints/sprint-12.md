@@ -20,7 +20,7 @@
 
 - DailyTaskPack/DailyTask DB schema 见 `docs/phase3-db-schema.md`
 - Brain cron 时读取 `ParentStudentConfig.maxDailyTasks`，传给 Agent 作为约束
-- Agent 不直接写 DailyTask — Agent 输出任务计划 JSON，handler 代码解析后写入 DB。设计决策见 PHASE3-LAUNCH-PLAN.md §六 D14/D17
+- Agent 不直接写 DailyTask — Agent 输出任务计划 JSON，handler 代码解析后写入 DB。设计决策见 PHASE3-LAUNCH-PLAN.md §四 D14/D17
 
 ## 验证清单
 

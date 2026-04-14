@@ -20,7 +20,7 @@
 
 - WeaknessProfile 模型：`{ studentId, tier: REALTIME|PERIODIC|GLOBAL, data: JSONB, generatedAt, validUntil }`。DB schema 见 `docs/phase3-db-schema.md`
 - 定期分析只看当前学期（按 createdAt 时间窗口），全局分析看全历史
-- 年级过渡不删数据，只设 archived。已归档 MasteryState 不参与实时分析和 SM-2 调度。设计决策见 PHASE3-LAUNCH-PLAN.md §六 D20
+- 年级过渡不删数据，只设 archived。已归档 MasteryState 不参与实时分析和 SM-2 调度。设计决策见 PHASE3-LAUNCH-PLAN.md §四 D20
 
 ## 验证清单
 

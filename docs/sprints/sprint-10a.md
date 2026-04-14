@@ -17,8 +17,8 @@
 
 ## 设计要点
 
-- **SemanticCache**: Harness 管道新组件，基于 pgvector brute-force（Spike 验证 < 50ms @ 5000 条）。设计决策见 PHASE3-LAUNCH-PLAN.md §六 D19
-- **ObservabilityTracer**: `@opentelemetry/sdk-node` + `@opentelemetry/exporter-trace-otlp-http`；Harness 每个组件 wrap 一个 span（name=组件名, attributes={operationType, userId, tokens}）；AgentRunner 每步一个 child span；docker-compose 新增 Jaeger all-in-one（端口 16686 UI / 4318 OTLP）。设计决策见 §六 D21
+- **SemanticCache**: Harness 管道新组件，基于 pgvector brute-force（Spike 验证 < 50ms @ 5000 条）。设计决策见 PHASE3-LAUNCH-PLAN.md §四 D19
+- **ObservabilityTracer**: `@opentelemetry/sdk-node` + `@opentelemetry/exporter-trace-otlp-http`；Harness 每个组件 wrap 一个 span（name=组件名, attributes={operationType, userId, tokens}）；AgentRunner 每步一个 child span；docker-compose 新增 Jaeger all-in-one（端口 16686 UI / 4318 OTLP）。设计决策见 §四 D21
 - **Handler Registry**: `Record<AIJobName, JobHandler>` 替代 switch，与 SkillRegistry / OperationRegistry 模式一致。见 CLAUDE.md Rule 9
 - **Schedule Registry**: `SCHEDULE_REGISTRY` 数组声明所有 repeatable jobs，Worker 启动时遍历注册。见 CLAUDE.md Rule 9
 

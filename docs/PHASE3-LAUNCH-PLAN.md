@@ -15,7 +15,7 @@ Phase 3 围绕"学习闭环"实现 6 个模块：
 | **B. 薄弱分析增强** | 三层分析 + 年级过渡 | WeaknessProfile 模型 + 定期/全局 Skill + 学段归档 |
 | **C. 干预规划** | AI 规划学习策略 | Intervention Planning Agent + DailyTask 模型 + 任务打包 |
 | **D. 练习与讲解** | 类似题检索 + 讲解卡 | SemanticCache + find-similar-questions Skill + 讲解卡组件 |
-| **E. 掌握评估** | ��习后重新评估 | Mastery Evaluation Agent + 评估闭环 + SM-2 增强 |
+| **E. 掌握评估** | 复习后重新评估 | Mastery Evaluation Agent + 评估闭环 + SM-2 增强 |
 | **F. 管控与收尾** | 家长控制 + 管理验证 + 集成 | ParentStudentConfig 扩展 + D8 管理员 UI + 全量验收 |
 
 模块依赖：A -> C -> D, A -> E, B -> A (数据源), F 在 Sprint 15, EvalFramework 在 Sprint 16。
@@ -76,7 +76,7 @@ Phase 3 围绕"学习闭环"实现 6 个模块：
 | D13 | Brain 并发控制 | Redis SETNX per-student, TTL 5min | Redis 已在栈中，SETNX 最简 |
 | D14 | DailyTaskPack 模型 | 独立模型 | 任务包有独立生命周期，需独立状态管理 |
 | D15 | 类似题检索 | 双路：KP 维度 + pgvector embedding | KP 保证知识相关，embedding 补内容相似 |
-| D16 | 讲解卡格式选择 | AI 自动选（基于年级+难度） | K-12 跨度大，AI 判断更���活 |
+| D16 | 讲解卡格式选择 | AI 自动选（基于年级+难度） | K-12 跨度大，AI 判断更灵活 |
 | D17 | Mastery Eval 写入权限 | Agent 输出建议，handler 验证后写 Memory | 保持 Memory 层唯一写入点（ADR-010） |
 | D18 | SM-2 增强 | 保留 SM-2 + AI 调整因子 | SM-2 作为稳定基线，AI 根据额外因素调整 interval |
 | D19 | SemanticCache | Harness 管道组件，pgvector brute-force | Spike 确认 < 50ms @ 5000 条 |

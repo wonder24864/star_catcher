@@ -17,10 +17,10 @@
 ## 设计要点
 
 - Learning Brain **不是** Agent，是**确定性编排逻辑**（纯代码 if/else + DB 查询），不调用 AI。见 CLAUDE.md Rule 8
-- Brain 每次运行扫描一个学生，通过 Redis lock 保证不并发。设计决策见 PHASE3-LAUNCH-PLAN.md §六 D11-D13
+- Brain 每次运行扫描一个学生，通过 Redis lock 保证不并发。设计决策见 PHASE3-LAUNCH-PLAN.md §四 D11-D13
 - Brain 的输出是 BullMQ jobs（`intervention-planning`, `mastery-evaluation`），不直接执行 Agent
 - memoryWriteManifest 对现有 Agent（question-understanding, diagnosis）追加声明，确保机制生效
-- memoryWriteManifest 机制详见 PHASE3-LAUNCH-PLAN.md §七
+- memoryWriteManifest 机制详见 PHASE3-LAUNCH-PLAN.md §五
 
 ## 验证清单
 
