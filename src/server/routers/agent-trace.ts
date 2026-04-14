@@ -9,32 +9,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, protectedProcedure } from "../trpc";
-import type { Context } from "../trpc";
-
-// ─── Permission Helper ─────────────────────────
-
-async function resolveStudentId(
-  db: Context["db"],
-  requesterId: string,
-  inputStudentId?: string,
-): Promise<string> {
-  const studentId = inputStudentId ?? requesterId;
-  if (studentId === requesterId) return studentId;
-
-  const parentFamilies = await db.familyMember.findMany({
-    where: { userId: requesterId },
-    select: { familyId: true },
-  });
-  const familyIds = parentFamilies.map((f) => f.familyId);
-  if (familyIds.length === 0) throw new TRPCError({ code: "FORBIDDEN" });
-
-  const studentInFamily = await db.familyMember.findFirst({
-    where: { userId: studentId, familyId: { in: familyIds } },
-  });
-  if (!studentInFamily) throw new TRPCError({ code: "FORBIDDEN" });
-
-  return studentId;
-}
+import { resolveStudentId } from "./shared/resolve-student-id";
 
 // ─── Router ─────────────────────────────────────
 
@@ -168,6 +143,7 @@ export const agentTraceRouter = router({
       const studentId = await resolveStudentId(
         ctx.db,
         ctx.session.userId,
+        ctx.session.role,
         input.studentId,
       );
 
@@ -224,6 +200,7 @@ export const agentTraceRouter = router({
       const studentId = await resolveStudentId(
         ctx.db,
         ctx.session.userId,
+        ctx.session.role,
         input.studentId,
       );
 

@@ -20,7 +20,8 @@
     "parentReports": "学习报告",
     "agentTraces": "Agent 追踪",
     "adminSkills": "Skill 管理",
-    "adminKnowledgeGraph": "知识图谱"
+    "adminKnowledgeGraph": "知识图谱",
+    "tasks": "今日任务"
   },
   "auth": {
     "login": "登录",
@@ -523,7 +524,33 @@
     "noReviews": "今天没有复习任务",
     "noReviewsSubtext": "继续保持！",
     "startReview": "开始复习",
-    "viewAll": "查看全部"
+    "viewAll": "查看全部",
+    "todayTasks": "今日任务",
+    "taskCount": "{count} 个任务待完成",
+    "noTasks": "今天没有任务",
+    "viewTasks": "查看任务"
+  },
+  "tasks": {
+    "title": "今日任务",
+    "progress": "已完成 {completed}/{total}",
+    "empty": "今天没有任务",
+    "emptySubtext": "明天再来看看吧！",
+    "allCompleted": "所有任务已完成！",
+    "allCompletedSubtext": "今天做得很棒！",
+    "markComplete": "标记完成",
+    "completed": "已完成",
+    "types": {
+      "REVIEW": "复习",
+      "PRACTICE": "练习",
+      "EXPLANATION": "讲解"
+    },
+    "typeDescriptions": {
+      "REVIEW": "复习这道错题",
+      "PRACTICE": "练习这个知识点",
+      "EXPLANATION": "阅读讲解"
+    },
+    "history": "任务历史",
+    "historyEmpty": "暂无任务历史"
   },
   "report": {
     "title": "学习报告",

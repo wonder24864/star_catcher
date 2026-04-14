@@ -106,7 +106,6 @@ describe("Operation Registry", () => {
 
   test.each([
     "WEAKNESS_PROFILE",
-    "INTERVENTION_PLAN",
     "MASTERY_EVALUATE",
     "FIND_SIMILAR",
     "GENERATE_EXPLANATION",

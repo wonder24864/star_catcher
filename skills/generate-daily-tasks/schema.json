@@ -1,0 +1,29 @@
+{
+  "name": "generate_daily_tasks",
+  "description": "Generate a structured daily task plan for a student based on their weakness profile and parent configuration constraints. Returns a list of tasks (REVIEW/PRACTICE/EXPLANATION) prioritized by severity and trend.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "weakPoints": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "kpId": { "type": "string", "description": "Knowledge point ID" },
+            "kpName": { "type": "string", "description": "Knowledge point name" },
+            "severity": { "type": "string", "enum": ["HIGH", "MEDIUM", "LOW"] },
+            "trend": { "type": "string", "enum": ["IMPROVING", "STABLE", "WORSENING"] },
+            "errorCount": { "type": "number", "description": "Total error count for this KP" }
+          },
+          "required": ["kpId", "kpName", "severity", "trend", "errorCount"]
+        },
+        "description": "Student's weak knowledge points with severity and trend data"
+      },
+      "maxTasks": {
+        "type": "number",
+        "description": "Maximum number of tasks to generate (from ParentStudentConfig.maxDailyTasks)"
+      }
+    },
+    "required": ["weakPoints", "maxTasks"]
+  }
+}

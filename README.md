@@ -150,6 +150,7 @@ star_catcher/
     │   │   │   ├── page.tsx               # 错题列表（筛选/搜索/分页）
     │   │   │   └── [id]/page.tsx          # 错题详情（AI 摘要 + 家长备注）
     │   │   ├── mastery/               # 掌握地图（掌握度 + 间隔复习 + 复习对话框）
+    │   │   ├── tasks/                 # 今日任务包（三种卡片 + 进度条 + 标记完成）
     │   │   ├── parent/                # 家长视图
     │   │   │   ├── overview/              # 今日概览
     │   │   │   ├── stats/                 # 学习统计
@@ -171,6 +172,7 @@ star_catcher/
     │   ├── homework/              # 拍照 / 照片网格
     │   ├── dashboard/             # 首页组件（今日复习 Widget）
     │   ├── mastery/               # 掌握地图组件（复习对话框）
+    │   ├── tasks/                 # 今日任务组件（TaskCard 卡片）
     │   ├── nav/                   # 侧边栏 / 底部导航 / 学生切换
     │   ├── providers/             # Session / Theme Provider
     │   └── ui/                    # shadcn/ui 基础组件
@@ -222,7 +224,8 @@ star_catcher/
     │   │   │   ├── memory-write-interceptor.ts # memoryWriteManifest 拦截器
     │   │   │   ├── definitions/       # Agent 定义（代码声明，非 DB）
     │   │   │   │   ├── question-understanding.ts  # 题目理解 Agent
-    │   │   │   │   └── diagnosis.ts               # 诊断 Agent
+    │   │   │   │   ├── diagnosis.ts               # 诊断 Agent
+    │   │   │   │   └── intervention-planning.ts   # 干预规划 Agent
     │   │   │   └── index.ts           # 公共导出
     │   │   ├── brain/             # Learning Brain 编排器（Phase 3）
     │   │   │   ├── learning-brain.ts  # 确定性决策逻辑（不调 AI）
@@ -252,13 +255,14 @@ star_catcher/
     ├── server/                # ── tRPC 服务端 ──
     │   ├── trpc.ts                # 初始化 + 角色中间件 + SSE 配置
     │   ├── context.ts             # 上下文工厂
-    │   └── routers/               # 路由器（12 个业务 + 1 个订阅）
+    │   └── routers/               # 路由器（13 个业务 + 1 个订阅）
+    │       └── shared/                # 共享工具（resolveStudentId 权限校验）
     │
     ├── worker/                # ── BullMQ Worker（独立 Docker 服务）──
     │   ├── index.ts               # 入口（Handler Registry + Schedule Registry）
     │   ├── handler-registry.ts    # AIJobName → Handler 注册表（Rule 9）
     │   ├── schedule-registry.ts   # 声明式定时任务注册（Rule 9）
-    │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成 / 题目理解 / 诊断 / Learning Brain
+    │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成 / 题目理解 / 诊断 / Learning Brain / 干预规划
     │
     ├── cli/                   # ── CLI 工具 ──
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）

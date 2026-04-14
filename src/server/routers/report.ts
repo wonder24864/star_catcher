@@ -13,31 +13,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../trpc";
 import type { Context } from "../trpc";
-
-// ─── Permission Helper ─────────────────────────
-
-async function resolveStudentId(
-  db: Context["db"],
-  requesterId: string,
-  inputStudentId?: string,
-): Promise<string> {
-  const studentId = inputStudentId ?? requesterId;
-  if (studentId === requesterId) return studentId;
-
-  const parentFamilies = await db.familyMember.findMany({
-    where: { userId: requesterId },
-    select: { familyId: true },
-  });
-  const familyIds = parentFamilies.map((f) => f.familyId);
-  if (familyIds.length === 0) throw new TRPCError({ code: "FORBIDDEN" });
-
-  const studentInFamily = await db.familyMember.findFirst({
-    where: { userId: studentId, familyId: { in: familyIds } },
-  });
-  if (!studentInFamily) throw new TRPCError({ code: "FORBIDDEN" });
-
-  return studentId;
-}
+import { resolveStudentId } from "./shared/resolve-student-id";
 
 // ─── Helpers ────────────────────────────────────
 
@@ -65,6 +41,7 @@ export const reportRouter = router({
       const studentId = await resolveStudentId(
         ctx.db,
         ctx.session.userId,
+        ctx.session.role,
         input.studentId,
       );
       return buildReport(ctx.db, studentId, 7);
@@ -83,6 +60,7 @@ export const reportRouter = router({
       const studentId = await resolveStudentId(
         ctx.db,
         ctx.session.userId,
+        ctx.session.role,
         input.studentId,
       );
       return buildReport(ctx.db, studentId, 30);
@@ -103,6 +81,7 @@ export const reportRouter = router({
       const studentId = await resolveStudentId(
         ctx.db,
         ctx.session.userId,
+        ctx.session.role,
         input.studentId,
       );
 

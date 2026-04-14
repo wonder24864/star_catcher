@@ -62,6 +62,39 @@ export const QUERY_WHITELIST: Record<
     }));
   },
 
+  getErrorQuestionsForKPs: async (params) => {
+    const knowledgePointIds = params.knowledgePointIds as string[];
+    const studentId = params.studentId as string;
+    const limit = (params.limit as number) ?? 20;
+    if (!knowledgePointIds?.length || !studentId) return [];
+
+    const results = await db.errorQuestion.findMany({
+      where: {
+        studentId,
+        deletedAt: null,
+        knowledgeMappings: {
+          some: { knowledgePointId: { in: knowledgePointIds } },
+        },
+      },
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        content: true,
+        knowledgeMappings: {
+          select: { knowledgePointId: true },
+          take: 1,
+        },
+      },
+    });
+
+    return results.map((r) => ({
+      id: r.id,
+      content: r.content ?? "",
+      knowledgePointId: r.knowledgeMappings[0]?.knowledgePointId ?? null,
+    }));
+  },
+
   findKnowledgePointsByIds: async (params) => {
     const ids = params.ids as string[];
     if (!ids?.length) return [];

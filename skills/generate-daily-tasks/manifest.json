@@ -1,0 +1,8 @@
+{
+  "name": "generate-daily-tasks",
+  "version": "1.0.0",
+  "description": "Generate a personalized daily task plan (REVIEW/PRACTICE/EXPLANATION) based on student weakness data and constraints",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 30000
+}

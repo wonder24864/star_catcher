@@ -20,7 +20,8 @@
     "parentReports": "Reports",
     "agentTraces": "Agent Traces",
     "adminSkills": "Skills",
-    "adminKnowledgeGraph": "Knowledge Graph"
+    "adminKnowledgeGraph": "Knowledge Graph",
+    "tasks": "Today's Tasks"
   },
   "auth": {
     "login": "Login",
@@ -523,7 +524,33 @@
     "noReviews": "No reviews due today",
     "noReviewsSubtext": "Keep up the good work!",
     "startReview": "Start Review",
-    "viewAll": "View All"
+    "viewAll": "View All",
+    "todayTasks": "Today's Tasks",
+    "taskCount": "{count} tasks to do",
+    "noTasks": "No tasks today",
+    "viewTasks": "View Tasks"
+  },
+  "tasks": {
+    "title": "Today's Tasks",
+    "progress": "{completed} of {total} completed",
+    "empty": "No tasks for today",
+    "emptySubtext": "Check back tomorrow!",
+    "allCompleted": "All tasks completed!",
+    "allCompletedSubtext": "Great work today!",
+    "markComplete": "Mark Complete",
+    "completed": "Completed",
+    "types": {
+      "REVIEW": "Review",
+      "PRACTICE": "Practice",
+      "EXPLANATION": "Explanation"
+    },
+    "typeDescriptions": {
+      "REVIEW": "Review this error question",
+      "PRACTICE": "Practice this knowledge point",
+      "EXPLANATION": "Read this explanation"
+    },
+    "history": "Task History",
+    "historyEmpty": "No task history yet"
   },
   "report": {
     "title": "Learning Report",

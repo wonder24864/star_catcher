@@ -19,6 +19,7 @@ import type {
   DiagnosisJobData,
   LearningBrainJobData,
   WeaknessProfileJobData,
+  InterventionPlanningJobData,
 } from "@/lib/infra/queue/types";
 import { handleOcrRecognize } from "./handlers/ocr-recognize";
 import { handleCorrectionPhotos } from "./handlers/correction-photos";
@@ -28,6 +29,7 @@ import { handleQuestionUnderstanding } from "./handlers/question-understanding";
 import { handleDiagnosis } from "./handlers/diagnosis";
 import { handleLearningBrain } from "./handlers/learning-brain";
 import { handleWeaknessProfile } from "./handlers/weakness-profile";
+import { handleInterventionPlanning } from "./handlers/intervention-planning";
 import { createLogger } from "@/lib/infra/logger";
 
 const log = createLogger("worker");
@@ -65,9 +67,8 @@ export const JOB_HANDLERS: Record<AIJobName, JobHandler> = {
   "weakness-profile": (job) =>
     handleWeaknessProfile(job as Job<WeaknessProfileJobData>),
 
-  "intervention-planning": async (job) => {
-    log.info({ jobId: job.id }, "intervention-planning stub: not yet implemented");
-  },
+  "intervention-planning": (job) =>
+    handleInterventionPlanning(job as Job<InterventionPlanningJobData>),
 
   "mastery-evaluation": async (job) => {
     log.info({ jobId: job.id }, "mastery-evaluation stub: not yet implemented");

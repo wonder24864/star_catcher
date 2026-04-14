@@ -19,6 +19,7 @@ import { gradeAnswer } from "./grade-answer";
 import { extractKnowledgePoints } from "./extract-knowledge-points";
 import { classifyQuestionKnowledge } from "./classify-question-knowledge";
 import { diagnoseError } from "./diagnose-error";
+import { interventionPlan } from "./intervention-plan";
 
 /**
  * Each operation adapter normalizes the generic `data` bag into
@@ -116,9 +117,23 @@ const OPERATION_REGISTRY: Record<AIOperationType, OperationAdapter> = {
   WEAKNESS_PROFILE: () => {
     throw new Error("WEAKNESS_PROFILE operation not yet implemented");
   },
-  INTERVENTION_PLAN: () => {
-    throw new Error("INTERVENTION_PLAN operation not yet implemented");
-  },
+  INTERVENTION_PLAN: (data, context) =>
+    interventionPlan({
+      weakPoints: data.weakPoints as Array<{
+        kpId: string;
+        kpName: string;
+        severity: string;
+        trend: string;
+        errorCount: number;
+      }>,
+      maxTasks: data.maxTasks as number,
+      existingErrorQuestions: data.existingErrorQuestions as
+        | Array<{ id: string; content: string; knowledgePointId: string }>
+        | undefined,
+      grade: data.grade as string | undefined,
+      locale: data.locale as string | undefined,
+      context,
+    }),
   MASTERY_EVALUATE: () => {
     throw new Error("MASTERY_EVALUATE operation not yet implemented");
   },
