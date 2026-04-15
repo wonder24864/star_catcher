@@ -105,7 +105,7 @@
 | Sprint 12 | Week 17 | 干预规划 Agent + 今日任务包 | [x] |
 | Sprint 13 | Week 18 | 类似题检索 + 讲解卡 | [x] |
 | Sprint 14 | Week 19 | 掌握评估 Agent + 闭环完成 + 家长控制 | [x] |
-| Sprint 15 | Week 20 | 管理员 UI (D7 KG拖拽 + D8 映射确认) + Brain 监控 | [ ] |
+| Sprint 15 | Week 20 | 管理员 UI (D7 KG拖拽 + D8 映射确认) + Brain 监控 | [x] |
 | Sprint 16 | Week 21 | EvalFramework + 全量集成测试 + Phase 3 收尾 | [ ] |
 
 ## Phase 4: 家长仪表盘 + 体验优化
