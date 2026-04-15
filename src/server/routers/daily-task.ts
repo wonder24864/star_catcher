@@ -258,39 +258,53 @@ export const dailyTaskRouter = router({
         });
       }
 
-      // Validate selectedQuestionId is a legitimate similar question for this task
-      const candidates = await findSimilarQuestions(
-        ctx.db as unknown as PrismaClient,
-        {
-          errorQuestionId: task.question.id,
-          knowledgePointId: task.knowledgePointId,
-          limit: 5,
-        },
-      );
-      const selected = candidates.find((c) => c.id === input.selectedQuestionId);
-      if (!selected) {
+      // Validate selectedQuestionId is a legitimate similar question:
+      // must (a) reference the same knowledge point as the task, (b) not be
+      // the task's source question itself, (c) exist and not be soft-deleted.
+      // We don't require it to be in the current top-N candidates — new
+      // errors may have pushed the student's original choice out of the
+      // top-N between startTask and submitPracticeAnswer.
+      if (input.selectedQuestionId === task.question.id) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Selected question is not a similar-question candidate for this task",
+          message: "Selected question must differ from the source question",
         });
       }
 
-      // Need subject/grade for the AI grader
-      const selectedFull = await ctx.db.errorQuestion.findUnique({
-        where: { id: input.selectedQuestionId },
-        select: { subject: true, grade: true },
+      const selectedFull = await ctx.db.errorQuestion.findFirst({
+        where: {
+          id: input.selectedQuestionId,
+          deletedAt: null,
+          knowledgeMappings: {
+            some: { knowledgePointId: task.knowledgePointId },
+          },
+        },
+        select: {
+          id: true,
+          content: true,
+          correctAnswer: true,
+          subject: true,
+          grade: true,
+        },
       });
+      if (!selectedFull) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Selected question is not a similar-question candidate for this task",
+        });
+      }
 
       const grading = await gradeAnswer({
-        questionContent: selected.content,
+        questionContent: selectedFull.content,
         studentAnswer: input.studentAnswer,
-        correctAnswer: selected.correctAnswer ?? null,
-        subject: selectedFull?.subject ?? undefined,
-        grade: selectedFull?.grade ?? undefined,
+        correctAnswer: selectedFull.correctAnswer ?? null,
+        subject: selectedFull.subject ?? undefined,
+        grade: selectedFull.grade ?? undefined,
         context: {
           userId: studentId,
           locale: ctx.session.locale,
-          grade: selectedFull?.grade ?? undefined,
+          grade: selectedFull.grade ?? undefined,
           correlationId: `practice-${input.taskId}`,
         },
       });
@@ -322,7 +336,7 @@ export const dailyTaskRouter = router({
       return {
         correct: isCorrect,
         needsReview,
-        correctAnswer: selected.correctAnswer,
+        correctAnswer: selectedFull.correctAnswer,
         masteryStatus: masteryAfter.status,
         alreadyCompleted: completeResult.alreadyCompleted,
         allDone: completeResult.allDone,

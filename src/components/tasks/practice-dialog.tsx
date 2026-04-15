@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { trpc } from "@/lib/trpc/client";
 import {
@@ -44,6 +44,7 @@ export function PracticeDialog({
   const startMutation = trpc.dailyTask.startTask.useMutation({
     onSuccess: () => setPhase("answering"),
   });
+  const startMutate = startMutation.mutate;
 
   const submitMutation = trpc.dailyTask.submitPracticeAnswer.useMutation({
     onSuccess: (data) => {
@@ -56,10 +57,13 @@ export function PracticeDialog({
     },
   });
 
-  // Trigger startTask on first open
-  if (taskId && phase === "loading" && !startMutation.isPending && !startMutation.data) {
-    startMutation.mutate({ taskId });
-  }
+  // Trigger startTask exactly once per open. `mutate` is stable across
+  // renders (react-query wraps it in useCallback), so depending on it is
+  // safe and satisfies the exhaustive-deps rule.
+  useEffect(() => {
+    if (!taskId) return;
+    startMutate({ taskId });
+  }, [taskId, startMutate]);
 
   const data = startMutation.data;
   const similar =

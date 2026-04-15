@@ -375,14 +375,16 @@ export class StudentMemoryImpl implements StudentMemory {
 
     // Existing state: increment counters with optimistic lock + single retry.
     const now = new Date();
+    const incrementData = {
+      totalAttempts: { increment: 1 },
+      ...(isCorrect ? { correctAttempts: { increment: 1 } } : {}),
+      lastAttemptAt: now,
+      version: { increment: 1 },
+    };
+
     let updated = await this.db.masteryState.updateMany({
       where: { id: before.id, version: before.version },
-      data: {
-        totalAttempts: { increment: 1 },
-        ...(isCorrect ? { correctAttempts: { increment: 1 } } : {}),
-        lastAttemptAt: now,
-        version: { increment: 1 },
-      },
+      data: incrementData,
     });
 
     if (updated.count === 0) {
@@ -393,14 +395,16 @@ export class StudentMemoryImpl implements StudentMemory {
       if (retry) {
         updated = await this.db.masteryState.updateMany({
           where: { id: retry.id, version: retry.version },
-          data: {
-            totalAttempts: { increment: 1 },
-            ...(isCorrect ? { correctAttempts: { increment: 1 } } : {}),
-            lastAttemptAt: now,
-            version: { increment: 1 },
-          },
+          data: incrementData,
         });
       }
+    }
+
+    if (updated.count === 0) {
+      // Both attempts lost the race. Do NOT log an intervention — that would
+      // leave MasteryState and InterventionHistory inconsistent. Raise so the
+      // caller can decide (router returns 5xx → client retries).
+      throw new OptimisticLockError(before.id, before.version);
     }
 
     await this.logIntervention(studentId, knowledgePointId, "PRACTICE", {

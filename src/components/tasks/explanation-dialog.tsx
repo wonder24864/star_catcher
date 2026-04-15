@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { trpc } from "@/lib/trpc/client";
 import {
@@ -26,6 +26,7 @@ export function ExplanationDialog({
   const [completing, setCompleting] = useState(false);
 
   const startMutation = trpc.dailyTask.startTask.useMutation();
+  const startMutate = startMutation.mutate;
   const completeMutation = trpc.dailyTask.completeTask.useMutation({
     onSuccess: () => {
       setCompleting(false);
@@ -35,10 +36,11 @@ export function ExplanationDialog({
     onError: () => setCompleting(false),
   });
 
-  // Trigger startTask once on first open
-  if (taskId && !startMutation.isPending && !startMutation.data && !startMutation.isError) {
-    startMutation.mutate({ taskId });
-  }
+  // Trigger startTask exactly once per open. See note in practice-dialog.tsx.
+  useEffect(() => {
+    if (!taskId) return;
+    startMutate({ taskId });
+  }, [taskId, startMutate]);
 
   function reset() {
     startMutation.reset();
