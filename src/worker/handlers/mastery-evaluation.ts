@@ -44,7 +44,7 @@ import { calculateHybridReview, type ErrorType } from "@/lib/domain/spaced-repet
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { createLogger } from "@/lib/infra/logger";
-import { captureOtelTraceId } from "@/lib/infra/telemetry/capture";
+import { withAgentSpan } from "@/lib/infra/telemetry/capture";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
 import type { MasteryTransition } from "@/lib/domain/memory/types";
@@ -320,14 +320,18 @@ export async function handleMasteryEvaluation(
   });
   const grade = student?.grade ?? undefined;
 
-  // ── 3. Create AgentTrace ──
+  // ── 3. Create AgentTrace (wrapped in OTEL span so pipeline child spans inherit) ──
+  await withAgentSpan(
+    masteryEvaluationAgent.name,
+    { studentId, userId, sessionId },
+    async (otelTraceId) => {
   const trace = await db.agentTrace.create({
     data: {
       agentName: masteryEvaluationAgent.name,
       sessionId,
       userId,
       status: "RUNNING",
-      otelTraceId: captureOtelTraceId(), // Sprint 15: 供 Jaeger 深链
+      otelTraceId, // Sprint 15: 供 Jaeger 深链
     },
   });
 
@@ -664,4 +668,6 @@ Call evaluate_mastery with the context above, then produce your final JSON.`;
 
     throw error;
   }
+    },
+  );
 }

@@ -92,6 +92,14 @@ export default function AdminMappingsPage() {
   const [kpSearch, setKpSearch] = useState("");
   const [pickedKpId, setPickedKpId] = useState<string | null>(null);
 
+  // Confirm-action dialog state（替代原生 window.confirm）
+  const [confirmAction, setConfirmAction] = useState<
+    | { type: "batchVerify"; ids: string[] }
+    | { type: "delete"; id: string }
+    | { type: "batchDelete"; ids: string[] }
+    | null
+  >(null);
+
   const listQuery = trpc.knowledgeGraph.listLowConfidenceMappings.useQuery({
     threshold,
     subject: subject === "ALL" ? undefined : subject,
@@ -122,11 +130,12 @@ export default function AdminMappingsPage() {
   });
 
   const deleteMapping = trpc.knowledgeGraph.deleteMapping.useMutation({
-    onSuccess: () => {
+    // 使用 variables 精确清理被删的那条 id，不用 refetch 兜底
+    onSuccess: (_data, variables) => {
       toast.success(t("toasts.deleted"));
       setSelected((s) => {
         const n = new Set(s);
-        // Can't know id here easily; refetch will fix
+        n.delete(variables.id);
         return n;
       });
       invalidate();
@@ -173,13 +182,31 @@ export default function AdminMappingsPage() {
 
   const handleBatchVerify = () => {
     if (selected.size === 0) return;
-    if (!confirm(t("actions.confirmBatchVerify", { count: selected.size }))) return;
-    batchVerify.mutate({ mappingIds: Array.from(selected) });
+    setConfirmAction({ type: "batchVerify", ids: Array.from(selected) });
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm(t("actions.confirmDelete"))) return;
-    deleteMapping.mutate({ id });
+    setConfirmAction({ type: "delete", id });
+  };
+
+  const handleBatchDelete = () => {
+    if (selected.size === 0) return;
+    setConfirmAction({ type: "batchDelete", ids: Array.from(selected) });
+  };
+
+  const handleConfirmAction = () => {
+    if (!confirmAction) return;
+    if (confirmAction.type === "batchVerify") {
+      batchVerify.mutate({ mappingIds: confirmAction.ids });
+    } else if (confirmAction.type === "delete") {
+      deleteMapping.mutate({ id: confirmAction.id });
+    } else if (confirmAction.type === "batchDelete") {
+      // 逐个 delete（后端无 batchDelete procedure，保持原子性）
+      Promise.all(
+        confirmAction.ids.map((id) => deleteMapping.mutateAsync({ id })),
+      ).then(() => setSelected(new Set()));
+    }
+    setConfirmAction(null);
   };
 
   const handleChangeKpSubmit = () => {
@@ -294,6 +321,15 @@ export default function AdminMappingsPage() {
             disabled={batchVerify.isPending}
           >
             {t("actions.batchVerify", { count: selected.size })}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-red-600 hover:text-red-700"
+            onClick={handleBatchDelete}
+            disabled={deleteMapping.isPending}
+          >
+            {t("actions.batchDelete", { count: selected.size })}
           </Button>
           <Button
             size="sm"
@@ -483,10 +519,62 @@ export default function AdminMappingsPage() {
 
           <DialogFooter>
             <Button
+              variant="outline"
+              onClick={() => {
+                setChangeKpFor(null);
+                setKpSearch("");
+                setPickedKpId(null);
+              }}
+              disabled={updateMapping.isPending}
+            >
+              ✕
+            </Button>
+            <Button
               onClick={handleChangeKpSubmit}
               disabled={!pickedKpId || updateMapping.isPending}
             >
               {t("changeKpDialog.confirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm dialog (批量确认 / 单条删除 / 批量删除) */}
+      <Dialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmAction?.type === "batchVerify"
+                ? t("actions.batchVerify", { count: confirmAction.ids.length })
+                : confirmAction?.type === "batchDelete"
+                  ? t("actions.batchDelete", { count: confirmAction.ids.length })
+                  : t("actions.delete")}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmAction?.type === "batchVerify" &&
+                t("actions.confirmBatchVerify", { count: confirmAction.ids.length })}
+              {confirmAction?.type === "batchDelete" &&
+                t("actions.confirmBatchDelete", { count: confirmAction.ids.length })}
+              {confirmAction?.type === "delete" && t("actions.confirmDelete")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmAction(null)}>
+              ✕
+            </Button>
+            <Button
+              variant={confirmAction?.type === "batchVerify" ? "default" : "destructive"}
+              onClick={handleConfirmAction}
+              disabled={batchVerify.isPending || deleteMapping.isPending}
+            >
+              {confirmAction?.type === "batchVerify"
+                ? t("actions.verify")
+                : t("actions.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

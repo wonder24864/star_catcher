@@ -380,16 +380,16 @@ export function KGTreeEditor() {
     const overParent = findParent(roots, overId);
     // Only reorder if siblings (same parent)
     if (activeParent?.id !== overParent?.id) {
-      // Different parents via sortable (e.g., dropping on a child at different level)
-      // Treat as cross-parent move to overNode's parent
+      // Different parents via sortable:
+      // 若拖到 root 层（overParent=null），提示将 active 移到 root；
+      // 否则 no-op（用户需拖到 ↳ drop zone 来明确"作为子节点"意图）。
       if (!overParent) {
-        // Over a root → move to root level
         const sourceNode = findNode(roots, activeId);
         if (!sourceNode || sourceNode.parentId === null) return;
         setMoveIntent({
           sourceNode,
           targetParentId: null,
-          targetNodeName: t("collapse"), // placeholder — UI shows "root"
+          targetNodeName: "", // Dialog 会走 moveConfirmRoot 文案
         });
       }
       return;

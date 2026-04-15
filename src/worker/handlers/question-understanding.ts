@@ -30,7 +30,7 @@ import { callAIOperation } from "@/lib/domain/ai/operations/registry";
 import { createMemoryWriteInterceptor } from "@/lib/domain/agent/memory-write-interceptor";
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import { createLogger } from "@/lib/infra/logger";
-import { captureOtelTraceId } from "@/lib/infra/telemetry/capture";
+import { withAgentSpan } from "@/lib/infra/telemetry/capture";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
 import type { PrismaClient } from "@prisma/client";
@@ -148,14 +148,18 @@ export async function handleQuestionUnderstanding(
     return;
   }
 
-  // ── 3. Create AgentTrace ──
+  // ── 3. Create AgentTrace (wrapped in OTEL span so pipeline child spans inherit) ──
+  await withAgentSpan(
+    questionUnderstandingAgent.name,
+    { userId, sessionId, questionId },
+    async (otelTraceId) => {
   const trace = await db.agentTrace.create({
     data: {
       agentName: questionUnderstandingAgent.name,
       sessionId,
       userId,
       status: "RUNNING",
-      otelTraceId: captureOtelTraceId(), // Sprint 15: 供 Jaeger 深链
+      otelTraceId, // Sprint 15: 供 Jaeger 深链
     },
   });
 
@@ -413,4 +417,6 @@ Find the relevant knowledge points and classify their relevance.`;
 
     throw error;
   }
+    },
+  );
 }

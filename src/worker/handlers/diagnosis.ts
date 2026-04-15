@@ -31,7 +31,7 @@ import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
 import { createMemoryWriteInterceptor } from "@/lib/domain/agent/memory-write-interceptor";
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import { createLogger } from "@/lib/infra/logger";
-import { captureOtelTraceId } from "@/lib/infra/telemetry/capture";
+import { withAgentSpan } from "@/lib/infra/telemetry/capture";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
 import type { PrismaClient } from "@prisma/client";
@@ -197,14 +197,18 @@ export async function handleDiagnosis(
     select: { id: true, name: true, description: true },
   });
 
-  // ── 5. Create AgentTrace ──
+  // ── 5. Create AgentTrace (wrapped in OTEL span so pipeline child spans inherit) ──
+  await withAgentSpan(
+    diagnosisAgent.name,
+    { studentId, userId, sessionId, errorQuestionId },
+    async (otelTraceId) => {
   const trace = await db.agentTrace.create({
     data: {
       agentName: diagnosisAgent.name,
       sessionId,
       userId,
       status: "RUNNING",
-      otelTraceId: captureOtelTraceId(), // Sprint 15: 供 Jaeger 深链
+      otelTraceId, // Sprint 15: 供 Jaeger 深链
     },
   });
 
@@ -466,4 +470,6 @@ ${errorHistoryForAgent.length > 0 ? `Error history (last 30 days):\n${errorHisto
 
     throw error;
   }
+    },
+  );
 }

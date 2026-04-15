@@ -13,7 +13,7 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { router, adminProcedure } from "../trpc";
 import { redis } from "@/lib/infra/redis";
 import { SCHEDULE_REGISTRY } from "@/worker/schedule-registry";
@@ -51,28 +51,52 @@ export const brainRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const where: Prisma.AdminLogWhereInput = {
-        action: "brain-run",
-        ...(input.studentId ? { target: input.studentId } : {}),
-        ...(input.dateFrom || input.dateTo
-          ? {
-              createdAt: {
-                ...(input.dateFrom && { gte: input.dateFrom }),
-                ...(input.dateTo && { lte: input.dateTo }),
-              },
-            }
-          : {}),
-      };
+      // skippedOnly 通过 PostgreSQL JSONB 函数在 SQL 层过滤
+      // （而非 JS 层过滤，否则分页失效：第 1 页 filter 后可能为空但后续页还有数据）
+      const skippedSql = Prisma.sql`
+        jsonb_array_length(COALESCE("details"->'agentsLaunched', '[]'::jsonb)) = 0
+        AND jsonb_array_length(COALESCE("details"->'skipped', '[]'::jsonb)) > 0
+      `;
 
-      const [rows, total] = await Promise.all([
-        ctx.db.adminLog.findMany({
-          where,
-          orderBy: { createdAt: "desc" },
-          skip: (input.page - 1) * input.pageSize,
-          take: input.pageSize,
-        }),
-        ctx.db.adminLog.count({ where }),
+      // 构建过滤条件 (parameterized)
+      const conditions: Prisma.Sql[] = [Prisma.sql`"action" = 'brain-run'`];
+      if (input.studentId) {
+        conditions.push(Prisma.sql`"target" = ${input.studentId}`);
+      }
+      if (input.dateFrom) {
+        conditions.push(Prisma.sql`"createdAt" >= ${input.dateFrom}`);
+      }
+      if (input.dateTo) {
+        conditions.push(Prisma.sql`"createdAt" <= ${input.dateTo}`);
+      }
+      if (input.skippedOnly) {
+        conditions.push(skippedSql);
+      }
+      const whereSql = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
+
+      const offset = (input.page - 1) * input.pageSize;
+
+      const [rows, totalRows] = await Promise.all([
+        ctx.db.$queryRaw<
+          Array<{
+            id: string;
+            target: string | null;
+            details: Prisma.JsonValue;
+            createdAt: Date;
+          }>
+        >(Prisma.sql`
+          SELECT "id", "target", "details", "createdAt"
+          FROM "AdminLog"
+          ${whereSql}
+          ORDER BY "createdAt" DESC
+          LIMIT ${input.pageSize} OFFSET ${offset}
+        `),
+        ctx.db.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+          SELECT COUNT(*)::bigint AS count FROM "AdminLog" ${whereSql}
+        `),
       ]);
+
+      const total = Number(totalRows[0]?.count ?? 0);
 
       // Collect unique student IDs → fetch nicknames in one query
       const studentIds = Array.from(
@@ -103,11 +127,9 @@ export const brainRouter = router({
         };
       });
 
-      const filteredItems = input.skippedOnly ? items.filter((i) => i.isSkipped) : items;
-
       return {
-        items: filteredItems,
-        total: input.skippedOnly ? filteredItems.length : total,
+        items,
+        total,
         page: input.page,
         pageSize: input.pageSize,
       };
@@ -188,7 +210,6 @@ export const brainRouter = router({
       let runsWithDuration = 0;
       const agentCount = new Map<string, number>();
       const skippedCount = new Map<string, number>();
-      let uniqueStudents = 0;
       const studentsSeen = new Set<string>();
 
       for (const l of logs) {
@@ -197,10 +218,7 @@ export const brainRouter = router({
           totalDurationMs += d.durationMs;
           runsWithDuration++;
         }
-        if (d.studentId && !studentsSeen.has(d.studentId)) {
-          studentsSeen.add(d.studentId);
-          uniqueStudents++;
-        }
+        if (d.studentId) studentsSeen.add(d.studentId);
         for (const a of d.agentsLaunched ?? []) {
           agentCount.set(a.jobName, (agentCount.get(a.jobName) ?? 0) + 1);
         }
@@ -222,7 +240,7 @@ export const brainRouter = router({
       return {
         days: input.days,
         totalRuns: logs.length,
-        uniqueStudents,
+        uniqueStudents: studentsSeen.size,
         avgDurationMs: runsWithDuration > 0 ? Math.round(totalDurationMs / runsWithDuration) : 0,
         agentDistribution,
         topSkippedReasons,

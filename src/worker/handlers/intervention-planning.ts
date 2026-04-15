@@ -34,7 +34,7 @@ import { isWithinLearningHours } from "@/lib/domain/parent/is-within-learning-ho
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { createLogger } from "@/lib/infra/logger";
-import { captureOtelTraceId } from "@/lib/infra/telemetry/capture";
+import { withAgentSpan } from "@/lib/infra/telemetry/capture";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
 import type { InterventionKind } from "@/lib/domain/memory/types";
@@ -255,14 +255,18 @@ export async function handleInterventionPlanning(
   });
   const grade = student?.grade ?? undefined;
 
-  // ── 4. Create AgentTrace ──
+  // ── 4. Create AgentTrace (wrapped in OTEL span so pipeline child spans inherit) ──
+  await withAgentSpan(
+    interventionPlanningAgent.name,
+    { studentId, userId, jobId: job.id ?? "" },
+    async (otelTraceId) => {
   const trace = await db.agentTrace.create({
     data: {
       agentName: interventionPlanningAgent.name,
       sessionId: `brain-${studentId}-${today.toISOString().split("T")[0]}`,
       userId,
       status: "RUNNING",
-      otelTraceId: captureOtelTraceId(), // Sprint 15: 供 Jaeger 深链
+      otelTraceId, // Sprint 15: 供 Jaeger 深链
     },
   });
 
@@ -545,4 +549,6 @@ Prioritize HIGH severity and WORSENING trend knowledge points. For OVERDUE REVIE
 
     throw error;
   }
+    },
+  );
 }
