@@ -30,6 +30,7 @@ import { interventionPlanningAgent } from "@/lib/domain/agent/definitions/interv
 import { callAIOperation } from "@/lib/domain/ai/operations/registry";
 import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
 import { createMemoryWriteInterceptor } from "@/lib/domain/agent/memory-write-interceptor";
+import { isWithinLearningHours } from "@/lib/domain/parent/is-within-learning-hours";
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { createLogger } from "@/lib/infra/logger";
@@ -209,15 +210,40 @@ export async function handleInterventionPlanning(
     kpName: kpNameMap.get(wp.kpId) ?? wp.kpId,
   }));
 
-  // ── 3. Load ParentStudentConfig.maxDailyTasks ──
+  // ── 3. Load ParentStudentConfig.maxDailyTasks + learning-hours window ──
   const config = await db.parentStudentConfig.findFirst({
     where: { studentId },
-    select: { maxDailyTasks: true },
+    select: {
+      maxDailyTasks: true,
+      learningTimeStart: true,
+      learningTimeEnd: true,
+    },
   });
   const maxDailyTasks = config?.maxDailyTasks ?? 10;
 
   if (maxDailyTasks <= 0) {
     log.info({ maxDailyTasks }, "maxDailyTasks is 0, skipping task generation");
+    return;
+  }
+
+  // Parent-configured learning hours (US-054): when both bounds are set,
+  // skip task generation outside the allowed window. Overnight windows
+  // (e.g. 22:00-07:00) are supported via isWithinLearningHours.
+  const now = new Date();
+  if (
+    !isWithinLearningHours(now, {
+      start: config?.learningTimeStart ?? null,
+      end: config?.learningTimeEnd ?? null,
+    })
+  ) {
+    log.info(
+      {
+        now: now.toISOString(),
+        start: config?.learningTimeStart,
+        end: config?.learningTimeEnd,
+      },
+      "skip: outside parent-configured learning hours",
+    );
     return;
   }
 

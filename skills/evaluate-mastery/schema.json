@@ -1,0 +1,81 @@
+{
+  "name": "evaluate_mastery",
+  "description": "Evaluate a student's mastery of a single knowledge point. Given current MasteryState, SM-2 schedule, recent attempts, and intervention history, returns a recommended MasteryState transition (optional) and an SM-2 adjustment (optional). The handler validates the suggestion and writes to Memory; this Skill does not mutate state.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "knowledgePointId": {
+        "type": "string",
+        "description": "The knowledge point under evaluation"
+      },
+      "kpName": {
+        "type": "string",
+        "description": "Human-readable knowledge point name (for reasoning context)"
+      },
+      "currentMasteryStatus": {
+        "type": "string",
+        "enum": ["NEW_ERROR", "CORRECTED", "REVIEWING", "MASTERED", "REGRESSED"],
+        "description": "The student's current MasteryState status for this KP"
+      },
+      "reviewSchedule": {
+        "type": "object",
+        "properties": {
+          "intervalDays": { "type": "number" },
+          "easeFactor": { "type": "number" },
+          "consecutiveCorrect": { "type": "number" }
+        },
+        "required": ["intervalDays", "easeFactor", "consecutiveCorrect"],
+        "description": "Current SM-2 schedule for this KP"
+      },
+      "recentAttempts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "taskType": { "type": "string", "enum": ["PRACTICE", "REVIEW", "EXPLANATION"] },
+            "isCorrect": { "type": "boolean" },
+            "completedAt": { "type": "string", "description": "ISO timestamp" },
+            "content": { "description": "Optional raw task content" }
+          },
+          "required": ["taskType", "isCorrect", "completedAt"]
+        },
+        "description": "Completed DailyTask results for this KP over the last 7 days, most recent first"
+      },
+      "interventionHistory": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string" },
+            "createdAt": { "type": "string" },
+            "content": {}
+          },
+          "required": ["type", "createdAt"]
+        },
+        "description": "Most recent 5 InterventionHistory records for this KP"
+      },
+      "masterySpeed": {
+        "type": "number",
+        "description": "Rolling correct rate over recent attempts (0..1). Below 0.5 signals a struggling learner."
+      },
+      "currentWorkload": {
+        "type": "number",
+        "description": "Count of pending DailyTasks today. Used as a signal for whether interval can be stretched."
+      },
+      "examProximityDays": {
+        "type": "number",
+        "description": "Days until the next exam, if known. Caps the suggested interval."
+      }
+    },
+    "required": [
+      "knowledgePointId",
+      "kpName",
+      "currentMasteryStatus",
+      "reviewSchedule",
+      "recentAttempts",
+      "interventionHistory",
+      "masterySpeed",
+      "currentWorkload"
+    ]
+  }
+}

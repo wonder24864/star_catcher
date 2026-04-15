@@ -116,7 +116,6 @@ describe("Operation Registry", () => {
 
   test.each([
     "WEAKNESS_PROFILE",
-    "MASTERY_EVALUATE",
     "EVAL_JUDGE",
   ])("Phase 3 stub %s throws not-yet-implemented", async (op) => {
     await expect(callAIOperation(op, {}, ctx)).rejects.toThrow("not yet implemented");

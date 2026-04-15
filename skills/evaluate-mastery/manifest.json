@@ -1,0 +1,8 @@
+{
+  "name": "evaluate-mastery",
+  "version": "1.0.0",
+  "description": "Evaluate a student's mastery of a single knowledge point given recent attempts, review schedule, and intervention history. Returns a recommended MasteryState transition and optional SM-2 adjustment (the handler applies them via the Memory layer).",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 30000
+}

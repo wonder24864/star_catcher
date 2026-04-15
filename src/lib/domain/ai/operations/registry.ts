@@ -20,6 +20,7 @@ import { extractKnowledgePoints } from "./extract-knowledge-points";
 import { classifyQuestionKnowledge } from "./classify-question-knowledge";
 import { diagnoseError } from "./diagnose-error";
 import { interventionPlan } from "./intervention-plan";
+import { masteryEvaluate } from "./mastery-evaluate";
 import { generateExplanation } from "./generate-explanation";
 import type { ExplanationFormat } from "../harness/schemas/generate-explanation";
 
@@ -136,9 +137,33 @@ const OPERATION_REGISTRY: Record<AIOperationType, OperationAdapter> = {
       locale: data.locale as string | undefined,
       context,
     }),
-  MASTERY_EVALUATE: () => {
-    throw new Error("MASTERY_EVALUATE operation not yet implemented");
-  },
+  MASTERY_EVALUATE: (data, context) =>
+    masteryEvaluate({
+      knowledgePointId: data.knowledgePointId as string,
+      kpName: data.kpName as string,
+      currentMasteryStatus: data.currentMasteryStatus as string,
+      reviewSchedule: data.reviewSchedule as {
+        intervalDays: number;
+        easeFactor: number;
+        consecutiveCorrect: number;
+      },
+      recentAttempts: data.recentAttempts as Array<{
+        taskType: string;
+        isCorrect: boolean;
+        completedAt: string;
+        content?: unknown;
+      }>,
+      interventionHistory: data.interventionHistory as Array<{
+        type: string;
+        createdAt: string;
+        content?: unknown;
+      }>,
+      masterySpeed: data.masterySpeed as number,
+      currentWorkload: data.currentWorkload as number,
+      examProximityDays: data.examProximityDays as number | undefined,
+      locale: data.locale as string | undefined,
+      context,
+    }),
   // FIND_SIMILAR is intentionally NOT implemented as an AI operation.
   // Similar-question retrieval is a deterministic dual-path query (KP + pgvector cosine).
   // Use the `findSimilarQuestions` domain function in src/lib/domain/similar-questions/find.ts

@@ -119,11 +119,11 @@ star_catcher/
 │   ├── PHASE3-LAUNCH-PLAN.md  # Phase 3 启动计划（精简索引 — 模块/决策/验收）
 │   ├── phase3-db-schema.md    # Phase 3 DB 模型设计（Sprint 10a 迁移用）
 │   ├── adr/                   # 架构决策记录（11 个）
-│   ├── user-stories/          # 用户故事（12 个模块）
+│   ├── user-stories/          # 用户故事（14 个模块）
 │   └── sprints/               # Sprint 计划（Phase 2: 1~9, Phase 3: 10a~16 DRAFT）
 │
 │── Skill 插件 ────────────────────────────────────────────
-├── skills/                    # Skill 插件源码 + 编译产物（14 个内置 Skill）
+├── skills/                    # Skill 插件源码 + 编译产物（16 个内置 Skill）
 │   ├── echo/                      # Echo Skill（IPC 流程测试用）
 │   ├── harness-call/              # AI 调用 Skill（IPC→Harness 链路测试用）
 │   ├── recognize-homework/        # OCR 识别 Skill（拍照 → 结构化题目）
@@ -137,7 +137,9 @@ star_catcher/
 │   ├── weakness-profile/          # 薄弱分析 Skill（MasteryState 聚合 → severity/trend）
 │   ├── generate-daily-tasks/      # 干预规划 Skill（薄弱数据 → 每日任务计划）
 │   ├── find-similar-questions/    # 类似题检索 Skill（KP + pgvector 双路，纯 IPC 编排）
-│   └── generate-explanation-card/ # 讲解卡 Skill（三格式 AI 生成：static/interactive/conversational）
+│   ├── generate-explanation-card/ # 讲解卡 Skill（三格式 AI 生成：static/interactive/conversational）
+│   ├── evaluate-mastery/          # 掌握评估 Skill（综合表现 → MasteryState 转换 + SM-2 调整建议）
+│   └── get-intervention-history/  # 干预历史读取 Skill（Memory 代理，提供更深历史窗口）
 │
 │── 源码 ──────────────────────────────────────────────────
 └── src/
@@ -243,7 +245,7 @@ star_catcher/
     │   │   │   ├── compute-profile.ts # severity/trend 计算纯函数（handler 侧）
     │   │   │   └── semester.ts        # 学期日期计算（中国学制 2月/9月分界）
     │   │   ├── school-level.ts    # 年级→学段映射 + 学段比较工具
-    │   │   ├── spaced-repetition/ # SM-2 间隔复习算法（Phase 2）
+    │   │   ├── spaced-repetition/ # SM-2 + 混合调度（Phase 2 + Sprint 14 hybrid 调整因子）
     │   │   │   ├── sm2.ts             # SM-2 纯函数（calculateSM2 + mapQuality）
     │   │   │   └── index.ts           # 公共导出
     │   │   ├── admin-log.ts        # AdminLog 领域工具函数（审计日志）

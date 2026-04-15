@@ -265,7 +265,25 @@
     "settings": {
       "title": "Answer Reveal Strategy",
       "desc": "Set the maximum help level individually for each child.",
-      "maxLevel": "Max help level"
+      "maxLevel": "Max help level",
+      "learning": {
+        "title": "Learning Controls",
+        "subtitle": "Set per-child daily task cap and quiet hours to protect focus and schedule",
+        "selectStudent": "Select child",
+        "noStudents": "No children linked to your account yet",
+        "maxDailyTasks": "Daily task cap",
+        "maxDailyTasksHelp": "Set to 0 to pause today's task generation",
+        "learningTime": "Learning window",
+        "learningTimeHelp": "Outside this window, daily tasks are not generated (overnight windows supported, e.g. 22:00 - 07:00)",
+        "start": "Start",
+        "end": "End",
+        "timePairRequired": "Start and end must be set together, or both left empty",
+        "save": "Save",
+        "operationLog": "Change log",
+        "showLogs": "Show change log",
+        "hideLogs": "Hide change log",
+        "noLogs": "No changes yet"
+      }
     },
     "stats": {
       "title": "Learning Stats",

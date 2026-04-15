@@ -62,14 +62,7 @@ describe("Handler Registry", () => {
     await expect(routeJob(fakeJob as never)).rejects.toThrow("Unknown job name: nonexistent");
   });
 
-  test("Phase 3 stub handlers complete without throwing", async () => {
-    const stubs: AIJobName[] = [
-      "mastery-evaluation",
-    ];
-
-    for (const name of stubs) {
-      const fakeJob = { name, id: "test-1", data: {} } as Job;
-      await expect(routeJob(fakeJob as never)).resolves.toBeUndefined();
-    }
-  });
+  // Sprint 14: all Phase 3 handlers now have real implementations.
+  // Previously `mastery-evaluation` was a stub; it is now covered by
+  // mastery-evaluation-handler.test.ts (helpers) and the integration loop.
 });

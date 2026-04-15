@@ -265,7 +265,25 @@
     "settings": {
       "title": "答案揭示策略",
       "desc": "为每个孩子单独设置求助上限，限制孩子能获取到的提示级别。",
-      "maxLevel": "最高求助级别"
+      "maxLevel": "最高求助级别",
+      "learning": {
+        "title": "学习强度控制",
+        "subtitle": "为每个子女设置每日任务上限与学习时段，保护专注与作息",
+        "selectStudent": "选择子女",
+        "noStudents": "尚未绑定任何子女",
+        "maxDailyTasks": "每日任务上限",
+        "maxDailyTasksHelp": "设为 0 即停用今日任务推送",
+        "learningTime": "学习时段",
+        "learningTimeHelp": "在此时段之外，每日任务不会生成（跨午夜时段也支持，如 22:00 - 07:00）",
+        "start": "开始",
+        "end": "结束",
+        "timePairRequired": "开始与结束时间需成对设置，或都留空",
+        "save": "保存",
+        "operationLog": "操作日志",
+        "showLogs": "查看操作日志",
+        "hideLogs": "收起操作日志",
+        "noLogs": "暂无记录"
+      }
     },
     "stats": {
       "title": "学习统计",

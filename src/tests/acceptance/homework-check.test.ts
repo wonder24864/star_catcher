@@ -276,7 +276,11 @@ describe('US-018: Progressive Help', () => {
     setup();
     db._parentStudentConfigs.push({
       id: "pc1", parentId: "parent1", studentId: "student1",
-      maxHelpLevel: 1, createdAt: new Date(), updatedAt: new Date(),
+      maxHelpLevel: 1,
+      maxDailyTasks: 10,
+      learningTimeStart: null,
+      learningTimeEnd: null,
+      createdAt: new Date(), updatedAt: new Date(),
     });
 
     const caller = createCaller(createMockContext(db, studentSession));

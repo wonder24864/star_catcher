@@ -1,0 +1,8 @@
+{
+  "name": "get-intervention-history",
+  "version": "1.0.0",
+  "description": "Fetch full InterventionHistory for a student + knowledge point via the Memory layer. Use only when you need records older than the handler-preloaded 5 most recent entries.",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 5000
+}

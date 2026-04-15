@@ -25,7 +25,11 @@ import { generateExplanation } from "@/lib/domain/ai/operations/generate-explana
 import { gradeAnswer } from "@/lib/domain/ai/operations/grade-answer";
 import { completeDailyTaskInTx } from "@/lib/domain/daily-task/complete";
 import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
+import { enqueueMasteryEvaluation } from "@/lib/infra/queue";
+import { createLogger } from "@/lib/infra/logger";
 import type { ExplanationCard } from "@/lib/domain/ai/harness/schemas/generate-explanation";
+
+const log = createLogger("router:daily-task");
 
 // ─── Router ─────────────────────────────────────
 
@@ -348,6 +352,55 @@ export const dailyTaskRouter = router({
           expectedStudentId: studentId,
         }),
       );
+
+      // Trigger mastery-evaluation Agent ONLY for REVIEWING state.
+      // Earlier states (NEW_ERROR/CORRECTED) are handled by Memory-level
+      // auto-transitions; later states (MASTERED/REGRESSED) don't need
+      // re-evaluation. REVIEW tasks go through mastery.submitReview and stay
+      // on the pure SM-2 path (US-040); EXPLANATION tasks don't update state.
+      // See: docs/user-stories/mastery-evaluation.md (US-053)
+      if (masteryAfter.status === "REVIEWING") {
+        try {
+          let schedule = await ctx.db.reviewSchedule.findUnique({
+            where: {
+              studentId_knowledgePointId: {
+                studentId,
+                knowledgePointId: task.knowledgePointId,
+              },
+            },
+          });
+          if (!schedule) {
+            const created = await memory.scheduleReview(
+              studentId,
+              task.knowledgePointId,
+              1,
+            );
+            schedule = {
+              id: created.id,
+              studentId: created.studentId,
+              knowledgePointId: created.knowledgePointId,
+              nextReviewAt: created.nextReviewAt,
+              intervalDays: created.intervalDays,
+              easeFactor: created.easeFactor,
+              consecutiveCorrect: created.consecutiveCorrect,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+          }
+          await enqueueMasteryEvaluation({
+            studentId,
+            knowledgePointId: task.knowledgePointId,
+            reviewScheduleId: schedule.id,
+            userId: studentId,
+            locale: ctx.session.locale ?? "zh-CN",
+          });
+        } catch (err) {
+          log.warn(
+            { err, studentId, knowledgePointId: task.knowledgePointId },
+            "enqueueMasteryEvaluation failed (non-blocking; Brain will retry)",
+          );
+        }
+      }
 
       return {
         correct: isCorrect,

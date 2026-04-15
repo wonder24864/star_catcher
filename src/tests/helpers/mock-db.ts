@@ -137,8 +137,20 @@ type MockParentStudentConfig = {
   parentId: string;
   studentId: string;
   maxHelpLevel: number;
+  maxDailyTasks: number;
+  learningTimeStart: string | null;
+  learningTimeEnd: string | null;
   createdAt: Date;
   updatedAt: Date;
+};
+
+type MockAdminLog = {
+  id: string;
+  adminId: string;
+  action: string;
+  target: string | null;
+  details: unknown;
+  createdAt: Date;
 };
 
 type MockParentNote = {
@@ -168,6 +180,7 @@ export function createMockDb() {
   const parentStudentConfigs: MockParentStudentConfig[] = [];
   const errorQuestions: MockErrorQuestion[] = [];
   const parentNotes: MockParentNote[] = [];
+  const adminLogs: MockAdminLog[] = [];
 
   return {
     user: {
@@ -732,6 +745,15 @@ export function createMockDb() {
           return true;
         }) || null;
       },
+      findUnique: async ({ where }: { where: Record<string, unknown> }) => {
+        const key = where.parentId_studentId as { parentId: string; studentId: string } | undefined;
+        if (!key) return null;
+        return (
+          parentStudentConfigs.find(
+            (c) => c.parentId === key.parentId && c.studentId === key.studentId,
+          ) || null
+        );
+      },
       findMany: async ({ where }: { where?: Record<string, unknown> }) => {
         return parentStudentConfigs.filter((c) => {
           if (where?.parentId && c.parentId !== where.parentId) return false;
@@ -752,12 +774,54 @@ export function createMockDb() {
           id: cuid(),
           parentId: create.parentId as string,
           studentId: create.studentId as string,
-          maxHelpLevel: create.maxHelpLevel as number,
+          maxHelpLevel: (create.maxHelpLevel as number) ?? 2,
+          maxDailyTasks: (create.maxDailyTasks as number | undefined) ?? 10,
+          learningTimeStart: (create.learningTimeStart as string | null | undefined) ?? null,
+          learningTimeEnd: (create.learningTimeEnd as string | null | undefined) ?? null,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
         parentStudentConfigs.push(newConfig);
         return newConfig;
+      },
+    },
+    adminLog: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        const entry: MockAdminLog = {
+          id: cuid(),
+          adminId: data.adminId as string,
+          action: data.action as string,
+          target: (data.target as string | null | undefined) ?? null,
+          details: data.details ?? null,
+          createdAt: new Date(),
+        };
+        adminLogs.push(entry);
+        return entry;
+      },
+      findMany: async ({
+        where,
+        orderBy,
+        take,
+        select: _select,
+      }: {
+        where?: Record<string, unknown>;
+        orderBy?: { createdAt?: "asc" | "desc" };
+        take?: number;
+        select?: Record<string, boolean>;
+      }) => {
+        let result = adminLogs.filter((l) => {
+          if (where?.adminId && l.adminId !== where.adminId) return false;
+          if (where?.target && l.target !== where.target) return false;
+          if (where?.action && l.action !== where.action) return false;
+          return true;
+        });
+        if (orderBy?.createdAt === "desc") {
+          result = result.slice().sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        } else if (orderBy?.createdAt === "asc") {
+          result = result.slice().sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        }
+        if (take !== undefined) result = result.slice(0, take);
+        return result;
       },
     },
     errorQuestion: {
@@ -900,6 +964,7 @@ export function createMockDb() {
     _roundQuestionResults: roundQuestionResults,
     _helpRequests: helpRequests,
     _parentStudentConfigs: parentStudentConfigs,
+    _adminLogs: adminLogs,
     _errorQuestions: errorQuestions,
     _parentNotes: parentNotes,
   };

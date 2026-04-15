@@ -960,6 +960,9 @@ describe("homework.requestHelp", () => {
       parentId: "parent1",
       studentId: "student1",
       maxHelpLevel: 1,
+      maxDailyTasks: 10,
+      learningTimeStart: null,
+      learningTimeEnd: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

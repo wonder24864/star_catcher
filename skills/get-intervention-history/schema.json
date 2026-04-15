@@ -1,0 +1,14 @@
+{
+  "name": "get_intervention_history",
+  "description": "Fetch the full InterventionHistory for a student + knowledge point. The mastery-evaluation handler preloads the 5 most recent records; call this only when you need a longer window (e.g., to spot a regression pattern spanning months).",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "knowledgePointId": {
+        "type": "string",
+        "description": "The knowledge point whose intervention history you want"
+      }
+    },
+    "required": ["knowledgePointId"]
+  }
+}
