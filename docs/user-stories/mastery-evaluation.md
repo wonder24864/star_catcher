@@ -17,7 +17,7 @@
   - 目标态 REVIEWING 且 sm2Adjustment 非 null → `calculateHybridReview` → `memory.scheduleReview(hybrid.interval, ...)`
   - 所有路径末尾 `memory.logIntervention(type=REVIEW, content={agentReasoning, transition, sm2Adjustment, hybrid})`
 - [ ] 非白名单 Memory 写入被 `MemoryWriteInterceptor` 拦截（memoryWriteManifest=[]）→ step FAILED 但不终止 trace
-- [ ] 幂等：相同 `sessionId=masteryEval-${studentId}-${kpId}-${reviewScheduleId}` + 1 小时内成功 AgentTrace 存在则跳过
+- [ ] 幂等：相同 `sessionId=me-${reviewScheduleId}` + 1 小时内成功 AgentTrace 存在则跳过（`ReviewSchedule` 由 `@@unique([studentId, knowledgePointId])` 保证三元组唯一，单字段足够做幂等键；避免拼接 3 个 cuid 超出 `sessionId VarChar(64)` 导致截断碰撞）
 - [ ] AgentTrace 完整记录每步推理；`logAdminAction("brain-run","mastery-evaluation",...)` 审计
 
 **边界条件：**

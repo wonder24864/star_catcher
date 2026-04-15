@@ -276,11 +276,21 @@ export async function handleMasteryEvaluation(
     },
   });
 
+  // EXPLANATION tasks have no correctness semantic (student just marks as
+  // viewed), so emit `isCorrect: null` for them to avoid mis-weighting them
+  // as errors in the Agent's input signal. REVIEW/PRACTICE tasks carry
+  // isCorrect in content when submitted via daily-task router.
   const recentAttempts = recentTasks.map((t) => {
     const content = (t.content as { isCorrect?: boolean } | null) ?? {};
+    const isCorrect: boolean | null =
+      t.type === "EXPLANATION"
+        ? null
+        : typeof content.isCorrect === "boolean"
+          ? content.isCorrect
+          : null;
     return {
       taskType: t.type as string,
-      isCorrect: typeof content.isCorrect === "boolean" ? content.isCorrect : false,
+      isCorrect,
       completedAt: (t.completedAt ?? new Date()).toISOString(),
       content: t.content ?? undefined,
     };
@@ -391,10 +401,15 @@ export async function handleMasteryEvaluation(
     const attemptsList =
       recentAttempts.length > 0
         ? recentAttempts
-            .map(
-              (a) =>
-                `- ${a.completedAt} [${a.taskType}] ${a.isCorrect ? "CORRECT" : "INCORRECT"}`,
-            )
+            .map((a) => {
+              const outcome =
+                a.isCorrect === null
+                  ? "viewed"
+                  : a.isCorrect
+                    ? "CORRECT"
+                    : "INCORRECT";
+              return `- ${a.completedAt} [${a.taskType}] ${outcome}`;
+            })
             .join("\n")
         : "(no recent attempts in the last 7 days)";
 

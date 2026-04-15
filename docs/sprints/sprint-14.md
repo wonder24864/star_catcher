@@ -14,7 +14,7 @@
 | 124 | ✅ SM-2 增强：AI 混合调度 | 新增 `calculateHybridReview`：SM-2 基础值 + AI 调整因子（错误类型/历史掌握速度/工作量/考试临近度） |
 | 125 | ✅ 学习闭环自动化 | PRACTICE 完成 + REVIEWING 态 -> mastery-evaluation BullMQ job -> Agent -> 输出建议 -> handler 验证后写 Memory -> 下次 Brain 纳入 |
 | 126 | ✅ 家长学习控制 UI | `src/app/[locale]/(dashboard)/parent/settings/learning/page.tsx`：每日任务上限 slider、学习时段 time picker、操作日志；intervention-planning handler 校验学习时段 |
-| 127 | ✅ Sprint 14 集成验证 | npm test + tsc --noEmit 全通过；端到端单测以 handler 单元 + 集成 placeholder 形式覆盖（手动验证 recipe 见 `src/tests/integration/end-to-end-loop.test.ts`） |
+| 127 | ⚠️ Sprint 14 集成验证 | npm test + tsc --noEmit 全通过；闭环各环节由 handler 单元测试分别覆盖（见 end-to-end-loop.test.ts 头注），但真正的 end-to-end integration test 仍是 `test.todo()`（缺 mock AI provider + Job factory 基础设施），留作后续 Sprint 补齐 |
 
 ## 设计要点
 
@@ -27,7 +27,7 @@
 - [x] Mastery Evaluation Agent 定义完整
 - [x] evaluate-mastery Skill 注册 ACTIVE（seed 自动发现 skills/）
 - [x] SM-2 混合调度：AI 调整因子生效（`calculateHybridReview` + handler 调用）
-- [x] **完整闭环端到端**：handler 单测 + 集成 placeholder + 手动验证 recipe（参见 `src/tests/integration/end-to-end-loop.test.ts`，闭环各环节由 handler 单测分别覆盖）
+- [ ] **完整闭环端到端** integration test — 仍是 `test.todo()`；闭环各环节由 handler 单测分别覆盖 + 手动验证 recipe（`src/tests/integration/end-to-end-loop.test.ts` 头注）。端到端 mock infra 留作后续 Sprint 补齐
 - [x] 家长控制 UI：maxDailyTasks + learningTime 设置生效
 - [x] Brain 遵守家长控制（maxDailyTasks 限制 + 新增 learningTime 区间检查）
 - [x] npm test 全量通过（906 passed / 30 todo / 0 failed）
