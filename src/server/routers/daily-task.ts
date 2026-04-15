@@ -361,36 +361,25 @@ export const dailyTaskRouter = router({
       // See: docs/user-stories/mastery-evaluation.md (US-053)
       if (masteryAfter.status === "REVIEWING") {
         try {
-          let schedule = await ctx.db.reviewSchedule.findUnique({
+          // Resolve reviewScheduleId; bootstrap a 1-day schedule if missing
+          // (e.g. PRACTICE on a freshly-promoted KP with no prior REVIEW).
+          const existing = await ctx.db.reviewSchedule.findUnique({
             where: {
               studentId_knowledgePointId: {
                 studentId,
                 knowledgePointId: task.knowledgePointId,
               },
             },
+            select: { id: true },
           });
-          if (!schedule) {
-            const created = await memory.scheduleReview(
-              studentId,
-              task.knowledgePointId,
-              1,
-            );
-            schedule = {
-              id: created.id,
-              studentId: created.studentId,
-              knowledgePointId: created.knowledgePointId,
-              nextReviewAt: created.nextReviewAt,
-              intervalDays: created.intervalDays,
-              easeFactor: created.easeFactor,
-              consecutiveCorrect: created.consecutiveCorrect,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            };
-          }
+          const reviewScheduleId =
+            existing?.id ??
+            (await memory.scheduleReview(studentId, task.knowledgePointId, 1)).id;
+
           await enqueueMasteryEvaluation({
             studentId,
             knowledgePointId: task.knowledgePointId,
-            reviewScheduleId: schedule.id,
+            reviewScheduleId,
             userId: studentId,
             locale: ctx.session.locale ?? "zh-CN",
           });

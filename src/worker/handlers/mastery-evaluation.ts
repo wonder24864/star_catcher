@@ -203,10 +203,14 @@ export async function handleMasteryEvaluation(
   const { studentId, knowledgePointId, reviewScheduleId, userId, locale } =
     job.data;
 
-  const sessionId = `masteryEval-${studentId}-${knowledgePointId}-${reviewScheduleId}`.slice(
-    0,
-    64,
-  );
+  // sessionId must be unique per (student, kp, schedule). reviewScheduleId
+  // already encodes that triple (ReviewSchedule has @@unique([studentId,
+  // knowledgePointId])), so it alone is sufficient as the idempotency key.
+  // We avoid concatenating all three IDs because cuids are 25 chars each and
+  // AgentTrace.sessionId is VarChar(64) — a naive `slice(0, 64)` truncates
+  // the trailing reviewScheduleId entirely, causing distinct schedules to
+  // collide on the same sessionId and silently skip valid evaluations.
+  const sessionId = `me-${reviewScheduleId}`;
   const log = createLogger("worker:mastery-evaluation").child({
     jobId: job.id,
     correlationId: `me-${studentId}-${job.id}`,
