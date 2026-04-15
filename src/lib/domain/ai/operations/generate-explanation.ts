@@ -29,6 +29,11 @@ const operation: AIOperation<ExplanationCard> = {
 };
 
 export interface GenerateExplanationParams {
+  /**
+   * Source error question content. Empty string when no specific question
+   * is associated (e.g. Intervention Agent generated an EXPLANATION task
+   * without questionId) — AI falls back to a KP-level conceptual card.
+   */
   questionContent: string;
   correctAnswer?: string | null;
   studentAnswer?: string | null;

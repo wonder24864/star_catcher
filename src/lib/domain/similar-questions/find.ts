@@ -26,7 +26,13 @@ export interface SimilarQuestion {
 }
 
 export interface FindSimilarQuestionsParams {
-  errorQuestionId: string;
+  /**
+   * Target error question — used both as the pgvector query seed and as an
+   * ID to exclude from results. Optional: when the caller has no source
+   * question (e.g. Intervention Agent generated a PRACTICE task without
+   * questionId per its prompt), the function degrades to KP-only retrieval.
+   */
+  errorQuestionId?: string | null;
   knowledgePointId: string;
   limit?: number;
 }
@@ -43,7 +49,9 @@ export async function findSimilarQuestions(
   // ── Path 1: KP dimension ───────────────────────────────
   const kpRows = await db.errorQuestion.findMany({
     where: {
-      id: { not: params.errorQuestionId },
+      ...(params.errorQuestionId
+        ? { id: { not: params.errorQuestionId } }
+        : {}),
       deletedAt: null,
       knowledgeMappings: {
         some: { knowledgePointId: params.knowledgePointId },
@@ -69,8 +77,13 @@ export async function findSimilarQuestions(
   }
 
   // ── Path 2: embedding cosine ───────────────────────────
-  // Need target ErrorQuestion's embedding as query vector. If target has no
-  // embedding (async not done yet), skip this path silently.
+  // Requires a seed target: if the caller didn't supply errorQuestionId, or
+  // the target has no embedding yet (async generation pending), skip this
+  // path silently and return the KP-only results.
+  if (!params.errorQuestionId) {
+    return Array.from(merged.values()).slice(0, limit);
+  }
+
   const targetRows = await db.$queryRaw<Array<{ embedding_text: string | null }>>`
     SELECT embedding::text AS embedding_text
     FROM "ErrorQuestion"
@@ -87,6 +100,7 @@ export async function findSimilarQuestions(
   const remaining = limit - merged.size;
   // Fetch more than `remaining` so we can skip duplicates, but bounded.
   const vectorLimit = remaining + merged.size + 5;
+  const targetId = params.errorQuestionId;
 
   const embeddingRows = await db.$queryRaw<
     Array<{
@@ -101,7 +115,7 @@ export async function findSimilarQuestions(
            "correctAnswer",
            1 - (embedding <=> ${targetEmbeddingText}::vector) AS similarity
     FROM "ErrorQuestion"
-    WHERE id <> ${params.errorQuestionId}
+    WHERE id <> ${targetId}
       AND embedding IS NOT NULL
       AND "deletedAt" IS NULL
     ORDER BY embedding <=> ${targetEmbeddingText}::vector

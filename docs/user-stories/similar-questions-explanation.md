@@ -18,6 +18,8 @@
 - target ErrorQuestion 无 embedding（异步未完成）：仅 KP 维度返回
 - 同 KP 下错题不足：允许少于 limit
 - 跨学生检索：类似题可来源任意学生的 ErrorQuestion（题目内容本身不含隐私），但不附带其他学生答题记录
+- **DailyTask.questionId 为 null**（Intervention Agent 未指定原题）：router startTask 先 fallback 查该学生该 KP 最新错题作为 source；若仍查不到，`findSimilarQuestions` 接受 `errorQuestionId: null`，退化为纯 KP 路径
+- `submitPracticeAnswer` 的 selectedQuestion 校验语义：同 KP + 非原题（若有原题）+ 未软删除。**不**要求在 startTask 返回的 top-N 列表中（避免新错题进入后挤出旧候选导致误报）
 
 **性能要求：**
 - 单次双路检索 < 100ms（在 100+ ErrorQuestion 规模下）
@@ -51,6 +53,8 @@
 **I want to** 在讲解任务（EXPLANATION）中看到按我的年级和错因定制的讲解内容
 **So that** 理解概念而不是只看答案 —— 低年级看得懂交互分步，高年级能读推导，被误导时能跟对话纠偏
 
+> **范围差异说明**：REQUIREMENTS §11 原始定义 Conversational 为"学生可以主动追问，AI 响应"（需要流式 LLM 多轮 session）。Sprint 13 实现的是 AI **预生成**的对话式讲解（学生点"继续"推进 AI 预置的对话轮次，无实时追问）。"学生实时追问"功能留到 Phase 4 的学习建议/辅导模块，届时统一实现流式多轮对话基础设施。
+
 **验收标准：**
 - [ ] `generate-explanation-card` Skill 调用 `GENERATE_EXPLANATION` AI operation 生成结构化讲解卡
 - [ ] 格式自动选择规则：
@@ -67,6 +71,9 @@
 - AI 输出不符合 Zod schema：`AIHarnessResult.success = false`，前端展示错误态
 - ErrorQuestion.studentAnswer 为空：按 `format = "auto"` 走年级规则
 - 讲解卡首次生成失败：SemanticCache miss，下次重试
+- **DailyTask.questionId 为 null**（Intervention Agent prompt 只为 REVIEW 强制填 questionId，PRACTICE/EXPLANATION 为可选）：
+  - 先 fallback 查该学生该 KP 最新未软删除错题作为讲解 source
+  - 查不到（该 KP 下学生无错题）：AI 按 KP 名生成 generic 概念讲解卡（prompt 自动切到 "no specific error question" 分支）
 
 **性能要求：**
 - 首次生成 < 8s（AI 生成讲解通常 2–5s）

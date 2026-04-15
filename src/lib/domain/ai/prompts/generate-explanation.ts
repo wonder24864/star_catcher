@@ -70,13 +70,16 @@ Output format: a single JSON object:
   "metadata": { "targetGrade": "${grade ?? ""}", "difficulty": "EASY|MEDIUM|HARD" }
 }`;
 
-    const userMessage = `Question the student got wrong:
+    const hasQuestion = questionContent && questionContent.trim().length > 0;
+    const userMessage = hasQuestion
+      ? `Question the student got wrong:
 ${questionContent}
 
 Correct answer: ${correctAnswer ?? "(not provided — derive it as part of the explanation)"}
 Student's answer: ${studentAnswer ?? "(not provided)"}
 
-Generate the explanation card.`;
+Generate the explanation card.`
+      : `No specific error question is available — generate a general conceptual explanation card for the knowledge point "${kpName}"${grade ? ` at grade ${grade}` : ""}. Focus on the most common misconceptions and foundational understanding students need.`;
 
     return [
       { role: "system", content: systemPrompt },

@@ -130,24 +130,51 @@ export const dailyTaskRouter = router({
         return { task: baseTask, originalQuestion: task.question };
       }
 
+      // Fallback source question for PRACTICE/EXPLANATION: the Intervention
+      // Agent prompt only fills questionId on REVIEW tasks (prompt says
+      // "existing error question ID (REVIEW only, optional)"). For the other
+      // two types we look up the most recent error question this student has
+      // under the same KP. If none exists, we degrade further:
+      //   PRACTICE: KP-only similar-question retrieval (no originalQuestion)
+      //   EXPLANATION: generic KP-level conceptual card
+      // At this point task.type is PRACTICE | EXPLANATION (REVIEW returned above).
+      let sourceQuestion = task.question;
+      if (!sourceQuestion) {
+        const fallback = await ctx.db.errorQuestion.findFirst({
+          where: {
+            studentId: task.pack.studentId,
+            deletedAt: null,
+            knowledgeMappings: {
+              some: { knowledgePointId: task.knowledgePointId },
+            },
+          },
+          select: {
+            id: true,
+            content: true,
+            correctAnswer: true,
+            studentAnswer: true,
+            subject: true,
+            grade: true,
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        sourceQuestion = fallback ?? null;
+      }
+
       if (task.type === "PRACTICE") {
-        if (!task.question) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "PRACTICE task is missing its source question",
-          });
-        }
         const similar = await findSimilarQuestions(
           ctx.db as unknown as PrismaClient,
           {
-            errorQuestionId: task.question.id,
+            errorQuestionId: sourceQuestion?.id ?? null,
             knowledgePointId: task.knowledgePointId,
             limit: 5,
           },
         );
         return {
           task: baseTask,
-          originalQuestion: task.question,
+          originalQuestion: sourceQuestion
+            ? { id: sourceQuestion.id, content: sourceQuestion.content }
+            : null,
           similarQuestions: similar,
         };
       }
@@ -162,26 +189,19 @@ export const dailyTaskRouter = router({
           return { task: baseTask, explanationCard: cached };
         }
 
-        if (!task.question) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "EXPLANATION task is missing its source question",
-          });
-        }
-
         const result = await generateExplanation({
-          questionContent: task.question.content,
-          correctAnswer: task.question.correctAnswer,
-          studentAnswer: task.question.studentAnswer,
+          questionContent: sourceQuestion?.content ?? "",
+          correctAnswer: sourceQuestion?.correctAnswer,
+          studentAnswer: sourceQuestion?.studentAnswer,
           kpName: task.knowledgePoint.name,
-          subject: task.question.subject ?? undefined,
-          grade: task.question.grade ?? undefined,
+          subject: sourceQuestion?.subject ?? undefined,
+          grade: sourceQuestion?.grade ?? undefined,
           format: "auto",
           locale: ctx.session.locale,
           context: {
             userId: ctx.session.userId,
             locale: ctx.session.locale,
-            grade: task.question.grade ?? undefined,
+            grade: sourceQuestion?.grade ?? undefined,
             correlationId: `start-task-${input.taskId}`,
           },
         });
@@ -251,20 +271,16 @@ export const dailyTaskRouter = router({
           message: "submitPracticeAnswer is only valid for PRACTICE tasks",
         });
       }
-      if (!task.question) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "PRACTICE task is missing its source question",
-        });
-      }
 
       // Validate selectedQuestionId is a legitimate similar question:
       // must (a) reference the same knowledge point as the task, (b) not be
-      // the task's source question itself, (c) exist and not be soft-deleted.
+      // the task's source question itself (if the task has one — Intervention
+      // Agent may omit questionId on PRACTICE tasks), (c) exist and not be
+      // soft-deleted.
       // We don't require it to be in the current top-N candidates — new
       // errors may have pushed the student's original choice out of the
       // top-N between startTask and submitPracticeAnswer.
-      if (input.selectedQuestionId === task.question.id) {
+      if (task.question && input.selectedQuestionId === task.question.id) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Selected question must differ from the source question",

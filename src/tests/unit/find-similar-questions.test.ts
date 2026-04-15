@@ -124,4 +124,29 @@ describe("findSimilarQuestions", () => {
     });
     expect(result).toEqual([]);
   });
+
+  test("KP-only path when errorQuestionId is null (no source seed)", async () => {
+    $queryRawCalls.value = 0;
+    const db = createMockDb({
+      kpRows: [
+        { id: "a", content: "1", correctAnswer: null },
+        { id: "b", content: "2", correctAnswer: null },
+      ],
+      // No embedding call expected — pgvector path should be skipped.
+      targetEmbedding: null,
+      embeddingRows: [{ id: "c", content: "3", correctAnswer: null, similarity: 0.9 }],
+    });
+
+    const result = await findSimilarQuestions(db as never, {
+      errorQuestionId: null,
+      knowledgePointId: "kp-1",
+      limit: 5,
+    });
+
+    // Only KP path rows; no 'c' from embedding path.
+    expect(result.map((r) => r.id)).toEqual(["a", "b"]);
+    expect(result.every((r) => r.source === "KP")).toBe(true);
+    // $queryRaw should not have been called at all when errorQuestionId is null.
+    expect($queryRawCalls.value).toBe(0);
+  });
 });
