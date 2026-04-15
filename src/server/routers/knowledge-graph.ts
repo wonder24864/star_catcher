@@ -40,6 +40,112 @@ const relationTypeEnum = z.enum(["PREREQUISITE", "PARALLEL", "CONTAINS"]);
 // Soft-delete base filter
 const notDeleted = { deletedAt: null };
 
+// Sprint 15: depth cascade safety limit
+const MAX_KP_DEPTH = 10;
+
+/**
+ * Collect all descendant ids of a knowledge point via BFS.
+ * Used by `update` to reject moves that would create a cycle
+ * (moving a node under its own descendant).
+ */
+async function collectDescendantIds(
+  db: {
+    knowledgePoint: {
+      findMany: (args: {
+        where: Prisma.KnowledgePointWhereInput;
+        select: { id: true };
+      }) => Promise<Array<{ id: string }>>;
+    };
+  },
+  rootId: string,
+): Promise<Set<string>> {
+  const visited = new Set<string>();
+  let frontier: string[] = [rootId];
+  while (frontier.length > 0) {
+    const children = await db.knowledgePoint.findMany({
+      where: { parentId: { in: frontier }, ...notDeleted },
+      select: { id: true },
+    });
+    const nextFrontier: string[] = [];
+    for (const c of children) {
+      if (!visited.has(c.id)) {
+        visited.add(c.id);
+        nextFrontier.push(c.id);
+      }
+    }
+    frontier = nextFrontier;
+  }
+  return visited;
+}
+
+// Structural type for the subset of Prisma we need (works for both PrismaClient
+// and the TransactionClient passed to $transaction callbacks).
+type KpReadWrite = {
+  knowledgePoint: {
+    findMany: (args: {
+      where: Prisma.KnowledgePointWhereInput;
+      select: { id: true; parentId?: true };
+    }) => Promise<Array<{ id: string; parentId?: string | null }>>;
+    updateMany: (args: {
+      where: Prisma.KnowledgePointWhereInput;
+      data: Prisma.KnowledgePointUpdateManyMutationInput;
+    }) => Promise<{ count: number }>;
+  };
+};
+
+/**
+ * BFS update all descendants' `depth` after a parent change.
+ * Must be called within a transaction. Skips the root itself
+ * (caller already updated it).
+ */
+async function recomputeSubtreeDepth(
+  tx: KpReadWrite,
+  rootId: string,
+  rootDepth: number,
+): Promise<void> {
+  let frontier: Array<{ id: string; depth: number }> = [
+    { id: rootId, depth: rootDepth },
+  ];
+  while (frontier.length > 0) {
+    const parentIds = frontier.map((f) => f.id);
+    const depthByParent = new Map(frontier.map((f) => [f.id, f.depth]));
+    const children = await tx.knowledgePoint.findMany({
+      where: { parentId: { in: parentIds }, ...notDeleted },
+      select: { id: true, parentId: true },
+    });
+    if (children.length === 0) break;
+
+    const nextFrontier: Array<{ id: string; depth: number }> = [];
+    for (const c of children) {
+      const parentDepth = depthByParent.get(c.parentId!)!;
+      const childDepth = parentDepth + 1;
+      if (childDepth > MAX_KP_DEPTH) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Subtree depth would exceed max (${MAX_KP_DEPTH})`,
+        });
+      }
+      nextFrontier.push({ id: c.id, depth: childDepth });
+    }
+
+    // Batch update per-depth to minimize round-trips
+    const byDepth = new Map<number, string[]>();
+    for (const n of nextFrontier) {
+      const arr = byDepth.get(n.depth) ?? [];
+      arr.push(n.id);
+      byDepth.set(n.depth, arr);
+    }
+    for (const [d, ids] of byDepth) {
+      await tx.knowledgePoint.updateMany({
+        where: { id: { in: ids } },
+        data: { depth: d },
+      });
+    }
+
+    frontier = nextFrontier;
+  }
+}
+
 export const knowledgeGraphRouter = router({
   /** Paginated list with filters */
   list: adminProcedure
@@ -133,10 +239,12 @@ export const knowledgeGraphRouter = router({
           difficulty: true,
           importance: true,
           examFrequency: true,
+          sortOrder: true,
           metadata: true,
           _count: { select: { questionMappings: true } },
         },
-        orderBy: [{ depth: "asc" }, { name: "asc" }],
+        // Sprint 15: 按 sortOrder 排序以支持拖拽
+        orderBy: [{ depth: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
         take: 1000, // Safety limit to avoid overloading client
       });
 
@@ -296,7 +404,12 @@ export const knowledgeGraphRouter = router({
       return point;
     }),
 
-  /** Update a knowledge point */
+  /**
+   * Update a knowledge point.
+   *
+   * Sprint 15: parentId 变化时**递归更新子树 depth**（修复原先只更新自身的 bug）。
+   * 新增 optional sortOrder 字段 for 拖拽排序。
+   */
   update: adminProcedure
     .input(
       z.object({
@@ -307,6 +420,7 @@ export const knowledgeGraphRouter = router({
         difficulty: z.number().int().min(1).max(5).optional(),
         importance: z.number().int().min(1).max(5).optional(),
         examFrequency: z.number().int().min(1).max(5).optional(),
+        sortOrder: z.number().int().min(0).optional(),
         metadata: z.record(z.unknown()).optional(),
       }),
     )
@@ -318,14 +432,14 @@ export const knowledgeGraphRouter = router({
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
       const { id, ...data } = input;
-      let depth: number | undefined;
+      let newDepth: number | undefined;
+      let parentChanged = false;
 
       // Recalculate depth if parentId changes
-      // NOTE: does not recursively update children depth — acceptable for admin manual edits;
-      // batch tree reorganization would need a dedicated recursive update procedure.
       if (data.parentId !== undefined && data.parentId !== existing.parentId) {
+        parentChanged = true;
         if (data.parentId === null) {
-          depth = 0;
+          newDepth = 0;
         } else {
           // Prevent setting self as parent
           if (data.parentId === id) {
@@ -338,19 +452,100 @@ export const knowledgeGraphRouter = router({
           if (!newParent) {
             throw new TRPCError({ code: "BAD_REQUEST", message: "New parent not found" });
           }
-          depth = newParent.depth + 1;
+          // Reject moving to own descendant
+          const descendantIds = await collectDescendantIds(ctx.db, id);
+          if (descendantIds.has(data.parentId)) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Cannot move under own descendant (cycle)",
+            });
+          }
+          newDepth = newParent.depth + 1;
+          if (newDepth > MAX_KP_DEPTH) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Depth exceeds max (${MAX_KP_DEPTH})`,
+            });
+          }
         }
       }
 
-      const updated = await ctx.db.knowledgePoint.update({
-        where: { id },
-        data: {
-          ...data,
-          ...(depth !== undefined ? { depth } : {}),
-        },
+      // Transaction: update self + cascade depth to descendants if parent changed
+      const result = await ctx.db.$transaction(async (tx) => {
+        const updated = await tx.knowledgePoint.update({
+          where: { id },
+          data: {
+            ...data,
+            ...(newDepth !== undefined ? { depth: newDepth } : {}),
+          },
+        });
+
+        if (parentChanged && newDepth !== undefined) {
+          await recomputeSubtreeDepth(tx, id, newDepth);
+        }
+
+        return updated;
       });
 
-      return updated;
+      return result;
+    }),
+
+  /**
+   * Reorder siblings within a parent.
+   *
+   * Sprint 15: 兼容拖拽排序。所有 ids 必须同一 parentId + 同 subject + schoolLevel。
+   */
+  reorderSiblings: adminProcedure
+    .input(
+      z.object({
+        parentId: z.string().nullable(),
+        orderedIds: z.array(z.string()).min(1).max(500),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { parentId, orderedIds } = input;
+
+      // Validate all ids share the same parent + subject + schoolLevel
+      const points = await ctx.db.knowledgePoint.findMany({
+        where: { id: { in: orderedIds }, ...notDeleted },
+        select: { id: true, parentId: true, subject: true, schoolLevel: true },
+      });
+      if (points.length !== orderedIds.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "One or more knowledge points not found",
+        });
+      }
+      for (const p of points) {
+        if (p.parentId !== parentId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "All ids must share the same parentId",
+          });
+        }
+      }
+      const firstSubject = points[0].subject;
+      const firstLevel = points[0].schoolLevel;
+      for (const p of points) {
+        if (p.subject !== firstSubject || p.schoolLevel !== firstLevel) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "All ids must share the same subject + schoolLevel",
+          });
+        }
+      }
+
+      // Write sortOrder in a transaction
+      await ctx.db.$transaction(
+        orderedIds.map((kpId, idx) =>
+          ctx.db.knowledgePoint.update({
+            where: { id: kpId },
+            data: { sortOrder: idx },
+          }),
+        ),
+      );
+
+      return { count: orderedIds.length };
     }),
 
   /** Soft-delete a knowledge point */
@@ -559,6 +754,246 @@ export const knowledgeGraphRouter = router({
         locale: (ctx.session.locale as string) ?? "zh",
       });
       return { jobId };
+    }),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Sprint 15: 低置信度映射审核 (US-055)
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * List question→KP mappings filtered by low confidence + unverified.
+   * 排序：verifiedAt asc nulls first, confidence asc（未验证且最低置信度优先）。
+   */
+  listLowConfidenceMappings: adminProcedure
+    .input(
+      z.object({
+        threshold: z.number().min(0).max(1).default(0.7),
+        subject: subjectEnum.optional(),
+        schoolLevel: schoolLevelEnum.optional(),
+        onlyUnverified: z.boolean().default(false),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(20),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const where: Prisma.QuestionKnowledgeMappingWhereInput = {
+        confidence: { lt: input.threshold },
+        ...(input.onlyUnverified ? { verifiedAt: null } : {}),
+        ...(input.subject || input.schoolLevel
+          ? {
+              knowledgePoint: {
+                ...(input.subject ? { subject: input.subject } : {}),
+                ...(input.schoolLevel ? { schoolLevel: input.schoolLevel } : {}),
+                ...notDeleted,
+              },
+            }
+          : { knowledgePoint: notDeleted }),
+      };
+
+      const [total, rows] = await Promise.all([
+        ctx.db.questionKnowledgeMapping.count({ where }),
+        ctx.db.questionKnowledgeMapping.findMany({
+          where,
+          select: {
+            id: true,
+            confidence: true,
+            mappingSource: true,
+            verifiedAt: true,
+            createdAt: true,
+            question: {
+              select: {
+                id: true,
+                content: true,
+                subject: true,
+              },
+            },
+            knowledgePoint: {
+              select: {
+                id: true,
+                name: true,
+                subject: true,
+                schoolLevel: true,
+              },
+            },
+            verifier: {
+              select: { id: true, nickname: true },
+            },
+          },
+          orderBy: [{ verifiedAt: { sort: "asc", nulls: "first" } }, { confidence: "asc" }],
+          skip: (input.page - 1) * input.pageSize,
+          take: input.pageSize,
+        }),
+      ]);
+
+      // 题目摘要（前 60 字）减小 payload
+      const items = rows.map((r) => ({
+        ...r,
+        question: {
+          id: r.question.id,
+          subject: r.question.subject,
+          contentPreview: r.question.content.slice(0, 60),
+        },
+      }));
+
+      return { items, total, page: input.page, pageSize: input.pageSize };
+    }),
+
+  /**
+   * Batch confirm mappings → 设置 mappingSource=ADMIN_VERIFIED + verifiedBy/At.
+   * 幂等：已 ADMIN_VERIFIED 的不再重复写入。
+   */
+  batchVerifyMappings: adminProcedure
+    .input(
+      z.object({
+        mappingIds: z.array(z.string()).min(1).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const adminId = ctx.session.userId as string;
+      const now = new Date();
+
+      const result = await ctx.db.questionKnowledgeMapping.updateMany({
+        where: {
+          id: { in: input.mappingIds },
+          mappingSource: "AI_DETECTED", // 幂等：只改未验证的
+        },
+        data: {
+          mappingSource: "ADMIN_VERIFIED",
+          verifiedBy: adminId,
+          verifiedAt: now,
+        },
+      });
+
+      await ctx.db.adminLog.create({
+        data: {
+          adminId,
+          action: "verify-mappings",
+          target: `${result.count} mappings`,
+          details: {
+            count: result.count,
+            requested: input.mappingIds.length,
+            idsSample: input.mappingIds.slice(0, 20),
+          },
+        },
+      });
+
+      return { count: result.count };
+    }),
+
+  /**
+   * Replace a mapping's knowledge point (event: 管理员发现 AI 映射错了 KP).
+   * 事务：删旧 + 建新（保持 unique 约束）。新 mapping 自动 ADMIN_VERIFIED。
+   */
+  updateMapping: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        newKnowledgePointId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const adminId = ctx.session.userId as string;
+
+      const existing = await ctx.db.questionKnowledgeMapping.findUnique({
+        where: { id: input.id },
+        select: {
+          id: true,
+          questionId: true,
+          knowledgePointId: true,
+        },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Validate new KP exists & not soft-deleted
+      const newKp = await ctx.db.knowledgePoint.findFirst({
+        where: { id: input.newKnowledgePointId, ...notDeleted },
+        select: { id: true },
+      });
+      if (!newKp) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Target knowledge point not found" });
+      }
+
+      if (existing.knowledgePointId === input.newKnowledgePointId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Already mapped to this KP" });
+      }
+
+      // Check unique conflict: question already has a mapping to target KP
+      const conflict = await ctx.db.questionKnowledgeMapping.findUnique({
+        where: {
+          questionId_knowledgePointId: {
+            questionId: existing.questionId,
+            knowledgePointId: input.newKnowledgePointId,
+          },
+        },
+        select: { id: true },
+      });
+      if (conflict) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Question already mapped to the target KP",
+        });
+      }
+
+      const now = new Date();
+      const created = await ctx.db.$transaction(async (tx) => {
+        await tx.questionKnowledgeMapping.delete({ where: { id: existing.id } });
+        const newMapping = await tx.questionKnowledgeMapping.create({
+          data: {
+            questionId: existing.questionId,
+            knowledgePointId: input.newKnowledgePointId,
+            mappingSource: "ADMIN_VERIFIED",
+            confidence: 1.0,
+            verifiedBy: adminId,
+            verifiedAt: now,
+          },
+        });
+        return newMapping;
+      });
+
+      await ctx.db.adminLog.create({
+        data: {
+          adminId,
+          action: "update-mapping",
+          target: created.id,
+          details: {
+            oldMappingId: existing.id,
+            oldKnowledgePointId: existing.knowledgePointId,
+            newKnowledgePointId: input.newKnowledgePointId,
+            questionId: existing.questionId,
+          },
+        },
+      });
+
+      return created;
+    }),
+
+  /** Hard-delete a mapping (model has no soft-delete field). */
+  deleteMapping: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const adminId = ctx.session.userId as string;
+
+      const existing = await ctx.db.questionKnowledgeMapping.findUnique({
+        where: { id: input.id },
+        select: { id: true, questionId: true, knowledgePointId: true },
+      });
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      await ctx.db.questionKnowledgeMapping.delete({ where: { id: input.id } });
+
+      await ctx.db.adminLog.create({
+        data: {
+          adminId,
+          action: "delete-mapping",
+          target: input.id,
+          details: {
+            questionId: existing.questionId,
+            knowledgePointId: existing.knowledgePointId,
+          },
+        },
+      });
+
+      return { deleted: true };
     }),
 });
 

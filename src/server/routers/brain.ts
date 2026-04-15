@@ -1,0 +1,231 @@
+/**
+ * Brain 监控 tRPC Router (Sprint 15 US-057)
+ *
+ * Admin-only procedures:
+ *   - listRuns:       Brain 执行历史（读 AdminLog action="brain-run"）
+ *   - studentStatus:  单学生状态（最近 run + cooldown + 下次 cron）
+ *   - stats:          最近 N 天的 Brain 聚合统计
+ *
+ * 数据来源：
+ *   - AdminLog（action="brain-run"） — 每次 Brain 执行的结构化记录
+ *   - Redis `brain:intervention-cooldown:{sid}` — 24h intervention 冷却
+ *   - SCHEDULE_REGISTRY — 静态读 cron 配置
+ */
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import type { Prisma } from "@prisma/client";
+import { router, adminProcedure } from "../trpc";
+import { redis } from "@/lib/infra/redis";
+import { SCHEDULE_REGISTRY } from "@/worker/schedule-registry";
+
+// ─── 类型 ──────────────────────────────────────────────────────
+
+type BrainRunDetails = {
+  studentId?: string;
+  eventsProcessed?: number;
+  agentsLaunched?: Array<{ jobName: string; reason: string }>;
+  skipped?: Array<{ jobName: string; reason: string }>;
+  durationMs?: number;
+};
+
+function parseBrainRunDetails(details: Prisma.JsonValue | null): BrainRunDetails {
+  if (!details || typeof details !== "object" || Array.isArray(details)) return {};
+  return details as BrainRunDetails;
+}
+
+// ─── Router ────────────────────────────────────────────────────
+
+export const brainRouter = router({
+  /**
+   * Brain 执行历史。读 AdminLog 并 JOIN 学生 nickname。
+   */
+  listRuns: adminProcedure
+    .input(
+      z.object({
+        studentId: z.string().optional(),
+        dateFrom: z.date().optional(),
+        dateTo: z.date().optional(),
+        skippedOnly: z.boolean().default(false),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(20),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const where: Prisma.AdminLogWhereInput = {
+        action: "brain-run",
+        ...(input.studentId ? { target: input.studentId } : {}),
+        ...(input.dateFrom || input.dateTo
+          ? {
+              createdAt: {
+                ...(input.dateFrom && { gte: input.dateFrom }),
+                ...(input.dateTo && { lte: input.dateTo }),
+              },
+            }
+          : {}),
+      };
+
+      const [rows, total] = await Promise.all([
+        ctx.db.adminLog.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip: (input.page - 1) * input.pageSize,
+          take: input.pageSize,
+        }),
+        ctx.db.adminLog.count({ where }),
+      ]);
+
+      // Collect unique student IDs → fetch nicknames in one query
+      const studentIds = Array.from(
+        new Set(rows.map((r) => r.target).filter((t): t is string => !!t)),
+      );
+      const students =
+        studentIds.length > 0
+          ? await ctx.db.user.findMany({
+              where: { id: { in: studentIds } },
+              select: { id: true, nickname: true, username: true },
+            })
+          : [];
+      const studentMap = new Map(students.map((s) => [s.id, s]));
+
+      const items = rows.map((r) => {
+        const d = parseBrainRunDetails(r.details);
+        const skipped = d.skipped ?? [];
+        return {
+          id: r.id,
+          createdAt: r.createdAt,
+          studentId: r.target,
+          student: r.target ? studentMap.get(r.target) ?? null : null,
+          eventsProcessed: d.eventsProcessed ?? 0,
+          agentsLaunched: d.agentsLaunched ?? [],
+          skipped,
+          durationMs: d.durationMs ?? 0,
+          isSkipped: skipped.length > 0 && (d.agentsLaunched?.length ?? 0) === 0,
+        };
+      });
+
+      const filteredItems = input.skippedOnly ? items.filter((i) => i.isSkipped) : items;
+
+      return {
+        items: filteredItems,
+        total: input.skippedOnly ? filteredItems.length : total,
+        page: input.page,
+        pageSize: input.pageSize,
+      };
+    }),
+
+  /**
+   * 单学生 Brain 状态：最近 5 次 run + 当前 cooldown + 下次 cron 模式。
+   */
+  studentStatus: adminProcedure
+    .input(z.object({ studentId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      // 1. 学生基本信息
+      const student = await ctx.db.user.findUnique({
+        where: { id: input.studentId },
+        select: { id: true, nickname: true, username: true, role: true },
+      });
+      if (!student || student.role !== "STUDENT") {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Student not found" });
+      }
+
+      // 2. 最近 5 次 Brain run
+      const recentLogs = await ctx.db.adminLog.findMany({
+        where: { action: "brain-run", target: input.studentId },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      });
+      const recentRuns = recentLogs.map((r) => {
+        const d = parseBrainRunDetails(r.details);
+        return {
+          id: r.id,
+          createdAt: r.createdAt,
+          eventsProcessed: d.eventsProcessed ?? 0,
+          agentsLaunched: d.agentsLaunched ?? [],
+          skipped: d.skipped ?? [],
+          durationMs: d.durationMs ?? 0,
+        };
+      });
+
+      // 3. Intervention cooldown（24h 冷却 key）
+      const cooldownKey = `brain:intervention-cooldown:${input.studentId}`;
+      const cooldownTtl = await redis.ttl(cooldownKey);
+      // ttl 返回：-2=key 不存在，-1=无过期，>=0=剩余秒数
+      const cooldownSeconds = cooldownTtl >= 0 ? cooldownTtl : null;
+
+      // 4. Brain 每日 cron 配置（静态读）
+      const brainSchedule = SCHEDULE_REGISTRY.find((s) => s.jobName === "learning-brain");
+
+      return {
+        student,
+        recentRuns,
+        cooldownSeconds,
+        brainSchedule: brainSchedule
+          ? {
+              pattern: brainSchedule.pattern,
+              description: brainSchedule.description,
+              timezone: "UTC",
+            }
+          : null,
+      };
+    }),
+
+  /**
+   * Brain 最近 N 天聚合统计：总运行数、平均耗时、agent 分布、skipped Top 5。
+   */
+  stats: adminProcedure
+    .input(z.object({ days: z.number().int().min(1).max(30).default(7) }))
+    .query(async ({ ctx, input }) => {
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - input.days);
+      fromDate.setHours(0, 0, 0, 0);
+
+      const logs = await ctx.db.adminLog.findMany({
+        where: { action: "brain-run", createdAt: { gte: fromDate } },
+        select: { details: true, createdAt: true },
+      });
+
+      let totalDurationMs = 0;
+      let runsWithDuration = 0;
+      const agentCount = new Map<string, number>();
+      const skippedCount = new Map<string, number>();
+      let uniqueStudents = 0;
+      const studentsSeen = new Set<string>();
+
+      for (const l of logs) {
+        const d = parseBrainRunDetails(l.details);
+        if (typeof d.durationMs === "number") {
+          totalDurationMs += d.durationMs;
+          runsWithDuration++;
+        }
+        if (d.studentId && !studentsSeen.has(d.studentId)) {
+          studentsSeen.add(d.studentId);
+          uniqueStudents++;
+        }
+        for (const a of d.agentsLaunched ?? []) {
+          agentCount.set(a.jobName, (agentCount.get(a.jobName) ?? 0) + 1);
+        }
+        for (const s of d.skipped ?? []) {
+          const key = `${s.jobName}: ${s.reason}`;
+          skippedCount.set(key, (skippedCount.get(key) ?? 0) + 1);
+        }
+      }
+
+      const agentDistribution = Array.from(agentCount.entries())
+        .map(([agentName, count]) => ({ agentName, count }))
+        .sort((a, b) => b.count - a.count);
+
+      const topSkippedReasons = Array.from(skippedCount.entries())
+        .map(([reason, count]) => ({ reason, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      return {
+        days: input.days,
+        totalRuns: logs.length,
+        uniqueStudents,
+        avgDurationMs: runsWithDuration > 0 ? Math.round(totalDurationMs / runsWithDuration) : 0,
+        agentDistribution,
+        topSkippedReasons,
+      };
+    }),
+});

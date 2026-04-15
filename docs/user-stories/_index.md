@@ -56,3 +56,8 @@
 | US-050 | 今日任务包 | [intervention-daily-tasks.md](intervention-daily-tasks.md) | Sprint 12 |
 | US-051 | 类似题检索 | [similar-questions-explanation.md](similar-questions-explanation.md) | Sprint 13 |
 | US-052 | 讲解卡三格式 | [similar-questions-explanation.md](similar-questions-explanation.md) | Sprint 13 |
+| US-053 | 掌握评估 Agent | [mastery-evaluation.md](mastery-evaluation.md) | Sprint 14 |
+| US-054 | 家长控制每日任务与学习时段 | [parent-learning-control.md](parent-learning-control.md) | Sprint 14 |
+| US-055 | 低置信度映射审核 | [admin-phase3.md](admin-phase3.md) | Sprint 15 |
+| US-056 | KG 拖拽层级与排序 | [admin-phase3.md](admin-phase3.md) | Sprint 15 |
+| US-057 | Brain 执行监控 | [admin-phase3.md](admin-phase3.md) | Sprint 15 |

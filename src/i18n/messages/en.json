@@ -21,6 +21,7 @@
     "agentTraces": "Agent Traces",
     "adminSkills": "Skills",
     "adminKnowledgeGraph": "Knowledge Graph",
+    "adminBrain": "Brain Monitor",
     "tasks": "Today's Tasks"
   },
   "auth": {
@@ -373,6 +374,107 @@
       "defaultMaxHelpLevel": "Default Max Help Level (1-3)",
       "saveConfig": "Save Config",
       "saved": "Config saved"
+    },
+    "mappings": {
+      "title": "Low-Confidence Mapping Review",
+      "description": "Filter AI-mapped question → knowledge-point records with low confidence, batch verify or correct",
+      "threshold": "Confidence threshold",
+      "onlyUnverified": "Unverified only",
+      "subjectFilter": "Subject",
+      "schoolLevelFilter": "School Level",
+      "allSubjects": "All subjects",
+      "allLevels": "All levels",
+      "total": "{count} records",
+      "empty": "No mappings to review",
+      "columns": {
+        "question": "Question Preview",
+        "knowledgePoint": "Knowledge Point",
+        "confidence": "Confidence",
+        "source": "Source",
+        "verified": "Status"
+      },
+      "source": {
+        "AI_DETECTED": "AI",
+        "ADMIN_VERIFIED": "Admin"
+      },
+      "unverified": "Unverified",
+      "verifiedBy": "Verified {date} by {name}",
+      "actions": {
+        "verify": "Verify",
+        "changeKp": "Change KP",
+        "delete": "Delete",
+        "batchVerify": "Batch Verify ({count})",
+        "batchDelete": "Batch Delete ({count})",
+        "confirmBatchVerify": "Mark {count} mapping(s) as ADMIN_VERIFIED?",
+        "confirmDelete": "Delete this mapping? This cannot be undone.",
+        "confirmBatchDelete": "Delete {count} mapping(s)? This cannot be undone."
+      },
+      "changeKpDialog": {
+        "title": "Change Knowledge Point",
+        "searchPlaceholder": "Search for target KP...",
+        "confirm": "Confirm change"
+      },
+      "toasts": {
+        "verifiedCount": "Verified {count}",
+        "deleted": "Deleted",
+        "updated": "KP changed",
+        "errorGeneric": "Operation failed",
+        "noneChanged": "No records needed updating"
+      }
+    },
+    "brain": {
+      "title": "Learning Brain Monitor",
+      "description": "View Brain daily execution history, student status, scheduling stats",
+      "tabs": {
+        "history": "History",
+        "student": "Student Status",
+        "stats": "Stats"
+      },
+      "filters": {
+        "studentId": "Student ID",
+        "studentIdPlaceholder": "Student ID or nickname",
+        "dateFrom": "From",
+        "dateTo": "To",
+        "skippedOnly": "Skipped only",
+        "clear": "Clear filters"
+      },
+      "columns": {
+        "time": "Time",
+        "student": "Student",
+        "events": "Events",
+        "agents": "Launched Agents",
+        "skipped": "Skipped",
+        "duration": "Duration"
+      },
+      "durationMs": "{ms} ms",
+      "agentCount": "{count}",
+      "skippedCount": "{count}",
+      "agentsEmpty": "none",
+      "expandDetails": "Details",
+      "empty": "No Brain runs recorded",
+      "searchLabel": "Enter student ID",
+      "searchPlaceholder": "e.g. cuid...",
+      "query": "Query",
+      "notFound": "Student not found",
+      "recentRuns": "Recent 5 runs",
+      "cooldown": "Intervention cooldown",
+      "cooldownActive": "{seconds}s remaining",
+      "cooldownNone": "No cooldown (can trigger)",
+      "nextCron": "Next Brain cron",
+      "cronPattern": "Cron: {pattern}",
+      "timezone": "Timezone",
+      "noRecentRuns": "No recent runs",
+      "statsTitle": "Last {days} days",
+      "totalRuns": "Total Runs",
+      "uniqueStudents": "Unique Students",
+      "avgDuration": "Avg Duration",
+      "agentDistribution": "Agent Distribution",
+      "topSkipped": "Top 5 Skipped Reasons",
+      "statsEmpty": "No data"
+    },
+    "jaeger": {
+      "open": "Jaeger",
+      "disabled": "OTEL not enabled or Jaeger UI not configured"
     }
   },
   "validation": {
@@ -388,9 +490,29 @@
   "knowledgeGraph": {
     "title": "Knowledge Graph",
     "tabs": {
-      "tree": "Knowledge Tree",
+      "tree": "List",
+      "hierarchy": "Hierarchy Editor",
       "import": "Import",
-      "review": "Review"
+      "review": "Review",
+      "mappings": "Mapping Review"
+    },
+    "hierarchy": {
+      "subjectPrompt": "Pick subject + school level",
+      "loading": "Loading...",
+      "empty": "No knowledge points for this subject",
+      "expand": "Expand",
+      "collapse": "Collapse",
+      "dragHint": "Drag to reorder or re-parent; drop onto a node to make it a child",
+      "moveConfirmTitle": "Move knowledge point",
+      "moveConfirmDesc": "Move \"{source}\" under \"{target}\"? (depth of self + {descendantCount} descendant(s) will be recomputed)",
+      "moveConfirmRoot": "Move \"{source}\" to root? (depth of self + {descendantCount} descendant(s) will be recomputed)",
+      "confirmMove": "Confirm move",
+      "depthBadge": "depth {depth}",
+      "reorderSuccess": "Order updated",
+      "moveSuccess": "Hierarchy updated",
+      "errorCycle": "Cannot move under own descendant",
+      "errorDepthMax": "Subtree depth exceeds max",
+      "errorGeneric": "Operation failed"
     },
     "primary": "Primary",
     "junior": "Junior",

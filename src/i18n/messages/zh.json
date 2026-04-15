@@ -21,6 +21,7 @@
     "agentTraces": "Agent 追踪",
     "adminSkills": "Skill 管理",
     "adminKnowledgeGraph": "知识图谱",
+    "adminBrain": "Brain 监控",
     "tasks": "今日任务"
   },
   "auth": {
@@ -373,6 +374,107 @@
       "defaultMaxHelpLevel": "默认最高求助级别（1-3）",
       "saveConfig": "保存配置",
       "saved": "配置已保存"
+    },
+    "mappings": {
+      "title": "低置信度映射审核",
+      "description": "筛选 AI 映射题目 → 知识点的低置信度记录，批量确认或修正",
+      "threshold": "置信度阈值",
+      "onlyUnverified": "仅未验证",
+      "subjectFilter": "学科",
+      "schoolLevelFilter": "学段",
+      "allSubjects": "全部学科",
+      "allLevels": "全部学段",
+      "total": "共 {count} 条",
+      "empty": "暂无需审核的映射",
+      "columns": {
+        "question": "题目摘要",
+        "knowledgePoint": "知识点",
+        "confidence": "置信度",
+        "source": "来源",
+        "verified": "验证状态"
+      },
+      "source": {
+        "AI_DETECTED": "AI",
+        "ADMIN_VERIFIED": "管理员"
+      },
+      "unverified": "未验证",
+      "verifiedBy": "已验证 {date} by {name}",
+      "actions": {
+        "verify": "确认",
+        "changeKp": "换知识点",
+        "delete": "删除",
+        "batchVerify": "批量确认 ({count})",
+        "batchDelete": "批量删除 ({count})",
+        "confirmBatchVerify": "确认将选中的 {count} 条映射标记为 ADMIN_VERIFIED？",
+        "confirmDelete": "确认删除此映射？此操作不可恢复",
+        "confirmBatchDelete": "确认删除选中的 {count} 条映射？此操作不可恢复"
+      },
+      "changeKpDialog": {
+        "title": "更换知识点",
+        "searchPlaceholder": "搜索目标知识点...",
+        "confirm": "确认更换"
+      },
+      "toasts": {
+        "verifiedCount": "已确认 {count} 条",
+        "deleted": "已删除",
+        "updated": "已更换知识点",
+        "errorGeneric": "操作失败",
+        "noneChanged": "没有需要更新的记录"
+      }
+    },
+    "brain": {
+      "title": "Learning Brain 监控",
+      "description": "查看 Brain 每日执行历史、学生状态、调度统计",
+      "tabs": {
+        "history": "执行历史",
+        "student": "学生状态",
+        "stats": "统计"
+      },
+      "filters": {
+        "studentId": "学生 ID",
+        "studentIdPlaceholder": "输入学生 ID 或昵称进行筛选",
+        "dateFrom": "起始日期",
+        "dateTo": "结束日期",
+        "skippedOnly": "仅 skipped",
+        "clear": "清空筛选"
+      },
+      "columns": {
+        "time": "时间",
+        "student": "学生",
+        "events": "事件数",
+        "agents": "Launched Agents",
+        "skipped": "Skipped",
+        "duration": "耗时"
+      },
+      "durationMs": "{ms} ms",
+      "agentCount": "{count} 个",
+      "skippedCount": "{count} 项",
+      "agentsEmpty": "无",
+      "expandDetails": "展开详情",
+      "empty": "暂无 Brain 执行记录",
+      "searchLabel": "输入学生 ID",
+      "searchPlaceholder": "例如：cuid...",
+      "query": "查询",
+      "notFound": "未找到学生",
+      "recentRuns": "最近 5 次执行",
+      "cooldown": "Intervention 冷却",
+      "cooldownActive": "还剩 {seconds} 秒",
+      "cooldownNone": "无冷却（可立即触发）",
+      "nextCron": "下次 Brain Cron",
+      "cronPattern": "Cron: {pattern}",
+      "timezone": "时区",
+      "noRecentRuns": "暂无执行记录",
+      "statsTitle": "最近 {days} 天",
+      "totalRuns": "总运行数",
+      "uniqueStudents": "涉及学生数",
+      "avgDuration": "平均耗时",
+      "agentDistribution": "Agent 调度分布",
+      "topSkipped": "Skipped Top 5 原因",
+      "statsEmpty": "暂无数据"
+    },
+    "jaeger": {
+      "open": "Jaeger",
+      "disabled": "OTEL 未启用或 Jaeger UI 未配置"
     }
   },
   "validation": {
@@ -388,9 +490,29 @@
   "knowledgeGraph": {
     "title": "知识图谱管理",
     "tabs": {
-      "tree": "知识点树",
+      "tree": "列表",
+      "hierarchy": "层级编辑",
       "import": "导入管理",
-      "review": "待审核"
+      "review": "待审核",
+      "mappings": "映射审核"
+    },
+    "hierarchy": {
+      "subjectPrompt": "选择学科 + 学段",
+      "loading": "加载中...",
+      "empty": "该学科暂无知识点",
+      "expand": "展开",
+      "collapse": "折叠",
+      "dragHint": "拖拽调整顺序或层级；拖到目标节点上作为其子节点",
+      "moveConfirmTitle": "移动知识点",
+      "moveConfirmDesc": "将 \"{source}\" 移到 \"{target}\" 之下？（自身及 {descendantCount} 个子孙节点的深度会自动重算）",
+      "moveConfirmRoot": "将 \"{source}\" 移到根节点？（自身及 {descendantCount} 个子孙节点的深度会自动重算）",
+      "confirmMove": "确认移动",
+      "depthBadge": "深度 {depth}",
+      "reorderSuccess": "顺序已更新",
+      "moveSuccess": "层级已更新",
+      "errorCycle": "不能移到自己的子孙节点下",
+      "errorDepthMax": "子树深度超过上限",
+      "errorGeneric": "操作失败"
     },
     "primary": "小学",
     "junior": "初中",

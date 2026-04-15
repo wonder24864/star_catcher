@@ -30,6 +30,7 @@ import { callAIOperation } from "@/lib/domain/ai/operations/registry";
 import { createMemoryWriteInterceptor } from "@/lib/domain/agent/memory-write-interceptor";
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import { createLogger } from "@/lib/infra/logger";
+import { captureOtelTraceId } from "@/lib/infra/telemetry/capture";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
 import type { PrismaClient } from "@prisma/client";
@@ -154,6 +155,7 @@ export async function handleQuestionUnderstanding(
       sessionId,
       userId,
       status: "RUNNING",
+      otelTraceId: captureOtelTraceId(), // Sprint 15: 供 Jaeger 深链
     },
   });
 

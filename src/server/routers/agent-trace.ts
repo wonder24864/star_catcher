@@ -10,6 +10,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, protectedProcedure } from "../trpc";
 import { resolveStudentId } from "./shared/resolve-student-id";
+import { buildJaegerUrl } from "@/lib/infra/telemetry/jaeger-url";
 
 // ─── Router ─────────────────────────────────────
 
@@ -41,7 +42,7 @@ export const agentTraceRouter = router({
         };
       }
 
-      const [traces, total] = await Promise.all([
+      const [rawTraces, total] = await Promise.all([
         ctx.db.agentTrace.findMany({
           where,
           include: {
@@ -53,6 +54,12 @@ export const agentTraceRouter = router({
         }),
         ctx.db.agentTrace.count({ where }),
       ]);
+
+      // Sprint 15: 后端构造 Jaeger URL，前端零感知
+      const traces = rawTraces.map((t) => ({
+        ...t,
+        jaegerUrl: buildJaegerUrl(t.otelTraceId),
+      }));
 
       return { traces, total, page: input.page, limit: input.limit };
     }),
@@ -75,7 +82,10 @@ export const agentTraceRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Trace not found" });
       }
 
-      return trace;
+      return {
+        ...trace,
+        jaegerUrl: buildJaegerUrl(trace.otelTraceId), // Sprint 15
+      };
     }),
 
   /**

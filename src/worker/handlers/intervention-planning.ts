@@ -34,6 +34,7 @@ import { isWithinLearningHours } from "@/lib/domain/parent/is-within-learning-ho
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { createLogger } from "@/lib/infra/logger";
+import { captureOtelTraceId } from "@/lib/infra/telemetry/capture";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
 import type { InterventionKind } from "@/lib/domain/memory/types";
@@ -261,6 +262,7 @@ export async function handleInterventionPlanning(
       sessionId: `brain-${studentId}-${today.toISOString().split("T")[0]}`,
       userId,
       status: "RUNNING",
+      otelTraceId: captureOtelTraceId(), // Sprint 15: 供 Jaeger 深链
     },
   });
 

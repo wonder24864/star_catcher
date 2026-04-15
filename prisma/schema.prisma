@@ -44,6 +44,7 @@ model User {
   agentTraces       AgentTrace[]
   dailyTaskPacks    DailyTaskPack[]     @relation("StudentDailyPacks")
   weaknessProfiles  WeaknessProfile[]   @relation("StudentWeakness")
+  verifiedMappings  QuestionKnowledgeMapping[] @relation("MappingVerifier") // Sprint 15
 
   @@index([username])
   @@index([role])
@@ -434,6 +435,7 @@ model KnowledgePoint {
   difficulty      Int         @default(3) @db.SmallInt // 1-5
   importance      Int         @default(3) @db.SmallInt // 1-5
   examFrequency   Int         @default(3) @db.SmallInt // 1-5
+  sortOrder       Int         @default(0) // Sprint 15: 同父兄弟节点排序
   metadata        Json?       // 灵活扩展属性
   // embedding    Unsupported("vector(1536)")? // pgvector — Task 50 启用
   createdAt       DateTime    @default(now()) @db.Timestamptz
@@ -452,6 +454,7 @@ model KnowledgePoint {
 
   @@index([subject, schoolLevel])
   @@index([parentId])
+  @@index([parentId, sortOrder]) // Sprint 15: 同父兄弟按序读取
   @@index([deletedAt, subject]) // Soft-delete filtered queries
 }
 
@@ -477,14 +480,18 @@ model QuestionKnowledgeMapping {
   knowledgePointId String
   mappingSource    KnowledgeMappingSource @default(AI_DETECTED)
   confidence       Float                  @default(0.8) // 0.0-1.0
+  verifiedBy       String?                // Sprint 15: 管理员确认人 FK→User
+  verifiedAt       DateTime?              @db.Timestamptz // Sprint 15: 确认时间
   createdAt        DateTime               @default(now()) @db.Timestamptz
 
   question         ErrorQuestion  @relation(fields: [questionId], references: [id], onDelete: Cascade)
   knowledgePoint   KnowledgePoint @relation(fields: [knowledgePointId], references: [id], onDelete: Cascade)
+  verifier         User?          @relation("MappingVerifier", fields: [verifiedBy], references: [id], onDelete: SetNull)
 
   @@unique([questionId, knowledgePointId])
   @@index([knowledgePointId])
   @@index([questionId])
+  @@index([verifiedAt, confidence]) // Sprint 15: 低置信度审核主排序路径
 }
 
 // ==================== Student Memory ====================
@@ -595,6 +602,7 @@ model AgentTrace {
   id                 String                       @id @default(cuid())
   agentName          String                       @db.VarChar(64)
   sessionId          String                       @db.VarChar(64)
+  otelTraceId        String?                      @db.VarChar(32) // Sprint 15: W3C OTEL traceId (32 hex)，用于 Jaeger 深链
   userId             String
   status             AgentTraceStatus             @default(RUNNING)
   totalSteps         Int                          @default(0)
@@ -613,6 +621,7 @@ model AgentTrace {
   @@index([sessionId])
   @@index([agentName, createdAt])
   @@index([status])
+  @@index([otelTraceId]) // Sprint 15
 }
 
 model AgentTraceStep {

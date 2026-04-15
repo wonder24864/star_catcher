@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { JaegerLink } from "@/components/admin/jaeger-link";
 
 const STATUS_COLORS: Record<string, string> = {
   RUNNING: "bg-blue-100 text-blue-700",
@@ -59,11 +60,14 @@ export default function AgentTraceDetailPage() {
       {/* Summary Card */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <CardTitle>{t("agentTrace.detail.title")}</CardTitle>
-            <Badge className={STATUS_COLORS[trace.status] ?? ""} variant="secondary">
-              {t(`agentTrace.status.${trace.status}`)}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <JaegerLink jaegerUrl={trace.jaegerUrl} />
+              <Badge className={STATUS_COLORS[trace.status] ?? ""} variant="secondary">
+                {t(`agentTrace.status.${trace.status}`)}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">

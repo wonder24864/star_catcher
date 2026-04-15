@@ -37,6 +37,7 @@ export function Sidebar() {
     { label: t("nav.adminSkills"), href: "/admin/skills", roles: ["ADMIN"] },
     { label: t("nav.adminKnowledgeGraph"), href: "/admin/knowledge-graph", roles: ["ADMIN"] },
     { label: t("nav.agentTraces"), href: "/admin/agent-traces", roles: ["ADMIN"] },
+    { label: t("nav.adminBrain"), href: "/admin/brain", roles: ["ADMIN"] },
     { label: t("nav.adminSettings"), href: "/admin/settings", roles: ["ADMIN"] },
   ];
 

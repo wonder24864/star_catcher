@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
+import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +26,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-type Tab = "tree" | "import" | "review";
+// Sprint 15: @dnd-kit 组件必须客户端渲染以避免 hydration 错配
+const KGTreeEditor = dynamic(
+  () => import("@/components/admin/kg-tree-editor").then((m) => m.KGTreeEditor),
+  { ssr: false },
+);
+
+type Tab = "tree" | "hierarchy" | "import" | "review";
 type Subject = "MATH" | "CHINESE" | "ENGLISH" | "PHYSICS" | "CHEMISTRY" | "BIOLOGY" | "HISTORY" | "GEOGRAPHY" | "POLITICS" | "OTHER";
 type SchoolLevel = "PRIMARY" | "JUNIOR" | "SENIOR";
 type RelationType = "PREREQUISITE" | "PARALLEL" | "CONTAINS";
@@ -39,11 +47,18 @@ export default function KnowledgeGraphPage() {
 
   return (
     <div className="max-w-5xl space-y-5">
-      <h1 className="text-2xl font-bold">{t("knowledgeGraph.title")}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">{t("knowledgeGraph.title")}</h1>
+        <Link href="/admin/knowledge-graph/mappings">
+          <Button variant="outline" size="sm">
+            {t("knowledgeGraph.tabs.mappings")}
+          </Button>
+        </Link>
+      </div>
 
       {/* Tab switcher */}
       <div className="flex gap-2 border-b pb-2">
-        {(["tree", "import", "review"] as Tab[]).map((tabKey) => (
+        {(["tree", "hierarchy", "import", "review"] as Tab[]).map((tabKey) => (
           <Button
             key={tabKey}
             variant={tab === tabKey ? "default" : "ghost"}
@@ -67,6 +82,7 @@ export default function KnowledgeGraphPage() {
           onPageChange={setPage}
         />
       )}
+      {tab === "hierarchy" && <KGTreeEditor />}
       {tab === "import" && <ImportTab />}
       {tab === "review" && <ReviewTab subject={subject} />}
     </div>

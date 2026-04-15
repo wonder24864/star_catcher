@@ -31,8 +31,8 @@ Phase 3 围绕"学习闭环"实现 6 个模块：
 | 11 | Week 16 | 薄弱分析增强（定期+全局）+ 年级过渡 | [sprint-11.md](sprints/sprint-11.md) | COMPLETED |
 | 12 | Week 17 | 干预规划 Agent + 今日任务包 | [sprint-12.md](sprints/sprint-12.md) | DRAFT |
 | 13 | Week 18 | 类似题检索 + 讲解卡 | [sprint-13.md](sprints/sprint-13.md) | COMPLETED |
-| 14 | Week 19 | 掌握评估 Agent + 闭环完成 + 家长控制 | [sprint-14.md](sprints/sprint-14.md) | DRAFT |
-| 15 | Week 20 | 管理员 UI (D7 KG拖拽 + D8 映射确认) + Brain 监控 | [sprint-15.md](sprints/sprint-15.md) | DRAFT |
+| 14 | Week 19 | 掌握评估 Agent + 闭环完成 + 家长控制 | [sprint-14.md](sprints/sprint-14.md) | COMPLETED |
+| 15 | Week 20 | 管理员 UI (D7 KG拖拽 + D8 映射确认) + Brain 监控 | [sprints/sprint-15.md](sprints/sprint-15.md) | COMPLETED |
 | 16 | Week 21 | EvalFramework + 全量集成测试 + Phase 3 收尾 | [sprint-16.md](sprints/sprint-16.md) | DRAFT |
 
 ---

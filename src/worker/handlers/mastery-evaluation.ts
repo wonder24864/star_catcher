@@ -44,6 +44,7 @@ import { calculateHybridReview, type ErrorType } from "@/lib/domain/spaced-repet
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { createLogger } from "@/lib/infra/logger";
+import { captureOtelTraceId } from "@/lib/infra/telemetry/capture";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
 import type { AgentRunResult } from "@/lib/domain/agent/types";
 import type { MasteryTransition } from "@/lib/domain/memory/types";
@@ -326,6 +327,7 @@ export async function handleMasteryEvaluation(
       sessionId,
       userId,
       status: "RUNNING",
+      otelTraceId: captureOtelTraceId(), // Sprint 15: 供 Jaeger 深链
     },
   });
 

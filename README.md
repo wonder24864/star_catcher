@@ -164,9 +164,11 @@ star_catcher/
     │   │   ├── admin/                 # 管理后台
     │   │   │   ├── users/[id]/            # 用户管理 + 详情
     │   │   │   ├── settings/              # 系统配置
-    │   │   │   ├── knowledge-graph/       # 知识图谱管理
+    │   │   │   ├── knowledge-graph/       # 知识图谱管理（列表/层级编辑拖拽）
+    │   │   │   │   └── mappings/          # 低置信度映射审核（Sprint 15 US-055）
+    │   │   │   ├── brain/                 # Learning Brain 监控（Sprint 15 US-057）
     │   │   │   ├── skills/                # Skill 管理
-    │   │   │   └── agent-traces/[traceId]/ # Agent 追踪（列表 + 详情时序图）
+    │   │   │   └── agent-traces/[traceId]/ # Agent 追踪（列表 + 详情时序图 + Jaeger 链接）
     │   │   ├── family/                # 家庭组管理
     │   │   └── settings/              # 个人设置
     │   ├── api/trpc/[trpc]/       # tRPC 端点
@@ -174,6 +176,7 @@ star_catcher/
     │
     ├── components/            # ── UI 组件 ──
     │   ├── agent-summary-card.tsx   # AI 分析摘要卡片（家长/学生简化视图）
+    │   ├── admin/                 # 管理员专用组件（KG 拖拽编辑器、Jaeger 链接）
     │   ├── homework/              # 拍照 / 照片网格
     │   ├── dashboard/             # 首页组件（今日复习 Widget）
     │   ├── mastery/               # 掌握地图组件（复习对话框）
@@ -199,7 +202,7 @@ star_catcher/
     │   │   ├── redis.ts           # Redis 客户端
     │   │   ├── storage/           # MinIO 文件存储
     │   │   ├── queue/             # BullMQ 异步队列（连接/类型/入队）
-    │   │   ├── telemetry/         # OpenTelemetry 观测（initTelemetry + withSpan）
+    │   │   ├── telemetry/         # OpenTelemetry 观测（initTelemetry + withSpan + captureOtelTraceId + buildJaegerUrl）
     │   │   └── events.ts          # Redis Pub/Sub 事件桥
     │   │
     │   ├── domain/            # 业务逻辑
@@ -262,7 +265,7 @@ star_catcher/
     ├── server/                # ── tRPC 服务端 ──
     │   ├── trpc.ts                # 初始化 + 角色中间件 + SSE 配置
     │   ├── context.ts             # 上下文工厂
-    │   └── routers/               # 路由器（13 个业务 + 1 个订阅）
+    │   └── routers/               # 路由器（14 个业务 + 1 个订阅，含 Sprint 15 brain router）
     │       └── shared/                # 共享工具（resolveStudentId 权限校验）
     │
     ├── worker/                # ── BullMQ Worker（独立 Docker 服务）──
