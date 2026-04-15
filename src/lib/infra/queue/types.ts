@@ -95,6 +95,12 @@ export interface MasteryEvaluationJobData {
   locale: string;
 }
 
+export interface EmbeddingGenerateJobData {
+  errorQuestionId: string;
+  userId: string;
+  correlationId?: string;
+}
+
 export type AIJobData =
   | OcrRecognizeJobData
   | CorrectionPhotosJobData
@@ -105,7 +111,8 @@ export type AIJobData =
   | LearningBrainJobData
   | WeaknessProfileJobData
   | InterventionPlanningJobData
-  | MasteryEvaluationJobData;
+  | MasteryEvaluationJobData
+  | EmbeddingGenerateJobData;
 
 /** Job names matching ADR-003 timeout/retry configuration */
 export type AIJobName =
@@ -118,4 +125,5 @@ export type AIJobName =
   | "learning-brain"
   | "weakness-profile"
   | "intervention-planning"
-  | "mastery-evaluation";
+  | "mastery-evaluation"
+  | "embedding-generate";

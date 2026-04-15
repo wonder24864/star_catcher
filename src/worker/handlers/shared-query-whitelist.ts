@@ -9,7 +9,8 @@
  */
 
 import { db } from "@/lib/infra/db";
-import type { Subject } from "@prisma/client";
+import type { PrismaClient, Subject } from "@prisma/client";
+import { findSimilarQuestions } from "@/lib/domain/similar-questions/find";
 
 export const QUERY_WHITELIST: Record<
   string,
@@ -93,6 +94,55 @@ export const QUERY_WHITELIST: Record<
       content: r.content ?? "",
       knowledgePointId: r.knowledgeMappings[0]?.knowledgePointId ?? null,
     }));
+  },
+
+  getErrorQuestionForExplanation: async (params) => {
+    const errorQuestionId = params.errorQuestionId as string;
+    if (!errorQuestionId) return null;
+
+    const eq = await db.errorQuestion.findUnique({
+      where: { id: errorQuestionId },
+      select: {
+        content: true,
+        correctAnswer: true,
+        studentAnswer: true,
+        subject: true,
+        grade: true,
+        deletedAt: true,
+      },
+    });
+    if (!eq || eq.deletedAt) return null;
+
+    const knowledgePointId = params.knowledgePointId as string | undefined;
+    let kpName: string | null = null;
+    if (knowledgePointId) {
+      const kp = await db.knowledgePoint.findUnique({
+        where: { id: knowledgePointId },
+        select: { name: true },
+      });
+      kpName = kp?.name ?? null;
+    }
+
+    return {
+      content: eq.content,
+      correctAnswer: eq.correctAnswer,
+      studentAnswer: eq.studentAnswer,
+      subject: eq.subject as string,
+      grade: eq.grade as string | null,
+      kpName,
+    };
+  },
+
+  findSimilarQuestions: async (params) => {
+    const errorQuestionId = params.errorQuestionId as string;
+    const knowledgePointId = params.knowledgePointId as string;
+    const limit = (params.limit as number) ?? 5;
+    if (!errorQuestionId || !knowledgePointId) return [];
+    return findSimilarQuestions(db as unknown as PrismaClient, {
+      errorQuestionId,
+      knowledgePointId,
+      limit,
+    });
   },
 
   findKnowledgePointsByIds: async (params) => {

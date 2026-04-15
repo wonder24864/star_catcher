@@ -10,6 +10,7 @@ import {
   enqueueCorrectionPhotos,
   enqueueHelpGeneration,
   enqueueQuestionUnderstanding,
+  enqueueEmbeddingGenerate,
 } from "@/lib/infra/queue";
 import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
 import { gradeToSchoolLevel } from "@/lib/domain/school-level";
@@ -579,6 +580,17 @@ export const homeworkRouter = router({
             },
           });
           errorQuestionEntries.push({ errorQuestionId: created.id, content: q.content });
+
+          // Sprint 13: async embedding generation for similar-question search
+          if (q.content && q.content.trim().length > 0) {
+            enqueueEmbeddingGenerate({
+              errorQuestionId: created.id,
+              userId: ctx.session.userId,
+              correlationId: `eg-${input.sessionId}-${created.id}`,
+            }).catch(() => {
+              // Non-fatal: ErrorQuestion is created; embedding can be backfilled
+            });
+          }
         }
       }
 
@@ -894,6 +906,17 @@ export const homeworkRouter = router({
           correctAnswer: input.correctAnswer ?? undefined,
         },
       });
+
+      // Sprint 13: async embedding generation for similar-question search
+      if (input.content && input.content.trim().length > 0) {
+        enqueueEmbeddingGenerate({
+          errorQuestionId: errorQuestion.id,
+          userId: ctx.session.userId,
+          correlationId: `eg-manual-${errorQuestion.id}`,
+        }).catch(() => {
+          // Non-fatal: ErrorQuestion is created; embedding can be backfilled
+        });
+      }
 
       return errorQuestion;
     }),

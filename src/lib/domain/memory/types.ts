@@ -45,7 +45,9 @@ export type InterventionKind =
   | "DIAGNOSIS"
   | "HINT"
   | "REVIEW"
-  | "EXPLANATION";
+  | "EXPLANATION"
+  | "PRACTICE"
+  | "BRAIN_DECISION";
 
 export interface InterventionRecord {
   id: string;
@@ -172,6 +174,23 @@ export interface StudentMemory {
     knowledgePointId: string,
     quality: number,
   ): Promise<ReviewResult>;
+
+  /**
+   * Record a PRACTICE attempt (Sprint 13).
+   *
+   * Increments totalAttempts (and correctAttempts if the answer was correct)
+   * with a single optimistic-lock retry. Logs an InterventionHistory entry
+   * of type PRACTICE. Does NOT touch SM-2 review schedule (PRACTICE is not
+   * a scheduled review).
+   *
+   * Ensures MasteryState exists before incrementing.
+   */
+  recordPracticeAttempt(
+    studentId: string,
+    knowledgePointId: string,
+    isCorrect: boolean,
+    metadata?: Record<string, unknown>,
+  ): Promise<MasteryStateView>;
 
   // ── Intervention History (append-only) ──
   logIntervention(

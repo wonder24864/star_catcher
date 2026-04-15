@@ -1,0 +1,23 @@
+{
+  "name": "generate_explanation_card",
+  "description": "Generate a level-appropriate explanation card for a question the student got wrong. Output format (static / interactive / conversational) is auto-selected by grade and the structure of the error unless explicitly specified.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "errorQuestionId": {
+        "type": "string",
+        "description": "The ErrorQuestion ID to explain."
+      },
+      "knowledgePointId": {
+        "type": "string",
+        "description": "Knowledge point ID — used to look up the KP name for context."
+      },
+      "format": {
+        "type": "string",
+        "enum": ["auto", "static", "interactive", "conversational"],
+        "description": "Output format. Default \"auto\" lets the AI choose by grade/error pattern."
+      }
+    },
+    "required": ["errorQuestionId", "knowledgePointId"]
+  }
+}

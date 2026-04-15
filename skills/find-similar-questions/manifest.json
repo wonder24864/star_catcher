@@ -1,0 +1,8 @@
+{
+  "name": "find-similar-questions",
+  "version": "1.0.0",
+  "description": "Retrieve similar error questions via dual-path search (knowledge-point dimension + pgvector cosine similarity). Pure orchestration — delegates to findSimilarQuestions domain function via ctx.query.",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 10000
+}

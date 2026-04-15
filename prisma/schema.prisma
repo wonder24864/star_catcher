@@ -287,6 +287,7 @@ model ErrorQuestion {
   totalAttempts     Int          @default(1)
   correctAttempts   Int          @default(0)
   isMastered        Boolean      @default(false)
+  embedding         Unsupported("vector(1536)")? // Sprint 13: pgvector for similar-question search
   deletedAt         DateTime?    @db.Timestamptz // Soft delete
   createdAt         DateTime     @default(now()) @db.Timestamptz
   updatedAt         DateTime     @updatedAt @db.Timestamptz

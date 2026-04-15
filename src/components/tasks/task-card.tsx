@@ -29,15 +29,39 @@ interface TaskCardProps {
     knowledgePoint: { id: string; name: string; subject: string };
     question: { id: string; content: string } | null;
   };
+  /** REVIEW: directly mark complete. */
   onComplete: (taskId: string) => void;
+  /** PRACTICE: open practice dialog. */
+  onStartPractice: (taskId: string) => void;
+  /** EXPLANATION: open explanation dialog. */
+  onOpenExplanation: (taskId: string) => void;
   readOnly: boolean;
   completing: boolean;
 }
 
-export function TaskCard({ task, onComplete, readOnly, completing }: TaskCardProps) {
+export function TaskCard({
+  task,
+  onComplete,
+  onStartPractice,
+  onOpenExplanation,
+  readOnly,
+  completing,
+}: TaskCardProps) {
   const t = useTranslations("tasks");
   const isCompleted = task.status === "COMPLETED";
   const style = TYPE_STYLES[task.type] ?? TYPE_STYLES.REVIEW;
+
+  function actionLabel() {
+    if (task.type === "PRACTICE") return t("startPractice");
+    if (task.type === "EXPLANATION") return t("viewExplanation");
+    return t("markComplete");
+  }
+
+  function handleAction() {
+    if (task.type === "PRACTICE") onStartPractice(task.id);
+    else if (task.type === "EXPLANATION") onOpenExplanation(task.id);
+    else onComplete(task.id);
+  }
 
   return (
     <Card className={`${style.border} ${isCompleted ? "opacity-60" : ""}`}>
@@ -74,10 +98,10 @@ export function TaskCard({ task, onComplete, readOnly, completing }: TaskCardPro
             <Button
               size="sm"
               variant="outline"
-              onClick={() => onComplete(task.id)}
+              onClick={handleAction}
               disabled={completing}
             >
-              {t("markComplete")}
+              {actionLabel()}
             </Button>
           )}
         </div>

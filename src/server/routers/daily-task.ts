@@ -2,20 +2,30 @@
  * Daily Task tRPC Router.
  *
  * Provides today's task pack for students and read access for parents/admins.
- * - STUDENT: read own tasks, mark complete
+ * - STUDENT: read own tasks, mark complete, start tasks, submit practice answers
  * - PARENT: read child's tasks via family relation
  * - ADMIN: read any student's tasks
  *
  * See: docs/user-stories/intervention-daily-tasks.md (US-050)
+ *      docs/user-stories/similar-questions-explanation.md (US-051, US-052)
  */
 import { TRPCError } from "@trpc/server";
+import type { PrismaClient } from "@prisma/client";
 import { router, protectedProcedure } from "../trpc";
 import { resolveStudentId } from "./shared/resolve-student-id";
 import {
   todayTasksSchema,
   completeTaskSchema,
   taskHistorySchema,
+  startTaskSchema,
+  submitPracticeAnswerSchema,
 } from "@/lib/domain/validations/daily-task";
+import { findSimilarQuestions } from "@/lib/domain/similar-questions/find";
+import { generateExplanation } from "@/lib/domain/ai/operations/generate-explanation";
+import { gradeAnswer } from "@/lib/domain/ai/operations/grade-answer";
+import { completeDailyTaskInTx } from "@/lib/domain/daily-task/complete";
+import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
+import type { ExplanationCard } from "@/lib/domain/ai/harness/schemas/generate-explanation";
 
 // ─── Router ─────────────────────────────────────
 
@@ -60,7 +70,267 @@ export const dailyTaskRouter = router({
     }),
 
   /**
-   * Mark a task as completed. Student only, owner-check.
+   * Open a task and load its runtime payload.
+   *
+   * - REVIEW       → returns {task, originalQuestion}
+   * - PRACTICE     → returns {task, originalQuestion, similarQuestions}
+   * - EXPLANATION  → returns {task, explanationCard}, lazy-cached into
+   *                  task.content.explanationCard so subsequent calls skip AI.
+   *
+   * RBAC: STUDENT (owner only), PARENT (linked child), ADMIN (any).
+   */
+  startTask: protectedProcedure
+    .input(startTaskSchema)
+    .mutation(async ({ ctx, input }) => {
+      const task = await ctx.db.dailyTask.findUnique({
+        where: { id: input.taskId },
+        include: {
+          pack: { select: { studentId: true } },
+          knowledgePoint: { select: { id: true, name: true, subject: true } },
+          question: {
+            select: {
+              id: true,
+              content: true,
+              correctAnswer: true,
+              studentAnswer: true,
+              subject: true,
+              grade: true,
+            },
+          },
+        },
+      });
+
+      if (!task) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      // Owner / RBAC check
+      const studentId = await resolveStudentId(
+        ctx.db,
+        ctx.session.userId,
+        ctx.session.role,
+        task.pack.studentId,
+      );
+      if (studentId !== task.pack.studentId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const baseTask = {
+        id: task.id,
+        type: task.type,
+        status: task.status,
+        knowledgePoint: task.knowledgePoint,
+        question: task.question
+          ? { id: task.question.id, content: task.question.content }
+          : null,
+        content: task.content as Record<string, unknown> | null,
+      };
+
+      if (task.type === "REVIEW") {
+        return { task: baseTask, originalQuestion: task.question };
+      }
+
+      if (task.type === "PRACTICE") {
+        if (!task.question) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "PRACTICE task is missing its source question",
+          });
+        }
+        const similar = await findSimilarQuestions(
+          ctx.db as unknown as PrismaClient,
+          {
+            errorQuestionId: task.question.id,
+            knowledgePointId: task.knowledgePointId,
+            limit: 5,
+          },
+        );
+        return {
+          task: baseTask,
+          originalQuestion: task.question,
+          similarQuestions: similar,
+        };
+      }
+
+      if (task.type === "EXPLANATION") {
+        // Lazy cache check
+        const existingContent = (task.content as Record<string, unknown> | null) ?? {};
+        const cached = existingContent.explanationCard as
+          | ExplanationCard
+          | undefined;
+        if (cached && cached.format && cached.steps?.length) {
+          return { task: baseTask, explanationCard: cached };
+        }
+
+        if (!task.question) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "EXPLANATION task is missing its source question",
+          });
+        }
+
+        const result = await generateExplanation({
+          questionContent: task.question.content,
+          correctAnswer: task.question.correctAnswer,
+          studentAnswer: task.question.studentAnswer,
+          kpName: task.knowledgePoint.name,
+          subject: task.question.subject ?? undefined,
+          grade: task.question.grade ?? undefined,
+          format: "auto",
+          locale: ctx.session.locale,
+          context: {
+            userId: ctx.session.userId,
+            locale: ctx.session.locale,
+            grade: task.question.grade ?? undefined,
+            correlationId: `start-task-${input.taskId}`,
+          },
+        });
+
+        if (!result.success || !result.data) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: result.error?.message ?? "Failed to generate explanation",
+          });
+        }
+
+        // Lazy cache into DailyTask.content
+        const newContent = {
+          ...existingContent,
+          explanationCard: result.data,
+        };
+        await ctx.db.dailyTask.update({
+          where: { id: input.taskId },
+          data: { content: newContent as never },
+        });
+
+        return { task: baseTask, explanationCard: result.data };
+      }
+
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Unknown task type: ${task.type as string}`,
+      });
+    }),
+
+  /**
+   * Submit an answer to a similar (PRACTICE) question.
+   *
+   * - AI grades the answer (GRADE_ANSWER operation)
+   * - MasteryState attempt counters incremented (StudentMemory.recordPracticeAttempt)
+   * - DailyTask marked COMPLETED via shared transactional helper
+   *
+   * Note: regardless of correctness, the task is considered done — one
+   * practice attempt fulfills the task. Mastery progression is captured in
+   * the attempt counters and InterventionHistory.
+   */
+  submitPracticeAnswer: protectedProcedure
+    .input(submitPracticeAnswerSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.role !== "STUDENT") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const studentId = ctx.session.userId;
+
+      const task = await ctx.db.dailyTask.findUnique({
+        where: { id: input.taskId },
+        include: {
+          pack: { select: { studentId: true } },
+          question: { select: { id: true } },
+        },
+      });
+
+      if (!task) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+      if (task.pack.studentId !== studentId) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      if (task.type !== "PRACTICE") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "submitPracticeAnswer is only valid for PRACTICE tasks",
+        });
+      }
+      if (!task.question) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "PRACTICE task is missing its source question",
+        });
+      }
+
+      // Validate selectedQuestionId is a legitimate similar question for this task
+      const candidates = await findSimilarQuestions(
+        ctx.db as unknown as PrismaClient,
+        {
+          errorQuestionId: task.question.id,
+          knowledgePointId: task.knowledgePointId,
+          limit: 5,
+        },
+      );
+      const selected = candidates.find((c) => c.id === input.selectedQuestionId);
+      if (!selected) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Selected question is not a similar-question candidate for this task",
+        });
+      }
+
+      // Need subject/grade for the AI grader
+      const selectedFull = await ctx.db.errorQuestion.findUnique({
+        where: { id: input.selectedQuestionId },
+        select: { subject: true, grade: true },
+      });
+
+      const grading = await gradeAnswer({
+        questionContent: selected.content,
+        studentAnswer: input.studentAnswer,
+        correctAnswer: selected.correctAnswer ?? null,
+        subject: selectedFull?.subject ?? undefined,
+        grade: selectedFull?.grade ?? undefined,
+        context: {
+          userId: studentId,
+          locale: ctx.session.locale,
+          grade: selectedFull?.grade ?? undefined,
+          correlationId: `practice-${input.taskId}`,
+        },
+      });
+
+      const isCorrect = grading.success ? grading.data?.isCorrect ?? false : false;
+      const needsReview = !grading.success;
+
+      // Update MasteryState via Memory layer (Rule 6 / 9)
+      const memory = new StudentMemoryImpl(ctx.db as unknown as PrismaClient);
+      const masteryAfter = await memory.recordPracticeAttempt(
+        studentId,
+        task.knowledgePointId,
+        isCorrect,
+        {
+          dailyTaskId: input.taskId,
+          selectedQuestionId: input.selectedQuestionId,
+          aiGraded: grading.success,
+        },
+      );
+
+      // Complete the DailyTask + bump pack
+      const completeResult = await ctx.db.$transaction((tx) =>
+        completeDailyTaskInTx(tx, {
+          taskId: input.taskId,
+          expectedStudentId: studentId,
+        }),
+      );
+
+      return {
+        correct: isCorrect,
+        needsReview,
+        correctAnswer: selected.correctAnswer,
+        masteryStatus: masteryAfter.status,
+        alreadyCompleted: completeResult.alreadyCompleted,
+        allDone: completeResult.allDone,
+      };
+    }),
+
+  /**
+   * Mark a task as completed (REVIEW / EXPLANATION manual flow).
    * Optimistic lock: task must be PENDING to complete.
    * Auto-completes pack when all tasks done.
    */
@@ -70,67 +340,23 @@ export const dailyTaskRouter = router({
       if (ctx.session.role !== "STUDENT") {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      const studentId = ctx.session.userId;
 
-      // Fetch task with pack to verify ownership
-      const task = await ctx.db.dailyTask.findUnique({
-        where: { id: input.taskId },
-        include: {
-          pack: { select: { id: true, studentId: true, totalTasks: true, completedTasks: true } },
-        },
-      });
+      const result = await ctx.db.$transaction((tx) =>
+        completeDailyTaskInTx(tx, { taskId: input.taskId, expectedStudentId: studentId }),
+      );
 
-      if (!task) {
+      if (result.notFound) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
-
-      // Owner check
-      if (task.pack.studentId !== ctx.session.userId) {
+      if (result.ownerMismatch) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      // Optimistic lock: must be PENDING
-      if (task.status !== "PENDING") {
-        return { alreadyCompleted: true };
-      }
-
-      const now = new Date();
-
-      // Use interactive transaction with conditional update to avoid
-      // double-increment when two requests race on the same task.
-      const result = await ctx.db.$transaction(async (tx) => {
-        const updated = await tx.dailyTask.updateMany({
-          where: { id: input.taskId, status: "PENDING" },
-          data: { status: "COMPLETED", completedAt: now },
-        });
-
-        // Another request already completed this task
-        if (updated.count === 0) {
-          return { alreadyCompleted: true, allDone: false };
-        }
-
-        const updatedPack = await tx.dailyTaskPack.update({
-          where: { id: task.pack.id },
-          data: { completedTasks: { increment: 1 } },
-          select: { completedTasks: true, totalTasks: true },
-        });
-
-        const allDone = updatedPack.completedTasks >= updatedPack.totalTasks;
-        if (allDone) {
-          await tx.dailyTaskPack.update({
-            where: { id: task.pack.id },
-            data: { status: "COMPLETED" },
-          });
-        } else {
-          await tx.dailyTaskPack.update({
-            where: { id: task.pack.id },
-            data: { status: "IN_PROGRESS" },
-          });
-        }
-
-        return { alreadyCompleted: false, allDone };
-      });
-
-      return result;
+      return {
+        alreadyCompleted: result.alreadyCompleted,
+        allDone: result.allDone,
+      };
     }),
 
   /**

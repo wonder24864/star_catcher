@@ -123,7 +123,7 @@ star_catcher/
 │   └── sprints/               # Sprint 计划（Phase 2: 1~9, Phase 3: 10a~16 DRAFT）
 │
 │── Skill 插件 ────────────────────────────────────────────
-├── skills/                    # Skill 插件源码 + 编译产物（11 个内置 Skill）
+├── skills/                    # Skill 插件源码 + 编译产物（14 个内置 Skill）
 │   ├── echo/                      # Echo Skill（IPC 流程测试用）
 │   ├── harness-call/              # AI 调用 Skill（IPC→Harness 链路测试用）
 │   ├── recognize-homework/        # OCR 识别 Skill（拍照 → 结构化题目）
@@ -134,7 +134,10 @@ star_catcher/
 │   ├── search-knowledge-points/   # 知识点搜索 Skill（纯 DB 查询，IPC query）
 │   ├── classify-question-knowledge/ # 题目知识点分类 Skill（AI 置信度评分）
 │   ├── diagnose-error/            # 错误诊断 Skill（错误模式分析 + 薄弱诊断）
-│   └── weakness-profile/         # 薄弱分析 Skill（MasteryState 聚合 → severity/trend）
+│   ├── weakness-profile/          # 薄弱分析 Skill（MasteryState 聚合 → severity/trend）
+│   ├── generate-daily-tasks/      # 干预规划 Skill（薄弱数据 → 每日任务计划）
+│   ├── find-similar-questions/    # 类似题检索 Skill（KP + pgvector 双路，纯 IPC 编排）
+│   └── generate-explanation-card/ # 讲解卡 Skill（三格式 AI 生成：static/interactive/conversational）
 │
 │── 源码 ──────────────────────────────────────────────────
 └── src/
@@ -172,7 +175,7 @@ star_catcher/
     │   ├── homework/              # 拍照 / 照片网格
     │   ├── dashboard/             # 首页组件（今日复习 Widget）
     │   ├── mastery/               # 掌握地图组件（复习对话框）
-    │   ├── tasks/                 # 今日任务组件（TaskCard 卡片）
+    │   ├── tasks/                 # 今日任务组件（TaskCard + PracticeDialog + ExplanationDialog + ExplanationCard 三格式）
     │   ├── nav/                   # 侧边栏 / 底部导航 / 学生切换
     │   ├── providers/             # Session / Theme Provider
     │   └── ui/                    # shadcn/ui 基础组件
@@ -226,6 +229,8 @@ star_catcher/
     │   │   │   │   ├── question-understanding.ts  # 题目理解 Agent
     │   │   │   │   ├── diagnosis.ts               # 诊断 Agent
     │   │   │   │   └── intervention-planning.ts   # 干预规划 Agent
+    │   │   ├── similar-questions/ # 类似题检索（KP + pgvector 双路纯函数）
+    │   │   ├── daily-task/        # DailyTask 完成事务 helper（router + practice 共用）
     │   │   │   └── index.ts           # 公共导出
     │   │   ├── brain/             # Learning Brain 编排器（Phase 3）
     │   │   │   ├── learning-brain.ts  # 确定性决策逻辑（不调 AI）
@@ -262,7 +267,7 @@ star_catcher/
     │   ├── index.ts               # 入口（Handler Registry + Schedule Registry）
     │   ├── handler-registry.ts    # AIJobName → Handler 注册表（Rule 9）
     │   ├── schedule-registry.ts   # 声明式定时任务注册（Rule 9）
-    │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成 / 题目理解 / 诊断 / Learning Brain / 干预规划
+    │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成 / 题目理解 / 诊断 / Learning Brain / 干预规划 / Embedding 生成
     │
     ├── cli/                   # ── CLI 工具 ──
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）
@@ -279,6 +284,10 @@ star_catcher/
     │   └── helpers/               # 测试辅助（mock-db/storage/auth/ai）
     │
     └── types/                 # TypeScript 类型声明
+│
+│── 运维脚本 ────────────────────────────────────────────
+└── scripts/
+    └── backfill-embeddings.ts # ErrorQuestion embedding 回填脚本（Sprint 13）
 ```
 
 ## 分阶段路线图

@@ -341,6 +341,79 @@ export class StudentMemoryImpl implements StudentMemory {
     return this.toInterventionRecord(row);
   }
 
+  async recordPracticeAttempt(
+    studentId: string,
+    knowledgePointId: string,
+    isCorrect: boolean,
+    metadata?: Record<string, unknown>,
+  ): Promise<MasteryStateView> {
+    // Ensure MasteryState exists (creates with NEW_ERROR + totalAttempts=1
+    // if missing). For a NEW path, this single create already counts the
+    // current attempt — don't double-increment in that case.
+    const before = await this.db.masteryState.findUnique({
+      where: { studentId_knowledgePointId: { studentId, knowledgePointId } },
+    });
+
+    if (!before) {
+      // Brand-new state: create with this attempt counted.
+      const created = await this.db.masteryState.create({
+        data: {
+          studentId,
+          knowledgePointId,
+          status: isCorrect ? "CORRECTED" : "NEW_ERROR",
+          totalAttempts: 1,
+          correctAttempts: isCorrect ? 1 : 0,
+          lastAttemptAt: new Date(),
+        },
+      });
+      await this.logIntervention(studentId, knowledgePointId, "PRACTICE", {
+        isCorrect,
+        ...(metadata ?? {}),
+      });
+      return this.toMasteryView(created);
+    }
+
+    // Existing state: increment counters with optimistic lock + single retry.
+    const now = new Date();
+    let updated = await this.db.masteryState.updateMany({
+      where: { id: before.id, version: before.version },
+      data: {
+        totalAttempts: { increment: 1 },
+        ...(isCorrect ? { correctAttempts: { increment: 1 } } : {}),
+        lastAttemptAt: now,
+        version: { increment: 1 },
+      },
+    });
+
+    if (updated.count === 0) {
+      // Retry once: re-read version
+      const retry = await this.db.masteryState.findUnique({
+        where: { id: before.id },
+      });
+      if (retry) {
+        updated = await this.db.masteryState.updateMany({
+          where: { id: retry.id, version: retry.version },
+          data: {
+            totalAttempts: { increment: 1 },
+            ...(isCorrect ? { correctAttempts: { increment: 1 } } : {}),
+            lastAttemptAt: now,
+            version: { increment: 1 },
+          },
+        });
+      }
+    }
+
+    await this.logIntervention(studentId, knowledgePointId, "PRACTICE", {
+      isCorrect,
+      ...(metadata ?? {}),
+    });
+
+    const result = await this.db.masteryState.findUnique({
+      where: { id: before.id },
+    });
+    return this.toMasteryView(result!);
+  }
+
   async getInterventionHistory(
     studentId: string,
     knowledgePointId: string,

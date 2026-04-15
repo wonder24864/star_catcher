@@ -7,6 +7,8 @@ import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
 import { Card, CardContent } from "@/components/ui/card";
 import { TaskCard } from "@/components/tasks/task-card";
+import { PracticeDialog } from "@/components/tasks/practice-dialog";
+import { ExplanationDialog } from "@/components/tasks/explanation-dialog";
 
 export default function TasksPage() {
   const t = useTranslations();
@@ -14,6 +16,8 @@ export default function TasksPage() {
   const role = session?.user?.role;
   const { selectedStudentId } = useStudentStore();
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [practiceTaskId, setPracticeTaskId] = useState<string | null>(null);
+  const [explanationTaskId, setExplanationTaskId] = useState<string | null>(null);
 
   const isParent = role === "PARENT";
   const studentId = isParent ? selectedStudentId ?? undefined : undefined;
@@ -105,6 +109,8 @@ export default function TasksPage() {
                 question: task.question,
               }}
               onComplete={handleComplete}
+              onStartPractice={(id) => setPracticeTaskId(id)}
+              onOpenExplanation={(id) => setExplanationTaskId(id)}
               readOnly={isParent}
               completing={completingId === task.id}
             />
@@ -124,6 +130,26 @@ export default function TasksPage() {
           </Card>
         )
       )}
+
+      {/* Practice flow dialog */}
+      <PracticeDialog
+        taskId={practiceTaskId}
+        onClose={() => setPracticeTaskId(null)}
+        onCompleted={() => {
+          setPracticeTaskId(null);
+          refetch();
+        }}
+      />
+
+      {/* Explanation dialog */}
+      <ExplanationDialog
+        taskId={explanationTaskId}
+        onClose={() => setExplanationTaskId(null)}
+        onCompleted={() => {
+          setExplanationTaskId(null);
+          refetch();
+        }}
+      />
     </div>
   );
 }

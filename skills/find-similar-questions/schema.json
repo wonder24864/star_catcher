@@ -1,0 +1,24 @@
+{
+  "name": "find_similar_questions",
+  "description": "Retrieve up to `limit` error questions similar to a given target, using both knowledge-point filtering and pgvector cosine similarity on question content embeddings. Returns a merged, deduplicated list with KP-matched questions prioritized.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "errorQuestionId": {
+        "type": "string",
+        "description": "The target ErrorQuestion ID used as the query (excluded from results)."
+      },
+      "knowledgePointId": {
+        "type": "string",
+        "description": "Knowledge point ID to filter by for the KP-dimension path."
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum number of similar questions to return (default 5).",
+        "minimum": 1,
+        "maximum": 20
+      }
+    },
+    "required": ["errorQuestionId", "knowledgePointId"]
+  }
+}

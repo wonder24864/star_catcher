@@ -33,6 +33,7 @@ function createMockMemory(
     getNextReviewDate: vi.fn(),
     scheduleReview: vi.fn(),
     processReviewResult: vi.fn(),
+    recordPracticeAttempt: vi.fn(),
     logIntervention: vi.fn(),
     getInterventionHistory: vi.fn(),
     getWeaknessProfile: vi.fn().mockResolvedValue(null),

@@ -30,6 +30,15 @@ vi.mock("@/lib/domain/ai/operations/classify-question-knowledge", () => ({
 vi.mock("@/lib/domain/ai/operations/diagnose-error", () => ({
   diagnoseError: vi.fn().mockResolvedValue({ success: true, data: { errorPattern: "test" } }),
 }));
+vi.mock("@/lib/domain/ai/operations/intervention-plan", () => ({
+  interventionPlan: vi.fn().mockResolvedValue({ success: true, data: { tasks: [], reasoning: "" } }),
+}));
+vi.mock("@/lib/domain/ai/operations/generate-explanation", () => ({
+  generateExplanation: vi.fn().mockResolvedValue({
+    success: true,
+    data: { format: "static", title: "t", steps: [{ content: "x" }] },
+  }),
+}));
 
 import { callAIOperation } from "@/lib/domain/ai/operations/registry";
 import { recognizeHomework } from "@/lib/domain/ai/operations/recognize-homework";
@@ -39,6 +48,7 @@ import { gradeAnswer } from "@/lib/domain/ai/operations/grade-answer";
 import { extractKnowledgePoints } from "@/lib/domain/ai/operations/extract-knowledge-points";
 import { classifyQuestionKnowledge } from "@/lib/domain/ai/operations/classify-question-knowledge";
 import { diagnoseError } from "@/lib/domain/ai/operations/diagnose-error";
+import { generateExplanation } from "@/lib/domain/ai/operations/generate-explanation";
 
 const ctx = { userId: "u1", locale: "zh-CN", correlationId: "test" };
 
@@ -107,11 +117,38 @@ describe("Operation Registry", () => {
   test.each([
     "WEAKNESS_PROFILE",
     "MASTERY_EVALUATE",
-    "FIND_SIMILAR",
-    "GENERATE_EXPLANATION",
     "EVAL_JUDGE",
   ])("Phase 3 stub %s throws not-yet-implemented", async (op) => {
     await expect(callAIOperation(op, {}, ctx)).rejects.toThrow("not yet implemented");
+  });
+
+  test("routes GENERATE_EXPLANATION (Sprint 13)", async () => {
+    const data = {
+      questionContent: "1+1?",
+      correctAnswer: "2",
+      studentAnswer: "3",
+      kpName: "Addition",
+      grade: "K2",
+    };
+    const result = await callAIOperation("GENERATE_EXPLANATION", data, ctx);
+    expect(result.success).toBe(true);
+    expect(generateExplanation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        questionContent: "1+1?",
+        kpName: "Addition",
+        format: undefined,
+        context: ctx,
+      }),
+    );
+  });
+
+  test("Sprint 13: FIND_SIMILAR is intentionally not an AI operation", async () => {
+    // Sprint 13 D-1: similar-question retrieval is a deterministic dual-path
+    // query (KP + pgvector). The registry entry remains as a guardrail to
+    // direct callers to findSimilarQuestions() / find-similar-questions Skill.
+    await expect(callAIOperation("FIND_SIMILAR", {}, ctx)).rejects.toThrow(
+      "not an AI operation",
+    );
   });
 
   test("throws on unknown operation", async () => {

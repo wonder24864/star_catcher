@@ -1,0 +1,8 @@
+{
+  "name": "generate-explanation-card",
+  "version": "1.0.0",
+  "description": "Generate a structured ExplanationCard (static / interactive / conversational) for an error question via AI. Format auto-selected by grade and error type.",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 30000
+}

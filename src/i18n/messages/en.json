@@ -550,7 +550,51 @@
       "EXPLANATION": "Read this explanation"
     },
     "history": "Task History",
-    "historyEmpty": "No task history yet"
+    "historyEmpty": "No task history yet",
+    "startPractice": "Start Practice",
+    "viewExplanation": "View Explanation",
+    "practice": {
+      "title": "Practice Time",
+      "loading": "Loading similar questions…",
+      "loadError": "Failed to load — please close and retry",
+      "originalLabel": "Original error question",
+      "pickSimilar": "Pick a similar question to practice:",
+      "noSimilar": "No similar questions available",
+      "yourAnswerLabel": "Your answer",
+      "answerPlaceholder": "Write your solution here…",
+      "cancel": "Cancel",
+      "submit": "Submit for Grading",
+      "submitting": "Grading…",
+      "correctTitle": "✓ Correct!",
+      "incorrectTitle": "✗ Not quite — that's okay!",
+      "correctAnswerLabel": "Correct answer",
+      "aiUnavailable": "AI grading unavailable; your attempt was recorded.",
+      "done": "Done",
+      "source": {
+        "KP": "Same Topic",
+        "EMBEDDING": "Similar Content"
+      }
+    },
+    "explanation": {
+      "title": "Explanation Card",
+      "generating": "Generating your explanation…",
+      "loadError": "Failed to generate — please retry later"
+    }
+  },
+  "explanationCard": {
+    "done": "I understand",
+    "next": "Next",
+    "nextTurn": "Continue",
+    "stepLabel": "Step {n}",
+    "yourAnswer": "Your answer",
+    "check": "Check",
+    "correct": "✓ Correct",
+    "tryAgain": "Try again",
+    "formats": {
+      "static": "Walkthrough",
+      "interactive": "Interactive",
+      "conversational": "Conversation"
+    }
   },
   "report": {
     "title": "Learning Report",

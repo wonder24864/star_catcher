@@ -18,6 +18,7 @@ import type {
   WeaknessProfileJobData,
   InterventionPlanningJobData,
   MasteryEvaluationJobData,
+  EmbeddingGenerateJobData,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -195,6 +196,22 @@ export async function enqueueMasteryEvaluation(
   const job = await getQueue().add("mastery-evaluation", data, {
     attempts: 2,
     backoff: { type: "exponential", delay: 2000 },
+    removeOnComplete: 100,
+    removeOnFail: 200,
+  });
+  return job.id!;
+}
+
+/**
+ * Enqueue ErrorQuestion embedding generation job.
+ * Timeout: 30s (single embed call), Retries: 2 (Sprint 13).
+ */
+export async function enqueueEmbeddingGenerate(
+  data: EmbeddingGenerateJobData,
+): Promise<string> {
+  const job = await getQueue().add("embedding-generate", data, {
+    attempts: 2,
+    backoff: { type: "exponential", delay: 5000 },
     removeOnComplete: 100,
     removeOnFail: 200,
   });

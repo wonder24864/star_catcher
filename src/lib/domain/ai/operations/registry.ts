@@ -20,6 +20,8 @@ import { extractKnowledgePoints } from "./extract-knowledge-points";
 import { classifyQuestionKnowledge } from "./classify-question-knowledge";
 import { diagnoseError } from "./diagnose-error";
 import { interventionPlan } from "./intervention-plan";
+import { generateExplanation } from "./generate-explanation";
+import type { ExplanationFormat } from "../harness/schemas/generate-explanation";
 
 /**
  * Each operation adapter normalizes the generic `data` bag into
@@ -137,12 +139,28 @@ const OPERATION_REGISTRY: Record<AIOperationType, OperationAdapter> = {
   MASTERY_EVALUATE: () => {
     throw new Error("MASTERY_EVALUATE operation not yet implemented");
   },
+  // FIND_SIMILAR is intentionally NOT implemented as an AI operation.
+  // Similar-question retrieval is a deterministic dual-path query (KP + pgvector cosine).
+  // Use the `findSimilarQuestions` domain function in src/lib/domain/similar-questions/find.ts
+  // (or invoke the find-similar-questions Skill which delegates to that function via ctx.query).
   FIND_SIMILAR: () => {
-    throw new Error("FIND_SIMILAR operation not yet implemented");
+    throw new Error(
+      "FIND_SIMILAR is not an AI operation — call findSimilarQuestions() domain function or invoke the find-similar-questions Skill",
+    );
   },
-  GENERATE_EXPLANATION: () => {
-    throw new Error("GENERATE_EXPLANATION operation not yet implemented");
-  },
+
+  GENERATE_EXPLANATION: (data, context) =>
+    generateExplanation({
+      questionContent: data.questionContent as string,
+      correctAnswer: data.correctAnswer as string | null | undefined,
+      studentAnswer: data.studentAnswer as string | null | undefined,
+      kpName: data.kpName as string,
+      subject: data.subject as string | undefined,
+      grade: data.grade as string | undefined,
+      format: data.format as ExplanationFormat | "auto" | undefined,
+      locale: data.locale as string | undefined,
+      context,
+    }),
   EVAL_JUDGE: () => {
     throw new Error("EVAL_JUDGE operation not yet implemented");
   },

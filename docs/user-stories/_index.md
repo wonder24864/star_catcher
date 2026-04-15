@@ -52,3 +52,7 @@
 | US-046 | Learning Brain 事件调度 | [learning-brain.md](learning-brain.md) | Sprint 10b |
 | US-047 | 三层薄弱分析 | [weakness-analysis.md](weakness-analysis.md) | Sprint 11 |
 | US-048 | 年级过渡策略 | [weakness-analysis.md](weakness-analysis.md) | Sprint 11 |
+| US-049 | Intervention Planning Agent | [intervention-daily-tasks.md](intervention-daily-tasks.md) | Sprint 12 |
+| US-050 | 今日任务包 | [intervention-daily-tasks.md](intervention-daily-tasks.md) | Sprint 12 |
+| US-051 | 类似题检索 | [similar-questions-explanation.md](similar-questions-explanation.md) | Sprint 13 |
+| US-052 | 讲解卡三格式 | [similar-questions-explanation.md](similar-questions-explanation.md) | Sprint 13 |

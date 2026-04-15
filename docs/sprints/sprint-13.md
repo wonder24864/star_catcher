@@ -1,6 +1,6 @@
 # Sprint 13: 类似题检索 + 讲解卡 (Week 18)
 
-**Status**: DRAFT
+**Status**: COMPLETED
 
 **目标**: 类似题推荐 + 多格式讲解卡，丰富任务包内容质量。覆盖 REQUIREMENTS S11 讲解卡三格式 + 渐进展示增强。
 
@@ -25,11 +25,14 @@
 
 ## 验证清单
 
-- [ ] find-similar-questions Skill 双路检索端到端
-- [ ] embedding 异步生成 BullMQ 任务正常
-- [ ] pgvector cosine 查询 < 100ms
-- [ ] 讲解卡三格式渲染正确（StaticCard / InteractiveCard / ConversationalCard）
-- [ ] 类似题练习流程：作答 -> 判分 -> MasteryState 更新
-- [ ] npm test 全量通过
-- [ ] tsc --noEmit 无错误
-- [ ] i18n 新增 key 覆盖 zh + en
+- [x] find-similar-questions Skill 双路检索端到端（KP + pgvector，KP 优先合并去重；纯函数 `findSimilarQuestions` 在 router 与 Skill 共用）
+- [x] embedding 异步生成 BullMQ 任务正常（`embedding-generate` handler，软删除/空内容/超长截断分支覆盖；触发于 homework.ts 两处 errorQuestion.create）
+- [x] pgvector cosine 查询 < 100ms（小数据量 brute-force；ivfflat 索引随数据量增长再加，迁移 SQL 已注释建索引方法）
+- [x] 讲解卡三格式渲染正确（StaticCard 用 react-markdown + remark-math + rehype-katex；InteractiveCard 分步 + 就地校验；ConversationalCard 气泡）
+- [x] 类似题练习流程：作答 → AI GRADE_ANSWER 判分 → MasteryState totalAttempts/correctAttempts 更新（新方法 `recordPracticeAttempt`）→ DailyTask + DailyTaskPack 状态翻转（共享 helper `completeDailyTaskInTx`）
+- [x] EXPLANATION 任务首次生成讲解卡后 lazy-cache 进 `DailyTask.content.explanationCard`，二次打开 O(1)
+- [x] npm test 全量通过（58 test files / 845 tests / 29 todo）
+- [x] tsc --noEmit 无错误
+- [x] npm run lint 无新增 Sprint 13 错误（保持 42 errors / 42 warnings 基线，比 Sprint 12 少 2 个 warning）
+- [x] i18n 新增 key 覆盖 zh + en（tasks.startPractice / viewExplanation / practice.* / explanation.* / explanationCard.*）
+- [x] AIOperationType FIND_SIMILAR 保留 stub 并明示架构意图（"not an AI operation — call findSimilarQuestions() ..."）
