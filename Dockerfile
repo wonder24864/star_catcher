@@ -116,6 +116,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/dist/worker.js ./worker.js
 COPY --from=builder --chown=nextjs:nodejs /app/dist/seed.js ./seed.js
 COPY --from=builder /app/skills ./skills
 
+# EvalFramework datasets + OCR fixture images (Sprint 16)
+# EvalRunner loads these via readFile() at runtime, not bundled by esbuild.
+COPY --from=builder /app/tests/eval ./tests/eval
+
 # Entrypoint
 COPY deploy/scripts/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
