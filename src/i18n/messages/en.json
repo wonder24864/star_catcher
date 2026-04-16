@@ -416,6 +416,16 @@
     "offlineWrite": "Please connect to the internet to perform this action."
   },
   "admin": {
+    "dashboard": {
+      "title": "Admin Dashboard",
+      "totalStudents": "Total Students",
+      "totalParents": "Total Parents",
+      "activeThisWeek": "Active This Week",
+      "totalErrors": "Total Errors",
+      "avgMastery": "Avg Mastery",
+      "recentActivity": "Recent Activity",
+      "systemStatus": "System Status"
+    },
     "users": {
       "title": "User Management",
       "searchPlaceholder": "Search username or nickname...",
@@ -1156,6 +1166,26 @@
           "resultMastered": "Congrats! Knowledge point mastered!"
         }
       }
+    }
+  },
+  "commandPalette": {
+    "placeholder": "Search pages or actions…",
+    "noResults": "No results found",
+    "groups": {
+      "navigation": "Navigation"
+    },
+    "items": {
+      "dashboard": "Dashboard",
+      "users": "User Management",
+      "skills": "Skill Management",
+      "knowledgeGraph": "Knowledge Graph",
+      "brain": "Brain Monitor",
+      "eval": "AI Evaluation",
+      "settings": "System Settings",
+      "overview": "Daily Overview",
+      "stats": "Learning Stats",
+      "reports": "Learning Reports",
+      "suggestions": "Learning Suggestions"
     }
   }
 }

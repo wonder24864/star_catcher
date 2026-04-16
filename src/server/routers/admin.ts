@@ -197,6 +197,63 @@ export const adminRouter = router({
     };
   }),
 
+  /** Dashboard aggregates: stats + weekly active + avg mastery + recent logs */
+  dashboard: adminProcedure.query(async ({ ctx }) => {
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const [
+      usersByRole,
+      totalErrors,
+      weeklyActiveSessions,
+      masteryCounts,
+      recentLogs,
+    ] = await Promise.all([
+      ctx.db.user.groupBy({
+        by: ["role"],
+        where: { deletedAt: null },
+        _count: { id: true },
+      }),
+      ctx.db.errorQuestion.count({ where: { deletedAt: null } }),
+      ctx.db.homeworkSession.count({
+        where: { createdAt: { gte: weekStart } },
+      }),
+      Promise.all([
+        ctx.db.masteryState.count({ where: { archived: false } }),
+        ctx.db.masteryState.count({ where: { archived: false, status: "MASTERED" } }),
+      ]),
+      ctx.db.adminLog.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          action: true,
+          target: true,
+          createdAt: true,
+          admin: { select: { nickname: true } },
+        },
+      }),
+    ]);
+
+    const roleMap: Record<string, number> = {};
+    for (const r of usersByRole) {
+      roleMap[r.role] = r._count.id;
+    }
+
+    return {
+      studentCount: roleMap["STUDENT"] ?? 0,
+      parentCount: roleMap["PARENT"] ?? 0,
+      adminCount: roleMap["ADMIN"] ?? 0,
+      totalErrors,
+      weeklyActiveSessions,
+      avgMastery: masteryCounts[0] > 0
+        ? Math.round((masteryCounts[1] / masteryCounts[0]) * 100)
+        : 0,
+      recentLogs,
+    };
+  }),
+
   /** Get one or more SystemConfig values by key */
   getConfig: adminProcedure
     .input(z.object({ keys: z.array(z.string()).min(1) }))

@@ -4,6 +4,7 @@ import { TierSidebar } from "@/components/nav/tier-sidebar";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { OfflineBanner } from "@/components/offline-banner";
 import { StarField } from "@/components/animation/star-field";
+import { CommandPalette } from "@/components/pro/command-palette";
 
 export default async function DashboardLayout({
   children,
@@ -28,6 +29,8 @@ export default async function DashboardLayout({
       </main>
       {/* Bottom nav: shown on mobile, hidden on md+ */}
       <BottomNav />
+      {/* Cmd+K global search — available on all dashboard pages */}
+      <CommandPalette />
     </div>
   );
 }

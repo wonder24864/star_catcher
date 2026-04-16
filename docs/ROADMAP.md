@@ -195,7 +195,7 @@
 | Sprint | 周期 | 范围 | 状态 |
 |--------|------|------|------|
 | Sprint 23 | Week 28 | MasteryStateHistory + CORRECTED 事件 + 渐进冷却 + 管理员触发 | [x] |
-| Sprint 24 | Week 29 | Pro 组件库 + Dashboard Layout 升级 | [ ] |
+| Sprint 24 | Week 29 | Pro 组件库 + Dashboard Layout 升级 | [x] |
 | Sprint 25 | Week 30 | 家长端 UI 改造 | [ ] |
 | Sprint 26 | Week 31 | 管理端 UI 改造 + Phase 5 验收 | [ ] |
 

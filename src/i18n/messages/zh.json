@@ -416,6 +416,16 @@
     "offlineWrite": "请连接网络后再执行此操作"
   },
   "admin": {
+    "dashboard": {
+      "title": "管理仪表盘",
+      "totalStudents": "学生总数",
+      "totalParents": "家长总数",
+      "activeThisWeek": "本周活跃",
+      "totalErrors": "错题总数",
+      "avgMastery": "平均掌握率",
+      "recentActivity": "最近活动",
+      "systemStatus": "系统状态"
+    },
     "users": {
       "title": "用户管理",
       "searchPlaceholder": "搜索用户名或昵称...",
@@ -1156,6 +1166,26 @@
           "resultMastered": "恭喜！知识点已掌握！"
         }
       }
+    }
+  },
+  "commandPalette": {
+    "placeholder": "搜索页面或操作…",
+    "noResults": "未找到结果",
+    "groups": {
+      "navigation": "页面导航"
+    },
+    "items": {
+      "dashboard": "仪表盘",
+      "users": "用户管理",
+      "skills": "技能管理",
+      "knowledgeGraph": "知识图谱",
+      "brain": "Brain 监控",
+      "eval": "AI 评估",
+      "settings": "系统设置",
+      "overview": "今日概览",
+      "stats": "学习统计",
+      "reports": "学习报告",
+      "suggestions": "学习建议"
     }
   }
 }
