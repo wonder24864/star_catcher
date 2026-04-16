@@ -1,9 +1,13 @@
 "use client";
 
 /**
- * Bottom tab bar — shown on mobile (< md), hidden on desktop.
+ * Bottom tab bar — tier-adaptive visibility + styling.
  *
- * Tier-adaptive:
+ * Visibility (D44):
+ * - wonder / cosmic (P1-6): always visible (no sidebar → sole navigation)
+ * - flow / studio: mobile only (md:hidden — sidebar replaces on desktop)
+ *
+ * Styling:
  * - wonder (P1-3): 3 tabs, large icons (56px), no labels
  * - cosmic (P4-6): 4 tabs, medium icons (44px), labels, active glow
  * - flow / studio: all role-appropriate tabs, standard sizing
