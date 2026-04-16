@@ -103,7 +103,8 @@
     "noData": "暂无数据",
     "success": "操作成功",
     "prev": "上一步",
-    "switchLanguage": "English"
+    "switchLanguage": "English",
+    "completed": "完成"
   },
   "error": {
     "required": "此项为必填",
@@ -1003,5 +1004,11 @@
     },
     "ms": "ms",
     "steps": "步"
+  },
+  "tier": {
+    "wonder": "魔法乐园",
+    "cosmic": "宇宙探索者",
+    "flow": "极简流",
+    "studio": "专业工作室"
   }
 }

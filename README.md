@@ -182,13 +182,15 @@ star_catcher/
     │
     ├── components/            # ── UI 组件 ──
     │   ├── agent-summary-card.tsx   # AI 分析摘要卡片（家长/学生简化视图）
+    │   ├── adaptive/              # 年级自适应组件（卡片、进度条）
     │   ├── admin/                 # 管理员专用组件（KG 拖拽编辑器、Jaeger 链接）
+    │   ├── animation/             # 动画组件（页面过渡、Lottie、Three.js 星空、庆祝动画）
     │   ├── homework/              # 拍照 / 照片网格
     │   ├── dashboard/             # 首页组件（今日复习 Widget）
     │   ├── mastery/               # 掌握地图组件（复习对话框）
     │   ├── tasks/                 # 今日任务组件（TaskCard + PracticeDialog + ExplanationDialog + ExplanationCard 三格式）
-    │   ├── nav/                   # 侧边栏 / 底部导航 / 学生切换
-    │   ├── providers/             # Session / Theme Provider
+    │   ├── nav/                   # 侧边栏 / 底部导航（年级自适应）/ 学生切换
+    │   ├── providers/             # Session / GradeTier Provider（4 级年级自适应）
     │   └── ui/                    # shadcn/ui 基础组件
     │
     ├── hooks/                 # ── React Hooks ──

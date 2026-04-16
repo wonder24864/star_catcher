@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { locales } from "@/i18n/config";
 import { TRPCProvider } from "@/lib/trpc/provider";
 import { SessionProvider } from "@/components/providers/session-provider";
-import { ThemeProvider } from "@/components/providers/theme-provider";
+import { GradeTierProvider } from "@/components/providers/grade-tier-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 export default async function LocaleLayout({
@@ -22,12 +22,12 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <SessionProvider>
-        <ThemeProvider>
+        <GradeTierProvider>
           <TRPCProvider>
             {children}
             <Toaster />
           </TRPCProvider>
-        </ThemeProvider>
+        </GradeTierProvider>
       </SessionProvider>
     </NextIntlClientProvider>
   );

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/nav/sidebar";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { OfflineBanner } from "@/components/offline-banner";
+import { StarField } from "@/components/animation/star-field";
 
 export default async function DashboardLayout({
   children,
@@ -17,6 +18,8 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-screen">
       <OfflineBanner />
+      {/* Three.js star field — only renders for cosmic tier (P4-6) */}
+      <StarField />
       {/* Sidebar: hidden on mobile, shown on md+ */}
       <div className="hidden md:flex">
         <Sidebar />

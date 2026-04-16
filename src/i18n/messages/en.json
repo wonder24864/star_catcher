@@ -103,7 +103,8 @@
     "noData": "No data",
     "success": "Success",
     "prev": "Previous",
-    "switchLanguage": "中文"
+    "switchLanguage": "中文",
+    "completed": "Completed"
   },
   "error": {
     "required": "This field is required",
@@ -1003,5 +1004,11 @@
     },
     "ms": "ms",
     "steps": "steps"
+  },
+  "tier": {
+    "wonder": "Magic Wonderland",
+    "cosmic": "Cosmic Explorer",
+    "flow": "Minimal Flow",
+    "studio": "Studio Pro"
   }
 }

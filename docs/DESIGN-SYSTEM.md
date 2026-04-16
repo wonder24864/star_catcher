@@ -2,11 +2,19 @@
 
 ## 1. 设计理念
 
-采用**分年龄段主题**策略：小学用活泼卡通风、初中过渡、高中用简洁专业风。通过 CSS 变量和 Tailwind `data-theme` 属性实现，根据当前学生的年级自动应用对应主题。家长端和管理端始终使用专业主题。
+采用**4 级年级自适应**策略（ADR-012）。通过 CSS 变量（视觉层）和 GradeTierProvider React Context（结构层）实现，根据学生年级自动应用对应 tier。家长端和管理端始终使用 Studio Pro 主题。
+
+**4 Tier 映射**：
+| Tier | 年级 | data-theme | 风格 |
+|------|------|-----------|------|
+| 1 Wonder | PRIMARY_1~3 | wonder | 魔法乐园 — 温暖、圆润、弹性动画 |
+| 2 Cosmic | PRIMARY_4~6 | cosmic | 宇宙探索者 — 深色、科技感、Three.js 星空 |
+| 3 Flow | JUNIOR_1~3 | flow | 极简流 — 干净、毛玻璃、spring 动画 |
+| 4 Studio | SENIOR_1~3 | (default) | 专业工作室 — 数据密度优先、快速 fade |
 
 ## 2. 主题定义
 
-### Candy（小学 1-6 年级）
+### Wonder（小学 1-3 年级，原 Candy 低年级部分）
 
 | 属性 | 值 |
 |------|---|

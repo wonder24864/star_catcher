@@ -3,11 +3,11 @@
 
 /*
  * Star Catcher Design System — shadcn/ui compatible
- * Three themes: Candy (elementary), Fresh (middle school), Pro (high school/parent/admin)
- * See docs/DESIGN-SYSTEM.md for full spec
+ * Four tiers: Wonder (P1-3), Cosmic (P4-6), Flow (middle school), Studio (high school/parent/admin)
+ * See docs/DESIGN-SYSTEM.md for full spec · ADR-012 for rationale
  */
 
-/* ==================== Theme: Pro (Default) ==================== */
+/* ==================== Tier 4: Studio Pro (Default — high school / parent / admin) ==================== */
 :root {
   --radius: 0.5rem;
   --background: oklch(0.985 0.002 247);
@@ -39,15 +39,15 @@
   --sidebar-accent-foreground: oklch(0.26 0.015 260);
   --sidebar-border: oklch(0.922 0.004 264);
   --sidebar-ring: oklch(0.623 0.17 252);
-  /* Pro theme metrics */
+  /* Studio metrics */
   --font-size-base: 14px;
   --button-min-height: 40px;
   --spacing-unit: 4px;
 }
 
-/* ==================== Theme: Candy (Elementary) ==================== */
-[data-theme="candy"] {
-  --radius: 0.75rem;
+/* ==================== Tier 1: Wonder — Magic Wonderland (P1-3) ==================== */
+[data-theme="wonder"] {
+  --radius: 0.875rem;
   --background: oklch(0.98 0.015 60);
   --foreground: oklch(0.25 0.02 210);
   --card: oklch(1 0 0);
@@ -77,14 +77,56 @@
   --sidebar-accent-foreground: oklch(0.25 0.02 210);
   --sidebar-border: oklch(0.93 0.015 60);
   --sidebar-ring: oklch(0.65 0.2 20);
-  /* Candy theme metrics */
+  /* Wonder metrics — largest touch targets, biggest text */
   --font-size-base: 18px;
-  --button-min-height: 52px;
+  --button-min-height: 56px;
   --spacing-unit: 8px;
 }
 
-/* ==================== Theme: Fresh (Middle School) ==================== */
-[data-theme="fresh"] {
+/* ==================== Tier 2: Cosmic — Cosmic Explorer (P4-6) ==================== */
+[data-theme="cosmic"] {
+  --radius: 0.75rem;
+  /* Dark indigo background for star field visibility */
+  --background: oklch(0.18 0.04 270);
+  --foreground: oklch(0.92 0.01 270);
+  --card: oklch(1 0 0 / 0.92);
+  --card-foreground: oklch(0.18 0.02 270);
+  --popover: oklch(0.22 0.04 270);
+  --popover-foreground: oklch(0.92 0.01 270);
+  /* Electric purple primary */
+  --primary: oklch(0.6 0.22 290);
+  --primary-foreground: oklch(1 0 0);
+  /* Cyan secondary */
+  --secondary: oklch(0.7 0.15 200);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.25 0.03 270);
+  --muted-foreground: oklch(0.65 0.02 270);
+  /* Amber accent */
+  --accent: oklch(0.82 0.14 80);
+  --accent-foreground: oklch(0.18 0.02 270);
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.7 0.15 160);
+  --success-foreground: oklch(1 0 0);
+  --border: oklch(0.35 0.04 270);
+  --input: oklch(0.3 0.04 270);
+  --ring: oklch(0.6 0.22 290);
+  --sidebar-background: oklch(0.15 0.04 270);
+  --sidebar-foreground: oklch(0.92 0.01 270);
+  --sidebar-primary: oklch(0.6 0.22 290);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.25 0.03 270);
+  --sidebar-accent-foreground: oklch(0.92 0.01 270);
+  --sidebar-border: oklch(0.35 0.04 270);
+  --sidebar-ring: oklch(0.6 0.22 290);
+  /* Cosmic metrics */
+  --font-size-base: 16px;
+  --button-min-height: 48px;
+  --spacing-unit: 8px;
+}
+
+/* ==================== Tier 3: Flow — Minimal Flow (Middle School) ==================== */
+[data-theme="flow"] {
   --radius: 0.625rem;
   --background: oklch(0.98 0.003 264);
   --foreground: oklch(0.25 0.02 210);
@@ -115,7 +157,7 @@
   --sidebar-accent-foreground: oklch(0.25 0.02 210);
   --sidebar-border: oklch(0.93 0.003 264);
   --sidebar-ring: oklch(0.55 0.2 285);
-  /* Fresh theme metrics */
+  /* Flow metrics */
   --font-size-base: 16px;
   --button-min-height: 44px;
   --spacing-unit: 8px;
@@ -165,18 +207,30 @@ body {
 }
 
 /* ==================== Kid-friendly touch targets ==================== */
-/* Candy & Fresh themes enforce larger tap targets via CSS variable */
-[data-theme="candy"] button:not([data-size="xs"]):not([data-size="icon-xs"]),
-[data-theme="candy"] [role="button"],
-[data-theme="fresh"] button:not([data-size="xs"]):not([data-size="icon-xs"]),
-[data-theme="fresh"] [role="button"] {
+/* Wonder & Cosmic tiers enforce larger tap targets via CSS variable */
+[data-theme="wonder"] button:not([data-size="xs"]):not([data-size="icon-xs"]),
+[data-theme="wonder"] [role="button"],
+[data-theme="cosmic"] button:not([data-size="xs"]):not([data-size="icon-xs"]),
+[data-theme="cosmic"] [role="button"],
+[data-theme="flow"] button:not([data-size="xs"]):not([data-size="icon-xs"]),
+[data-theme="flow"] [role="button"] {
   min-height: var(--button-min-height);
 }
 
-[data-theme="candy"] input,
-[data-theme="candy"] select,
-[data-theme="fresh"] input,
-[data-theme="fresh"] select {
+[data-theme="wonder"] input,
+[data-theme="wonder"] select,
+[data-theme="cosmic"] input,
+[data-theme="cosmic"] select,
+[data-theme="flow"] input,
+[data-theme="flow"] select {
   min-height: calc(var(--button-min-height) - 4px);
   font-size: inherit;
+}
+
+/* ==================== Cosmic backdrop utility ==================== */
+/* Cards in cosmic tier get glass effect to stay readable over star field */
+[data-theme="cosmic"] .card,
+[data-theme="cosmic"] [data-slot="card"] {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
