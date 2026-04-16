@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Check,
@@ -13,7 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
+import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
+import { AdaptiveScore } from "@/components/adaptive/adaptive-score";
+import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -158,11 +163,13 @@ export default function RecognitionResultsPage() {
           </Button>
           <div>
             <h1 className="text-xl font-bold">{t("homework.recognitionResults")}</h1>
-            <p className="text-sm text-muted-foreground">
-              {t("homework.correctCount", { correct: correctCount, total: questions.length })}
-              {" · "}
-              {t("homework.score", { score: totalScore })}
-            </p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>
+                {t("homework.correctCount", { correct: correctCount, total: questions.length })}
+              </span>
+              <span>·</span>
+              <AdaptiveScore value={totalScore} total={100} />
+            </div>
           </div>
         </div>
         <Badge variant="secondary">
@@ -177,87 +184,93 @@ export default function RecognitionResultsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {questions.map((q) => (
-            <Card
+          {questions.map((q, index) => (
+            <motion.div
               key={q.id}
-              className={cn(
-                "border-l-4",
-                q.isCorrect === true && "border-l-green-500",
-                q.isCorrect === false && "border-l-red-500",
-                q.isCorrect === null && "border-l-gray-300"
-              )}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.04, duration: 0.25, ease: "easeOut" }}
             >
-              <CardContent className="py-3 space-y-2">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        #{q.questionNumber}
-                      </span>
-                      {q.needsReview && (
-                        <Badge variant="outline" className="text-amber-600 border-amber-300">
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          {t("homework.needsReview")}
-                        </Badge>
-                      )}
-                      {q.aiKnowledgePoint && (
-                        <Badge variant="secondary" className="text-xs">
-                          {q.aiKnowledgePoint}
-                        </Badge>
-                      )}
+              <AdaptiveCard
+                className={cn(
+                  "border-l-4",
+                  q.isCorrect === true && "border-l-green-500",
+                  q.isCorrect === false && "border-l-red-500",
+                  q.isCorrect === null && "border-l-gray-300"
+                )}
+              >
+                <CardContent className="py-3 space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">
+                          #{q.questionNumber}
+                        </span>
+                        {q.needsReview && (
+                          <Badge variant="outline" className="text-amber-600 border-amber-300">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            {t("homework.needsReview")}
+                          </Badge>
+                        )}
+                        {q.aiKnowledgePoint && (
+                          <AdaptiveSubjectBadge subject="MATH">
+                            {q.aiKnowledgePoint}
+                          </AdaptiveSubjectBadge>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm"><MathText text={q.content} /></p>
                     </div>
-                    <p className="mt-1 text-sm"><MathText text={q.content} /></p>
+
+                    {/* Correct/Incorrect toggle */}
+                    <div className="flex items-center gap-1 ml-3">
+                      <Button
+                        variant={q.isCorrect === false ? "destructive" : "outline"}
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => handleToggleCorrect(q.id, q.isCorrect)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant={q.isCorrect === true ? "default" : "outline"}
+                        size="icon"
+                        className={cn("h-9 w-9", q.isCorrect === true && "bg-green-600 hover:bg-green-700")}
+                        onClick={() => handleToggleCorrect(q.id, q.isCorrect)}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
-                  {/* Correct/Incorrect toggle */}
-                  <div className="flex items-center gap-1 ml-3">
-                    <Button
-                      variant={q.isCorrect === false ? "destructive" : "outline"}
-                      size="icon"
-                      className="h-9 w-9"
-                      onClick={() => handleToggleCorrect(q.id, q.isCorrect)}
+                  {/* Answer display */}
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">{t("homework.studentAnswer")}:</span>{" "}
+                      <span className={cn(q.isCorrect === false && "text-red-600 font-medium")}>
+                        {q.studentAnswer ? <MathText text={q.studentAnswer} /> : "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">{t("homework.correctAnswer")}:</span>{" "}
+                      <span>{q.correctAnswer ? <MathText text={q.correctAnswer} /> : "—"}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-end">
+                    <AdaptiveButton
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => deleteQuestion.mutate({ questionId: q.id })}
                     >
-                      <X className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant={q.isCorrect === true ? "default" : "outline"}
-                      size="icon"
-                      className={cn("h-9 w-9", q.isCorrect === true && "bg-green-600 hover:bg-green-700")}
-                      onClick={() => handleToggleCorrect(q.id, q.isCorrect)}
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      {t("common.delete")}
+                    </AdaptiveButton>
                   </div>
-                </div>
-
-                {/* Answer display */}
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">{t("homework.studentAnswer")}:</span>{" "}
-                    <span className={cn(q.isCorrect === false && "text-red-600 font-medium")}>
-                      {q.studentAnswer ? <MathText text={q.studentAnswer} /> : "—"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">{t("homework.correctAnswer")}:</span>{" "}
-                    <span>{q.correctAnswer ? <MathText text={q.correctAnswer} /> : "—"}</span>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={() => deleteQuestion.mutate({ questionId: q.id })}
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    {t("common.delete")}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </AdaptiveCard>
+            </motion.div>
           ))}
         </div>
       )}
@@ -267,10 +280,10 @@ export default function RecognitionResultsPage() {
         {/* Add question dialog */}
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline">
+            <AdaptiveButton variant="outline">
               <Plus className="h-4 w-4 mr-2" />
               {t("homework.addQuestion")}
-            </Button>
+            </AdaptiveButton>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -304,16 +317,16 @@ export default function RecognitionResultsPage() {
                   }
                 />
               </div>
-              <Button onClick={handleAddQuestion} disabled={!newQuestion.content.trim()}>
+              <AdaptiveButton onClick={handleAddQuestion} disabled={!newQuestion.content.trim()}>
                 {t("common.confirm")}
-              </Button>
+              </AdaptiveButton>
             </div>
           </DialogContent>
         </Dialog>
 
         {/* Confirm results */}
         {session.status === "RECOGNIZED" && (
-          <Button
+          <AdaptiveButton
             className="flex-1"
             size="lg"
             onClick={() => confirmResults.mutate({ sessionId })}
@@ -321,7 +334,7 @@ export default function RecognitionResultsPage() {
           >
             {t("homework.confirmResults")}
             <ChevronRight className="h-4 w-4 ml-2" />
-          </Button>
+          </AdaptiveButton>
         )}
       </div>
     </div>

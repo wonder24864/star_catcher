@@ -13,14 +13,18 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useTierTranslations } from "@/hooks/use-tier-translations";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
+import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
+import { AdaptiveProgress } from "@/components/adaptive/adaptive-progress";
+import { useTier } from "@/components/providers/grade-tier-provider";
 
 import type {
   ExplanationCard as ExplanationCardData,
@@ -54,40 +58,48 @@ export function ExplanationCard({ card, onComplete, completing }: ExplanationCar
 // ─── StaticCard ───────────────────────────────────────────────
 
 function StaticCard({ card, onComplete, completing }: ExplanationCardProps) {
-  const t = useTranslations("explanationCard");
+  const t = useTierTranslations("explanationCard");
+  const { tierIndex } = useTier();
+  const isWonder = tierIndex === 1;
+
   const body = useMemo(
     () => card.steps.map((s) => s.content).join("\n\n"),
     [card.steps],
   );
 
   return (
-    <Card>
+    <AdaptiveCard>
       <CardContent className="space-y-3 py-4">
         <Header title={card.title} format={card.format} />
-        <div className="prose prose-sm max-w-none dark:prose-invert">
+        <div className={`prose prose-sm max-w-none dark:prose-invert ${isWonder ? "text-lg leading-relaxed" : ""}`}>
           <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
             {body}
           </ReactMarkdown>
         </div>
         <div className="flex justify-end">
-          <Button onClick={onComplete} disabled={completing}>
+          <AdaptiveButton onClick={onComplete} disabled={completing}>
             {t("done")}
-          </Button>
+          </AdaptiveButton>
         </div>
       </CardContent>
-    </Card>
+    </AdaptiveCard>
   );
 }
 
 // ─── InteractiveCard ──────────────────────────────────────────
 
 function InteractiveCard({ card, onComplete, completing }: ExplanationCardProps) {
-  const t = useTranslations("explanationCard");
+  const t = useTierTranslations("explanationCard");
+  const { tierIndex } = useTier();
+  const isWonder = tierIndex === 1;
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [feedback, setFeedback] = useState<Record<number, "correct" | "wrong">>({});
 
   const isLast = currentStep === card.steps.length - 1;
+  const progressPct = card.steps.length > 0
+    ? Math.round(((currentStep + 1) / card.steps.length) * 100)
+    : 0;
 
   function checkAnswer(stepIndex: number, expected: string | undefined) {
     if (!expected) return;
@@ -108,10 +120,10 @@ function InteractiveCard({ card, onComplete, completing }: ExplanationCardProps)
   }
 
   return (
-    <Card>
+    <AdaptiveCard>
       <CardContent className="space-y-4 py-4">
         <Header title={card.title} format={card.format} />
-        <ProgressDots total={card.steps.length} active={currentStep} />
+        <AdaptiveProgress value={progressPct} total={card.steps.length} />
 
         <div className="space-y-3">
           {card.steps.slice(0, currentStep + 1).map((s, i) => (
@@ -120,6 +132,7 @@ function InteractiveCard({ card, onComplete, completing }: ExplanationCardProps)
               step={s}
               index={i}
               isCurrent={i === currentStep}
+              isWonder={isWonder}
               answer={answers[i] ?? ""}
               feedback={feedback[i]}
               onAnswerChange={(v) => setAnswers((a) => ({ ...a, [i]: v }))}
@@ -130,12 +143,12 @@ function InteractiveCard({ card, onComplete, completing }: ExplanationCardProps)
         </div>
 
         <div className="flex justify-end">
-          <Button onClick={next} disabled={completing}>
+          <AdaptiveButton onClick={next} disabled={completing}>
             {isLast ? t("done") : t("next")}
-          </Button>
+          </AdaptiveButton>
         </div>
       </CardContent>
-    </Card>
+    </AdaptiveCard>
   );
 }
 
@@ -143,6 +156,7 @@ function StepBlock({
   step,
   index,
   isCurrent,
+  isWonder,
   answer,
   feedback,
   onAnswerChange,
@@ -152,15 +166,16 @@ function StepBlock({
   step: ExplanationStep;
   index: number;
   isCurrent: boolean;
+  isWonder: boolean;
   answer: string;
   feedback: "correct" | "wrong" | undefined;
   onAnswerChange: (v: string) => void;
   onCheck: () => void;
-  t: ReturnType<typeof useTranslations>;
+  t: (key: string, values?: Record<string, unknown>) => string;
 }) {
   return (
     <div className={isCurrent ? "" : "opacity-70"}>
-      <div className="prose prose-sm max-w-none dark:prose-invert">
+      <div className={`prose prose-sm max-w-none dark:prose-invert ${isWonder ? "text-lg leading-relaxed" : ""}`}>
         <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
           {`**${t("stepLabel", { n: index + 1 })}.** ${step.content}`}
         </ReactMarkdown>
@@ -174,15 +189,16 @@ function StepBlock({
               onChange={(e) => onAnswerChange(e.target.value)}
               placeholder={t("yourAnswer")}
               disabled={!isCurrent || feedback === "correct"}
+              className={isWonder ? "text-lg min-h-[48px]" : ""}
             />
-            <Button
+            <AdaptiveButton
               variant="outline"
               size="sm"
               onClick={onCheck}
               disabled={!isCurrent || !answer.trim() || feedback === "correct"}
             >
               {t("check")}
-            </Button>
+            </AdaptiveButton>
           </div>
           {feedback === "correct" && (
             <Badge className="bg-green-100 text-green-800" variant="outline">
@@ -203,13 +219,13 @@ function StepBlock({
 // ─── ConversationalCard ───────────────────────────────────────
 
 function ConversationalCard({ card, onComplete, completing }: ExplanationCardProps) {
-  const t = useTranslations("explanationCard");
+  const t = useTierTranslations("explanationCard");
   const [revealed, setRevealed] = useState(1);
 
   const isLast = revealed >= card.steps.length;
 
   return (
-    <Card>
+    <AdaptiveCard>
       <CardContent className="space-y-3 py-4">
         <Header title={card.title} format={card.format} />
         <div className="space-y-2">
@@ -219,17 +235,17 @@ function ConversationalCard({ card, onComplete, completing }: ExplanationCardPro
         </div>
         <div className="flex justify-end">
           {isLast ? (
-            <Button onClick={onComplete} disabled={completing}>
+            <AdaptiveButton onClick={onComplete} disabled={completing}>
               {t("done")}
-            </Button>
+            </AdaptiveButton>
           ) : (
-            <Button variant="outline" onClick={() => setRevealed((r) => r + 1)}>
+            <AdaptiveButton variant="outline" onClick={() => setRevealed((r) => r + 1)}>
               {t("nextTurn")}
-            </Button>
+            </AdaptiveButton>
           )}
         </div>
       </CardContent>
-    </Card>
+    </AdaptiveCard>
   );
 }
 
@@ -257,10 +273,10 @@ function Bubble({ step, side }: { step: ExplanationStep; side: "ai" | "user" }) 
   );
 }
 
-// ─── Header / Progress ───────────────────────────────────────
+// ─── Header ─────────────────────────────────────────────────
 
 function Header({ title, format }: { title: string; format: string }) {
-  const t = useTranslations("explanationCard");
+  const t = useTierTranslations("explanationCard");
   const FORMAT_BADGE: Record<string, string> = {
     static: "bg-slate-100 text-slate-800",
     interactive: "bg-blue-100 text-blue-800",
@@ -272,21 +288,6 @@ function Header({ title, format }: { title: string; format: string }) {
       <Badge variant="outline" className={FORMAT_BADGE[format] ?? ""}>
         {t(`formats.${format}`)}
       </Badge>
-    </div>
-  );
-}
-
-function ProgressDots({ total, active }: { total: number; active: number }) {
-  return (
-    <div className="flex gap-1">
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className={`h-1.5 flex-1 rounded-full ${
-            i <= active ? "bg-primary" : "bg-muted"
-          }`}
-        />
-      ))}
     </div>
   );
 }

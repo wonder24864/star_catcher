@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
 import { trpc } from "@/lib/trpc/client";
 import { useUpload, type UploadProgress } from "@/hooks/use-upload";
 import { PhotoCapture } from "@/components/homework/photo-capture";
@@ -219,7 +220,7 @@ export default function NewCheckPage() {
 
         {/* Start Recognition / Retry button */}
         {session?.status === "RECOGNITION_FAILED" ? (
-          <Button
+          <AdaptiveButton
             className="w-full"
             size="lg"
             variant="destructive"
@@ -234,9 +235,9 @@ export default function NewCheckPage() {
             {startRecognition.isPending
               ? t("homework.recognizing")
               : t("homework.retryRecognition")}
-          </Button>
+          </AdaptiveButton>
         ) : (
-          <Button
+          <AdaptiveButton
             className="w-full"
             size="lg"
             disabled={images.length === 0 || isUploading || startRecognition.isPending}
@@ -250,7 +251,7 @@ export default function NewCheckPage() {
             {startRecognition.isPending
               ? t("homework.recognizing")
               : t("homework.startRecognition")}
-          </Button>
+          </AdaptiveButton>
         )}
       </div>
     </div>

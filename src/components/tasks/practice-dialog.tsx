@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useTierTranslations } from "@/hooks/use-tier-translations";
 import { trpc } from "@/lib/trpc/client";
 import {
   Dialog,
@@ -9,11 +10,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { MathText } from "@/components/ui/math-text";
+import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
+import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
+import { Celebration } from "@/components/animation/celebration";
+import { useTier } from "@/components/providers/grade-tier-provider";
 
 interface PracticeDialogProps {
   taskId: string | null;
@@ -28,11 +32,14 @@ export function PracticeDialog({
   onClose,
   onCompleted,
 }: PracticeDialogProps) {
-  const t = useTranslations("tasks.practice");
+  const t = useTierTranslations("tasks.practice");
+  const { tierIndex } = useTier();
+  const isWonder = tierIndex === 1;
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [studentAnswer, setStudentAnswer] = useState("");
+  const [showCelebration, setShowCelebration] = useState(false);
   const [result, setResult] = useState<{
     correct: boolean;
     needsReview: boolean;
@@ -54,6 +61,7 @@ export function PracticeDialog({
         correctAnswer: data.correctAnswer,
       });
       setPhase("graded");
+      if (data.correct) setShowCelebration(true);
     },
   });
 
@@ -75,6 +83,7 @@ export function PracticeDialog({
     setSelectedId(null);
     setStudentAnswer("");
     setResult(null);
+    setShowCelebration(false);
     startMutation.reset();
     submitMutation.reset();
   }
@@ -121,14 +130,14 @@ export function PracticeDialog({
         {phase === "answering" && data && (
           <div className="space-y-4">
             {original && (
-              <Card className="border-l-4 border-l-orange-300 bg-orange-50/40">
+              <AdaptiveCard className="border-l-4 border-l-orange-300 bg-orange-50/40">
                 <CardContent className="py-3">
                   <p className="mb-1 text-xs font-semibold text-muted-foreground">
                     {t("originalLabel")}
                   </p>
                   <MathText text={original.content} className="text-sm" />
                 </CardContent>
-              </Card>
+              </AdaptiveCard>
             )}
 
             <div>
@@ -174,16 +183,17 @@ export function PracticeDialog({
                   value={studentAnswer}
                   onChange={(e) => setStudentAnswer(e.target.value)}
                   placeholder={t("answerPlaceholder")}
-                  rows={3}
+                  rows={isWonder ? 4 : 3}
+                  className={isWonder ? "min-h-[120px] text-lg" : ""}
                 />
               </div>
             )}
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleClose}>
+              <AdaptiveButton variant="outline" onClick={handleClose}>
                 {t("cancel")}
-              </Button>
-              <Button
+              </AdaptiveButton>
+              <AdaptiveButton
                 onClick={handleSubmit}
                 disabled={
                   !selectedId ||
@@ -192,14 +202,19 @@ export function PracticeDialog({
                 }
               >
                 {submitMutation.isPending ? t("submitting") : t("submit")}
-              </Button>
+              </AdaptiveButton>
             </div>
           </div>
         )}
 
         {phase === "graded" && result && (
           <div className="space-y-4">
-            <Card
+            <Celebration
+              show={showCelebration}
+              onComplete={() => setShowCelebration(false)}
+            />
+
+            <AdaptiveCard
               className={
                 result.correct
                   ? "border-green-300 bg-green-50"
@@ -226,10 +241,10 @@ export function PracticeDialog({
                   </p>
                 )}
               </CardContent>
-            </Card>
+            </AdaptiveCard>
 
             <div className="flex justify-end">
-              <Button onClick={handleDone}>{t("done")}</Button>
+              <AdaptiveButton onClick={handleDone}>{t("done")}</AdaptiveButton>
             </div>
           </div>
         )}

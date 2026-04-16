@@ -182,7 +182,7 @@ star_catcher/
     │
     ├── components/            # ── UI 组件 ──
     │   ├── agent-summary-card.tsx   # AI 分析摘要卡片（家长/学生简化视图）
-    │   ├── adaptive/              # 年级自适应组件（卡片、进度条）
+    │   ├── adaptive/              # 年级自适应组件（卡片、按钮、进度条、分数、学科徽章）
     │   ├── admin/                 # 管理员专用组件（KG 拖拽编辑器、Jaeger 链接）
     │   ├── animation/             # 动画组件（页面过渡、Lottie、Three.js 星空、庆祝动画）
     │   ├── homework/              # 拍照 / 照片网格
@@ -194,6 +194,7 @@ star_catcher/
     │   └── ui/                    # shadcn/ui 基础组件
     │
     ├── hooks/                 # ── React Hooks ──
+    │   ├── use-tier-translations.ts  # 年级自适应 i18n（useTierTranslations — useTranslations 同构替换）
     │   └── use-upload.ts          # 上传编排（压缩→预签名→上传→确认）
     │
     ├── i18n/                  # ── 国际化 ──

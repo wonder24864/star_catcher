@@ -234,3 +234,21 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+
+/* ==================== Cosmic hologram scan-line ==================== */
+@keyframes scan-line {
+  0% { background-position: 0 -100%; }
+  100% { background-position: 0 200%; }
+}
+.animate-\[scan-line_2s_linear_infinite\] {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    oklch(0.6 0.22 290 / 0.08) 45%,
+    oklch(0.6 0.22 290 / 0.15) 50%,
+    oklch(0.6 0.22 290 / 0.08) 55%,
+    transparent 100%
+  );
+  background-size: 100% 200%;
+  animation: scan-line 2s linear infinite;
+}

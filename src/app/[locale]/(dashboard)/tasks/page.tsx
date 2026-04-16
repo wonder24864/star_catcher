@@ -1,23 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
+import { motion } from "framer-motion";
+import { useTierTranslations } from "@/hooks/use-tier-translations";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
+import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
+import { AdaptiveProgress } from "@/components/adaptive/adaptive-progress";
+import { Celebration } from "@/components/animation/celebration";
+import { useTier } from "@/components/providers/grade-tier-provider";
 import { TaskCard } from "@/components/tasks/task-card";
 import { PracticeDialog } from "@/components/tasks/practice-dialog";
 import { ExplanationDialog } from "@/components/tasks/explanation-dialog";
 
 export default function TasksPage() {
   const t = useTranslations();
+  const tT = useTierTranslations("tasks");
   const { data: session } = useSession();
   const role = session?.user?.role;
   const { selectedStudentId } = useStudentStore();
+  const { tierIndex } = useTier();
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [practiceTaskId, setPracticeTaskId] = useState<string | null>(null);
   const [explanationTaskId, setExplanationTaskId] = useState<string | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const isParent = role === "PARENT";
   const studentId = isParent ? selectedStudentId ?? undefined : undefined;
@@ -56,13 +65,30 @@ export default function TasksPage() {
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
   const allDone = pack?.status === "COMPLETED";
 
+  // Trigger celebration once on allDone transition (not on every render)
+  const prevAllDone = useRef(false);
+  useEffect(() => {
+    if (allDone && !prevAllDone.current) {
+      setShowCelebration(true);
+    }
+    prevAllDone.current = !!allDone;
+  }, [allDone]);
+
+  // Layout class per tier
+  const listClass =
+    tierIndex === 1
+      ? "space-y-4"              // wonder: single column, large gap
+      : tierIndex === 2
+        ? "grid grid-cols-2 gap-3" // cosmic: two-column grid
+        : "space-y-2";              // flow/studio: compact
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">{t("tasks.title")}</h1>
 
       {/* Progress bar */}
       {pack && total > 0 && (
-        <Card>
+        <AdaptiveCard>
           <CardContent className="py-4">
             <div className="mb-2 flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
@@ -70,64 +96,69 @@ export default function TasksPage() {
               </span>
               <span className="font-medium">{pct}%</span>
             </div>
-            <div className="h-2 w-full rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+            <AdaptiveProgress value={pct} total={total} />
           </CardContent>
-        </Card>
+        </AdaptiveCard>
       )}
 
       {/* All completed celebration */}
       {allDone && (
-        <Card className="border-green-200 bg-green-50">
+        <AdaptiveCard className="border-green-200 bg-green-50 dark:bg-green-950/30">
           <CardContent className="py-6 text-center">
-            <p className="text-lg font-semibold text-green-800">
-              {t("tasks.allCompleted")}
+            <p className="text-lg font-semibold text-green-800 dark:text-green-200">
+              {tT("allCompleted")}
             </p>
-            <p className="text-sm text-green-600">
-              {t("tasks.allCompletedSubtext")}
+            <p className="text-sm text-green-600 dark:text-green-400">
+              {tT("allCompletedSubtext")}
             </p>
           </CardContent>
-        </Card>
+        </AdaptiveCard>
       )}
+      <Celebration
+        show={showCelebration}
+        onComplete={() => setShowCelebration(false)}
+      />
 
-      {/* Task list */}
+      {/* Task list with stagger entrance */}
       {pack?.tasks && pack.tasks.length > 0 ? (
-        <div className="space-y-3">
-          {pack.tasks.map((task) => (
-            <TaskCard
+        <div className={listClass}>
+          {pack.tasks.map((task, index) => (
+            <motion.div
               key={task.id}
-              task={{
-                id: task.id,
-                type: task.type as "REVIEW" | "PRACTICE" | "EXPLANATION",
-                status: task.status as "PENDING" | "COMPLETED",
-                content: task.content as { title?: string; description?: string } | null,
-                knowledgePoint: task.knowledgePoint,
-                question: task.question,
-              }}
-              onComplete={handleComplete}
-              onStartPractice={(id) => setPracticeTaskId(id)}
-              onOpenExplanation={(id) => setExplanationTaskId(id)}
-              readOnly={isParent}
-              completing={completingId === task.id}
-            />
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.06, duration: 0.25, ease: "easeOut" }}
+            >
+              <TaskCard
+                task={{
+                  id: task.id,
+                  type: task.type as "REVIEW" | "PRACTICE" | "EXPLANATION",
+                  status: task.status as "PENDING" | "COMPLETED",
+                  content: task.content as { title?: string; description?: string } | null,
+                  knowledgePoint: task.knowledgePoint,
+                  question: task.question,
+                }}
+                onComplete={handleComplete}
+                onStartPractice={(id) => setPracticeTaskId(id)}
+                onOpenExplanation={(id) => setExplanationTaskId(id)}
+                readOnly={isParent}
+                completing={completingId === task.id}
+              />
+            </motion.div>
           ))}
         </div>
       ) : (
         !allDone && (
-          <Card>
+          <AdaptiveCard>
             <CardContent className="py-12 text-center">
               <p className="text-lg text-muted-foreground">
-                {t("tasks.empty")}
+                {tT("empty")}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {t("tasks.emptySubtext")}
+                {tT("emptySubtext")}
               </p>
             </CardContent>
-          </Card>
+          </AdaptiveCard>
         )
       )}
 

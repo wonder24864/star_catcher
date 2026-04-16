@@ -3,12 +3,15 @@
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { Plus, FileText, PenLine } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
+import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
+import { useTier } from "@/components/providers/grade-tier-provider";
 import { toast } from "sonner";
 
 export default function CheckPage() {
@@ -16,6 +19,7 @@ export default function CheckPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const selectedStudentId = useStudentStore((s) => s.selectedStudentId);
+  const { tierIndex } = useTier();
 
   const isParent = session?.user?.role === "PARENT";
   const studentId = isParent ? selectedStudentId : session?.user?.id;
@@ -51,22 +55,24 @@ export default function CheckPage() {
     );
   }
 
+  const listGap = tierIndex === 1 ? "space-y-4" : "space-y-3";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("homework.title")}</h1>
         <div className="flex items-center gap-2">
-          <Button
+          <AdaptiveButton
             variant="outline"
             onClick={() => router.push("/check/manual")}
           >
             <PenLine className="h-4 w-4 mr-2" />
             {t("homework.manual.button")}
-          </Button>
-          <Button onClick={handleNewCheck} disabled={createSession.isPending}>
+          </AdaptiveButton>
+          <AdaptiveButton onClick={handleNewCheck} disabled={createSession.isPending}>
             <Plus className="h-4 w-4 mr-2" />
             {t("homework.newCheck")}
-          </Button>
+          </AdaptiveButton>
         </div>
       </div>
 
@@ -78,46 +84,52 @@ export default function CheckPage() {
           <p>{t("homework.noSessions")}</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className={listGap}>
           <h2 className="text-sm font-medium text-muted-foreground">
             {t("homework.recentSessions")}
           </h2>
-          {sessions.map((s) => (
-            <Card
+          {sessions.map((s, index) => (
+            <motion.div
               key={s.id}
-              className="cursor-pointer hover:bg-accent/50 transition-colors"
-              onClick={() => {
-                if (s.status === "CREATED" || s.status === "RECOGNITION_FAILED" || s.status === "RECOGNIZING") {
-                  router.push(`/check/new?sessionId=${s.id}`);
-                } else if (s.status === "RECOGNIZED") {
-                  router.push(`/check/${s.id}`);
-                } else if (s.status === "CHECKING" || s.status === "COMPLETED") {
-                  router.push(`/check/${s.id}/results`);
-                }
-              }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05, duration: 0.25, ease: "easeOut" }}
             >
-              <CardContent className="flex items-center justify-between py-4">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">
-                      {s.title || t("homework.untitled")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(s.createdAt).toLocaleDateString()} ·{" "}
-                      {t("homework.imageCount", {
-                        count: (s as Record<string, unknown>)._count
-                          ? ((s as Record<string, unknown>)._count as { images: number }).images
-                          : 0,
-                      })}
-                    </p>
+              <AdaptiveCard
+                className="cursor-pointer hover:bg-accent/50 transition-colors"
+                onClick={() => {
+                  if (s.status === "CREATED" || s.status === "RECOGNITION_FAILED" || s.status === "RECOGNIZING") {
+                    router.push(`/check/new?sessionId=${s.id}`);
+                  } else if (s.status === "RECOGNIZED") {
+                    router.push(`/check/${s.id}`);
+                  } else if (s.status === "CHECKING" || s.status === "COMPLETED") {
+                    router.push(`/check/${s.id}/results`);
+                  }
+                }}
+              >
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">
+                        {s.title || t("homework.untitled")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(s.createdAt).toLocaleDateString()} ·{" "}
+                        {t("homework.imageCount", {
+                          count: (s as Record<string, unknown>)._count
+                            ? ((s as Record<string, unknown>)._count as { images: number }).images
+                            : 0,
+                        })}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <Badge variant={s.status === "COMPLETED" ? "default" : "secondary"}>
-                  {t(`homework.status.${s.status}`)}
-                </Badge>
-              </CardContent>
-            </Card>
+                  <Badge variant={s.status === "COMPLETED" ? "default" : "secondary"}>
+                    {t(`homework.status.${s.status}`)}
+                  </Badge>
+                </CardContent>
+              </AdaptiveCard>
+            </motion.div>
           ))}
         </div>
       )}

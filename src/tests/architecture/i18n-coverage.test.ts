@@ -40,7 +40,9 @@ describe('i18n Coverage', () => {
     const keySet = new Set<string>()
     // \b ensures t( is standalone, not part of get(, redirect(, etc.
     const tCallPattern = /\bt\(['"]([^'"]+)['"]\)/g
-    const nsPattern = /useTranslations\(['"]([^'"]+)['"]\)/
+    // Only match namespace from `const t = use*Translations("ns")`
+    // (the variable named `t` specifically, not tC, tH, etc.)
+    const nsPattern = /const\s+t\s*=\s*use(?:Translations|TierTranslations)\(['"]([^'"]+)['"]\)/
 
     for (const file of srcFiles) {
       const content = readFileSync(file, 'utf-8')

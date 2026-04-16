@@ -1,9 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { Card, CardContent } from "@/components/ui/card";
+import { motion } from "framer-motion";
+import { Check } from "lucide-react";
+import { useTierTranslations } from "@/hooks/use-tier-translations";
+import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
+import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
+import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
 
 const TYPE_STYLES: Record<string, { border: string; badge: string }> = {
   REVIEW: {
@@ -47,7 +51,7 @@ export function TaskCard({
   readOnly,
   completing,
 }: TaskCardProps) {
-  const t = useTranslations("tasks");
+  const t = useTierTranslations("tasks");
   const isCompleted = task.status === "COMPLETED";
   const style = TYPE_STYLES[task.type] ?? TYPE_STYLES.REVIEW;
 
@@ -64,48 +68,81 @@ export function TaskCard({
   }
 
   return (
-    <Card className={`${style.border} ${isCompleted ? "opacity-60" : ""}`}>
-      <CardContent className="py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="mb-1 flex items-center gap-2">
-              <Badge className={style.badge} variant="outline">
-                {t(`types.${task.type}`)}
-              </Badge>
-              {isCompleted && (
-                <Badge variant="secondary">{t("completed")}</Badge>
-              )}
-            </div>
-            <p className="font-medium">
-              {task.knowledgePoint.name}
-            </p>
-            {task.type === "REVIEW" && task.question?.content && (
-              <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-                {task.question.content}
+    <motion.div
+      animate={
+        isCompleted
+          ? { scale: 0.98, opacity: 0.55 }
+          : { scale: 1, opacity: 1 }
+      }
+      transition={{ duration: 0.3, ease: "easeOut" }}
+    >
+      <AdaptiveCard className={style.border}>
+        <CardContent className="py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex items-center gap-2">
+                <Badge className={style.badge} variant="outline">
+                  {t(`types.${task.type}`)}
+                </Badge>
+                <AdaptiveSubjectBadge subject={task.knowledgePoint.subject}>
+                  {task.knowledgePoint.subject}
+                </AdaptiveSubjectBadge>
+                {isCompleted && (
+                  <Badge variant="secondary" className="gap-1">
+                    <motion.svg
+                      viewBox="0 0 24 24"
+                      className="h-3 w-3"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                    >
+                      <motion.path
+                        d="M5 13l4 4L19 7"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                      />
+                    </motion.svg>
+                    {t("completed")}
+                  </Badge>
+                )}
+              </div>
+              <p className="font-medium">
+                {task.knowledgePoint.name}
               </p>
-            )}
-            {(task.type === "PRACTICE" || task.type === "EXPLANATION") &&
-              task.content?.description && (
+              {task.type === "REVIEW" && task.question?.content && (
                 <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-                  {task.content.description}
+                  {task.question.content}
                 </p>
               )}
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t(`typeDescriptions.${task.type}`)}
-            </p>
+              {(task.type === "PRACTICE" || task.type === "EXPLANATION") &&
+                task.content?.description && (
+                  <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                    {task.content.description}
+                  </p>
+                )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t(`typeDescriptions.${task.type}`)}
+              </p>
+            </div>
+            {!readOnly && !isCompleted && (
+              <AdaptiveButton
+                size="sm"
+                variant="outline"
+                onClick={handleAction}
+                disabled={completing}
+              >
+                {actionLabel()}
+              </AdaptiveButton>
+            )}
           </div>
-          {!readOnly && !isCompleted && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleAction}
-              disabled={completing}
-            >
-              {actionLabel()}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </AdaptiveCard>
+    </motion.div>
   );
 }

@@ -3,6 +3,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
+import { motion } from "framer-motion";
+import { useTierTranslations } from "@/hooks/use-tier-translations";
 import {
   ArrowLeft,
   Check,
@@ -21,7 +23,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PhotoCapture } from "@/components/homework/photo-capture";
 import { useUpload, type UploadProgress } from "@/hooks/use-upload";
@@ -34,6 +36,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
+import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
+import { AdaptiveScore } from "@/components/adaptive/adaptive-score";
+import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
+import { Celebration } from "@/components/animation/celebration";
+import { useTier } from "@/components/providers/grade-tier-provider";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -82,6 +90,9 @@ function QuestionHelpPanel({
   isCompleted: boolean;
 }) {
   const t = useTranslations();
+  const tH = useTierTranslations("homework");
+  const { tierIndex } = useTier();
+  const isWonder = tierIndex === 1;
   const [expanded, setExpanded] = useState(false);
   const [pendingHelp, setPendingHelp] = useState(false);
 
@@ -151,34 +162,40 @@ function QuestionHelpPanel({
     requestHelp.mutate({ sessionId, questionId, level });
   };
 
+  // Wonder tier uses warmer background colors for hints
+  const hintBg = isWonder ? "bg-amber-50" : "bg-blue-50";
+  const hintBorder = isWonder ? "border-amber-200" : "border-blue-200";
+  const hintIconColor = isWonder ? "text-amber-600" : "text-blue-600";
+  const hintLabelColor = isWonder ? "text-amber-700" : "text-blue-700";
+
   return (
     <div className="mt-2">
-      <Button
+      <AdaptiveButton
         variant="ghost"
         size="sm"
-        className="text-blue-600 hover:text-blue-700 gap-1.5"
+        className={cn(hintIconColor, "gap-1.5")}
         onClick={() => setExpanded(!expanded)}
       >
         <HelpCircle className="h-3.5 w-3.5" />
-        {t("homework.help.button")}
+        {tH("help.button")}
         {expanded ? (
           <ChevronUp className="h-3 w-3" />
         ) : (
           <ChevronDown className="h-3 w-3" />
         )}
-      </Button>
+      </AdaptiveButton>
 
       {expanded && (
-        <div className="mt-2 space-y-2 pl-2 border-l-2 border-blue-200">
+        <div className={cn("mt-2 space-y-2 pl-2 border-l-2", hintBorder)}>
           {/* Show all revealed levels */}
           {[1, 2, 3].map((level) => {
             const help = helpMap.get(level);
             if (!help) return null;
             return (
-              <div key={level} className="bg-blue-50 rounded-lg p-3">
+              <div key={level} className={cn(hintBg, "rounded-lg p-3")}>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <Lightbulb className="h-3.5 w-3.5 text-blue-600" />
-                  <span className="text-xs font-semibold text-blue-700">
+                  <Lightbulb className={cn("h-3.5 w-3.5", hintIconColor)} />
+                  <span className={cn("text-xs font-semibold", hintLabelColor)}>
                     {t("homework.help.title", { level })} — {levelLabels[level]}
                   </span>
                 </div>
@@ -191,7 +208,7 @@ function QuestionHelpPanel({
 
           {/* Next level button or locked indicator */}
           {!isCompleted && nextLevel <= 3 && (
-            <Button
+            <AdaptiveButton
               variant="outline"
               size="sm"
               className="gap-1.5"
@@ -206,13 +223,13 @@ function QuestionHelpPanel({
                   {t("homework.help.nextLevel", { level: nextLevel })}
                 </>
               )}
-            </Button>
+            </AdaptiveButton>
           )}
 
           {maxRevealedLevel >= 3 && (
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Lock className="h-3 w-3" />
-              {t("homework.help.maxLevelReached")}
+              {tH("help.maxLevelReached")}
             </p>
           )}
         </div>
@@ -223,12 +240,15 @@ function QuestionHelpPanel({
 
 export default function CheckResultsPage() {
   const t = useTranslations();
+  const tC = useTierTranslations("homework");
   const router = useRouter();
   const params = useParams();
   const sessionId = params.sessionId as string;
+  const { tierIndex } = useTier();
 
   const [confirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
   const [correctionDialogOpen, setCorrectionDialogOpen] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   // Correction photo upload state
   const [correctionImageIds, setCorrectionImageIds] = useState<string[]>([]);
   const [uploadQueue, setUploadQueue] = useState<File[]>([]);
@@ -268,6 +288,8 @@ export default function CheckResultsPage() {
       utils.homework.getCheckStatus.invalidate({ sessionId });
       toast.success(t("homework.check.completedTitle"));
       setConfirmCompleteOpen(false);
+      // Trigger celebration if all correct
+      if (wrongCount === 0) setShowCelebration(true);
     },
     onError: () => toast.error(t("error.serverError")),
   });
@@ -363,6 +385,12 @@ export default function CheckResultsPage() {
 
   return (
     <div className="space-y-4">
+      {/* Celebration overlay */}
+      <Celebration
+        show={showCelebration}
+        onComplete={() => setShowCelebration(false)}
+      />
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button
@@ -392,21 +420,21 @@ export default function CheckResultsPage() {
 
       {/* Completed banner */}
       {isCompleted && (
-        <Card className="bg-green-50 border-green-200">
+        <AdaptiveCard className="bg-green-50 border-green-200 dark:bg-green-950/30">
           <CardContent className="py-4 flex items-center gap-3">
             <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0" />
-            <p className="font-semibold text-green-700">
+            <p className="font-semibold text-green-700 dark:text-green-200">
               {t("homework.check.finalScore", {
                 score: sessionData.finalScore ?? 0,
               })}
             </p>
           </CardContent>
-        </Card>
+        </AdaptiveCard>
       )}
 
       {/* Score history (visible when >1 round) */}
       {rounds.length > 1 && (
-        <Card>
+        <AdaptiveCard>
           <CardContent className="py-3">
             <div className="flex items-center gap-2 mb-2 text-sm font-medium text-muted-foreground">
               <TrendingUp className="h-4 w-4" />
@@ -422,85 +450,95 @@ export default function CheckResultsPage() {
                     variant={i === rounds.length - 1 ? "default" : "secondary"}
                   >
                     {t("homework.check.round", { round: r.roundNumber })}{" "}
-                    {r.score ?? 0}
+                    <AdaptiveScore
+                      value={r.score ?? 0}
+                      className="ml-1"
+                      tierOverride="studio"
+                    />
                   </Badge>
                 </span>
               ))}
             </div>
           </CardContent>
-        </Card>
+        </AdaptiveCard>
       )}
 
       {/* Question list — correct/incorrect only, NO correct answers */}
       <div className="space-y-2">
-        {questions.map((q) => (
-          <Card
+        {questions.map((q, index) => (
+          <motion.div
             key={q.id}
-            className={cn(
-              "border-l-4",
-              q.isCorrect === true ? "border-l-green-500" : "border-l-red-500"
-            )}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.04, duration: 0.25, ease: "easeOut" }}
           >
-            <CardContent className="py-3">
-              <div className="flex items-start gap-3">
-                <div
-                  className={cn(
-                    "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5",
-                    q.isCorrect === true ? "bg-green-100" : "bg-red-100"
-                  )}
-                >
-                  {q.isCorrect === true ? (
-                    <Check className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <X className="h-4 w-4 text-red-600" />
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-muted-foreground">
-                      #{q.questionNumber}
-                    </span>
-                    {q.aiKnowledgePoint && (
-                      <Badge variant="secondary" className="text-xs">
-                        {q.aiKnowledgePoint}
-                      </Badge>
+            <AdaptiveCard
+              className={cn(
+                "border-l-4",
+                q.isCorrect === true ? "border-l-green-500" : "border-l-red-500"
+              )}
+            >
+              <CardContent className="py-3">
+                <div className="flex items-start gap-3">
+                  <div
+                    className={cn(
+                      "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5",
+                      q.isCorrect === true ? "bg-green-100" : "bg-red-100"
                     )}
-                    {q.needsReview && (
-                      <Badge
-                        variant="outline"
-                        className="text-xs text-amber-600 border-amber-300"
-                      >
-                        {t("homework.needsReview")}
-                      </Badge>
+                  >
+                    {q.isCorrect === true ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <X className="h-4 w-4 text-red-600" />
                     )}
                   </div>
-                  <p className="mt-1 text-sm"><MathText text={q.content} /></p>
-                  {q.studentAnswer && (
-                    <p
-                      className={cn(
-                        "mt-1 text-xs",
-                        q.isCorrect === true
-                          ? "text-green-600"
-                          : "text-red-500"
-                      )}
-                    >
-                      {t("homework.studentAnswer")}: <MathText text={q.studentAnswer} />
-                    </p>
-                  )}
-                  {/* correctAnswer intentionally NOT shown per US-016 */}
 
-                  {/* Help panel for wrong questions (US-018) */}
-                  <QuestionHelpPanel
-                    sessionId={sessionId}
-                    questionId={q.id}
-                    isCorrect={q.isCorrect}
-                    isCompleted={isCompleted}
-                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        #{q.questionNumber}
+                      </span>
+                      {q.aiKnowledgePoint && (
+                        <AdaptiveSubjectBadge subject="MATH">
+                          {q.aiKnowledgePoint}
+                        </AdaptiveSubjectBadge>
+                      )}
+                      {q.needsReview && (
+                        <Badge
+                          variant="outline"
+                          className="text-xs text-amber-600 border-amber-300"
+                        >
+                          {t("homework.needsReview")}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm"><MathText text={q.content} /></p>
+                    {q.studentAnswer && (
+                      <p
+                        className={cn(
+                          "mt-1 text-xs",
+                          q.isCorrect === true
+                            ? "text-green-600"
+                            : "text-red-500"
+                        )}
+                      >
+                        {t("homework.studentAnswer")}: <MathText text={q.studentAnswer} />
+                      </p>
+                    )}
+                    {/* correctAnswer intentionally NOT shown per US-016 */}
+
+                    {/* Help panel for wrong questions (US-018) */}
+                    <QuestionHelpPanel
+                      sessionId={sessionId}
+                      questionId={q.id}
+                      isCorrect={q.isCorrect}
+                      isCompleted={isCompleted}
+                    />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </AdaptiveCard>
+          </motion.div>
         ))}
       </div>
 
@@ -512,7 +550,7 @@ export default function CheckResultsPage() {
               ? t("homework.check.allCorrect")
               : t("homework.check.wrongCount", { count: wrongCount })}
           </p>
-          <Button
+          <AdaptiveButton
             variant="outline"
             size="lg"
             disabled={wrongCount === 0}
@@ -520,25 +558,25 @@ export default function CheckResultsPage() {
             className="flex items-center gap-2"
           >
             <RefreshCw className="h-4 w-4" />
-            {t("homework.check.recheck")}
-          </Button>
-          <Button
+            {tC("check.recheck")}
+          </AdaptiveButton>
+          <AdaptiveButton
             size="lg"
             onClick={handleCompleteClick}
             disabled={completeSession.isPending}
           >
-            {t("homework.check.complete")}
-          </Button>
+            {tC("check.complete")}
+          </AdaptiveButton>
         </div>
       ) : (
         <div className="pt-4 border-t">
-          <Button
+          <AdaptiveButton
             className="w-full"
             size="lg"
             onClick={() => router.push("/check")}
           >
-            {t("homework.check.backToList")}
-          </Button>
+            {tC("check.backToList")}
+          </AdaptiveButton>
         </div>
       )}
 
@@ -582,14 +620,14 @@ export default function CheckResultsPage() {
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button
+            <AdaptiveButton
               variant="outline"
               onClick={() => setCorrectionDialogOpen(false)}
               disabled={submitCorrectionPhotos.isPending || isUploadingCorrection}
             >
               {t("common.cancel")}
-            </Button>
-            <Button
+            </AdaptiveButton>
+            <AdaptiveButton
               onClick={handleSubmitCorrectionPhotos}
               disabled={
                 correctionImageIds.length === 0 ||
@@ -605,7 +643,7 @@ export default function CheckResultsPage() {
               ) : (
                 t("homework.check.submitCorrections")
               )}
-            </Button>
+            </AdaptiveButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -622,18 +660,18 @@ export default function CheckResultsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button
+            <AdaptiveButton
               variant="outline"
               onClick={() => setConfirmCompleteOpen(false)}
             >
               {t("common.cancel")}
-            </Button>
-            <Button
+            </AdaptiveButton>
+            <AdaptiveButton
               onClick={() => completeSession.mutate({ sessionId })}
               disabled={completeSession.isPending}
             >
-              {t("homework.check.complete")}
-            </Button>
+              {tC("check.complete")}
+            </AdaptiveButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

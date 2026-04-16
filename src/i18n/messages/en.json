@@ -1010,5 +1010,53 @@
     "cosmic": "Cosmic Explorer",
     "flow": "Minimal Flow",
     "studio": "Studio Pro"
+  },
+  "tierText": {
+    "wonder": {
+      "tasks": {
+        "markComplete": "All done!",
+        "allCompleted": "You finished all tasks today! Great job!",
+        "allCompletedSubtext": "Keep it up tomorrow!",
+        "startPractice": "Let's try!",
+        "viewExplanation": "Let's learn!",
+        "empty": "No tasks today~",
+        "emptySubtext": "Come back tomorrow!"
+      },
+      "tasks.practice": {
+        "done": "Awesome!"
+      },
+      "explanationCard": {
+        "done": "I get it!",
+        "next": "Show me more",
+        "check": "Let me check",
+        "correct": "You got it!",
+        "tryAgain": "Try again"
+      },
+      "homework": {
+        "help": {
+          "button": "Help me!",
+          "nextLevel": "More hints please (level {level})",
+          "maxLevelReached": "That's all the hints!"
+        },
+        "check": {
+          "recheck": "Fixed it, check again!",
+          "complete": "All done!",
+          "backToList": "Go back"
+        }
+      }
+    },
+    "cosmic": {
+      "tasks": {
+        "markComplete": "Done!"
+      },
+      "explanationCard": {
+        "done": "Got it"
+      },
+      "homework": {
+        "help": {
+          "button": "Need help"
+        }
+      }
+    }
   }
 }
