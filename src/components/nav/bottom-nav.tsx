@@ -51,6 +51,7 @@ export function BottomNav() {
     { label: t("nav.errors"), href: "/errors", roles: ["STUDENT", "PARENT"], icon: "📚" },
     { label: t("nav.mastery"), href: "/mastery", roles: ["STUDENT", "PARENT"], icon: "🗺️" },
     { label: t("nav.tasks"), href: "/tasks", roles: ["STUDENT", "PARENT"], icon: "📋" },
+    { label: t("nav.learningProfile"), href: "/student/profile", roles: ["STUDENT", "PARENT"], icon: "📊" },
     { label: t("nav.parentOverview"), href: "/parent/overview", roles: ["PARENT"], icon: "🏠" },
     { label: t("nav.family"), href: "/family", roles: ["STUDENT", "PARENT"], icon: "👨‍👩‍👧" },
     { label: t("nav.adminUsers"), href: "/admin/users", roles: ["ADMIN"], icon: "👥" },

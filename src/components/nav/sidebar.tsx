@@ -41,6 +41,7 @@ export function Sidebar() {
     { label: t("nav.check"), href: "/check", roles: ["STUDENT", "PARENT"] },
     { label: t("nav.errors"), href: "/errors", roles: ["STUDENT", "PARENT"] },
     { label: t("nav.mastery"), href: "/mastery", roles: ["STUDENT", "PARENT"] },
+    { label: t("nav.learningProfile"), href: "/student/profile", roles: ["STUDENT", "PARENT"] },
     { label: t("nav.tasks"), href: "/tasks", roles: ["STUDENT", "PARENT"] },
     { label: t("nav.family"), href: "/family", roles: ["STUDENT", "PARENT"] },
     { label: t("nav.settings"), href: "/settings", roles: ["STUDENT", "PARENT", "ADMIN"] },

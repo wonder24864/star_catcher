@@ -157,7 +157,8 @@ star_catcher/
     │   │   ├── errors/                # 错题管理
     │   │   │   ├── page.tsx               # 错题列表（筛选/搜索/分页）
     │   │   │   └── [id]/page.tsx          # 错题详情（AI 摘要 + 家长备注）
-    │   │   ├── mastery/               # 掌握地图（掌握度 + 间隔复习 + 复习对话框）
+    │   │   ├── mastery/               # 掌握地图（掌握度 + 间隔复习 + 复习对话框 + 进度图 + 画像入口）
+    │   │   ├── student/profile/       # 学生画像（掌握仪表盘 + 累计进度图 + 学习旅程时间线）
     │   │   ├── tasks/                 # 今日任务包（三种卡片 + 进度条 + 标记完成）
     │   │   ├── parent/                # 家长视图
     │   │   │   ├── overview/              # 今日概览
@@ -188,6 +189,7 @@ star_catcher/
     │   ├── homework/              # 拍照 / 照片网格
     │   ├── dashboard/             # 首页组件（今日复习 Widget）
     │   ├── mastery/               # 掌握地图组件（复习对话框）
+    │   ├── profile/               # 学生画像组件（HistoricalProgressChart — tier 自适应进度图）
     │   ├── tasks/                 # 今日任务组件（TaskCard + PracticeDialog + ExplanationDialog + ExplanationCard 三格式）
     │   ├── nav/                   # 侧边栏（TierSidebar tier 门控）/ 底部导航（年级自适应）/ 学生切换
     │   ├── providers/             # Session / GradeTier Provider（4 级年级自适应）
@@ -277,7 +279,7 @@ star_catcher/
     ├── server/                # ── tRPC 服务端 ──
     │   ├── trpc.ts                # 初始化 + 角色中间件 + SSE 配置
     │   ├── context.ts             # 上下文工厂
-    │   └── routers/               # 路由器（14 个业务 + 1 个订阅，含 Sprint 15 brain router）
+    │   └── routers/               # 路由器（15 个业务 + 1 个订阅，含 Sprint 22 profile router）
     │       └── shared/                # 共享工具（resolveStudentId 权限校验）
     │
     ├── worker/                # ── BullMQ Worker（独立 Docker 服务）──
@@ -290,7 +292,7 @@ star_catcher/
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）
     │   └── skill-build.ts         # Skill 构建（校验 + 编译 + Prisma 检查）
     │
-    ├── tests/                 # ── 测试（70 文件，991+ 用例）──
+    ├── tests/                 # ── 测试（78 文件，1075+ 用例）──
     │   ├── acceptance/            # 验收测试（9 个用户故事模块）
     │   ├── unit/                  # 单元测试（含 Skill 运行时 / Agent 组件 / EvalRunner 等）
     │   ├── integration/           # 集成测试（端到端闭环场景 Sprint 14→16）
@@ -331,7 +333,7 @@ tests/eval/
 | **Phase 1** | 基础错题本 (MVP) | 认证、家庭组、拍照上传、AI 识别、多轮检查、错题管理、家长日视图、PWA、国际化、Docker |
 | **Phase 2** | AI 理解 + 知识图谱 | 知识图谱构建、题目理解 Agent、诊断 Agent、掌握度追踪、家长报表 v1 |
 | **Phase 3** | 学习闭环 + 干预 | 薄弱分析、干预规划、复习排程、今日任务包、类似题、讲解卡/练习卡 |
-| **Phase 4** | 家长仪表盘 + 体验优化 | 完整家长仪表盘、详细分析、学习建议、干预追踪、儿童友好 UI 优化 |
+| **Phase 4** | 家长仪表盘 + 体验优化 | 家长分析增强、学习建议、干预追踪、4 级年级自适应动画、学生画像可视化 |
 | **Phase 5** | 持续优化 | 学习大脑升级、本地模型部署、Android APK、多教材版本支持、安全增强 |
 
 ## 未来规划

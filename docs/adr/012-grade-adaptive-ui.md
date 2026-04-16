@@ -91,3 +91,14 @@ public/
 - 正面：基础设施就绪后，Sprint 20-22 只需使用组件库改造页面
 - 负面：新增 3 个依赖（framer-motion ~33kB, lottie-react ~10kB, three.js ~40kB 按需）
 - 负面：4 套主题变量维护成本（通过 DESIGN-SYSTEM.md 和架构测试控制）
+
+## Sprint 22 追加决策 (D47-D52)
+
+| # | 决策 | 选择 | 原因 |
+|---|------|------|------|
+| D47 | Profile 导航位置 | Sidebar 加入; BottomNav 不改 wonder/cosmic 白名单; mastery 页加上下文入口 | 尊重 D44 tab 限制 + 上下文相关入口比强塞导航更优雅 |
+| D48 | 进度图共享 + tier 配色 | 提取 `historical-progress-chart.tsx`; wonder 粉橙/cosmic 青紫/flow 绿灰/studio 蓝灰 | profile 页和 mastery 页复用；配色匹配各 tier 视觉语言 |
+| D49 | 旅程数据源 | ErrorQuestion + MasteryState.masteredAt + InterventionHistory + HomeworkSession 四源并行 + JS 合并 | MasteryState 是状态快照不是事件日志，masteredAt 仅取里程碑 |
+| D50 | 仪表盘查询 | `$queryRaw` GROUP BY + CASE WHEN 单次 DB 往返 | 匹配 mastery.stats 已有模式 |
+| D51 | 进度图数据 | 基线查询 + 期间增量 → TS 累计曲线 | 比 correlated subquery 或 generate_series 高效且可测试 |
+| D52 | 空状态 | 每段独立空状态 + tier 友好文案 | wonder"还没有记录哦～"比"No data"更温暖 |

@@ -25,7 +25,8 @@
     "adminEval": "AI 质量评估",
     "tasks": "今日任务",
     "parentComparison": "学习对比",
-    "parentSuggestions": "学习建议"
+    "parentSuggestions": "学习建议",
+    "learningProfile": "学习画像"
   },
   "auth": {
     "login": "登录",
@@ -1010,6 +1011,42 @@
     "ms": "ms",
     "steps": "步"
   },
+  "learningProfile": {
+    "title": "学习画像",
+    "viewProfile": "查看学习画像",
+    "empty": "暂无学习数据",
+    "dashboard": {
+      "title": "掌握度概览",
+      "mastered": "已掌握",
+      "inProgress": "学习中",
+      "newError": "待攻克",
+      "total": "总计"
+    },
+    "progress": {
+      "title": "学习进度",
+      "period30d": "近30天",
+      "period90d": "近90天",
+      "mastered": "已掌握",
+      "total": "知识点总数"
+    },
+    "journey": {
+      "title": "学习旅程",
+      "empty": "还没有学习记录",
+      "score": "得分：{score}",
+      "event": {
+        "MASTERED": "掌握了",
+        "NEW_ERROR": "遇到新错题",
+        "CORRECTED": "改正了",
+        "HOMEWORK_COMPLETED": "完成作业",
+        "INTERVENTION_DIAGNOSIS": "诊断分析",
+        "INTERVENTION_HINT": "获得提示",
+        "INTERVENTION_REVIEW": "复习干预",
+        "INTERVENTION_EXPLANATION": "知识讲解",
+        "INTERVENTION_PRACTICE": "练习任务",
+        "INTERVENTION_BRAIN_DECISION": "学习规划"
+      }
+    }
+  },
   "tier": {
     "wonder": "魔法乐园",
     "cosmic": "宇宙探索者",
@@ -1054,6 +1091,22 @@
         "noData": "还没有错题哦，真棒！",
         "errorCount": "有 {count} 道小题目需要看看"
       },
+      "learningProfile": {
+        "title": "我的学习小星星",
+        "empty": "还没有学习记录哦～快去做作业吧！",
+        "dashboard": {
+          "title": "我学会了多少"
+        },
+        "journey": {
+          "title": "我的学习故事",
+          "empty": "还没有学习故事哦～",
+          "event": {
+            "MASTERED": "学会啦！",
+            "NEW_ERROR": "遇到小困难",
+            "HOMEWORK_COMPLETED": "作业做完啦！"
+          }
+        }
+      },
       "mastery": {
         "title": "知识星星地图",
         "empty": "还没有学习记录哦～",
@@ -1075,6 +1128,15 @@
       }
     },
     "cosmic": {
+      "learningProfile": {
+        "title": "学习档案",
+        "journey": {
+          "event": {
+            "MASTERED": "知识点攻克！",
+            "NEW_ERROR": "遭遇挑战"
+          }
+        }
+      },
       "tasks": {
         "markComplete": "完成！"
       },

@@ -155,7 +155,31 @@
 | Sprint 19 | Week 24 | 动画系统基础设施 + 年级自适应组件库 | [x] |
 | Sprint 20 | Week 25 | 任务页 + 批改页年级自适应改造 | [x] |
 | Sprint 21 | Week 26 | 错题本 + 掌握度 + 导航全面改造 | [x] |
-| Sprint 22 | Week 27 | 学生画像 + Phase 4 验收 | [ ] |
+| Sprint 22 | Week 27 | 学生画像 + Phase 4 验收 | [x] |
+
+### Phase 4 验收摘要 (2026-04-16)
+
+- 测试：78 files / 1075 passed / 30 todo / 0 failed（Sprint 21 基线 77/1060 → +1 文件 / +15 测试）
+- 构建：`tsc --noEmit` 0 错误；`npm run build` 成功
+- 新增 router：`profile` (3 procedures: learningJourney / masteryDashboard / historicalProgress)
+- 新增页面：`/student/profile`（学生画像 — 掌握度仪表盘 + 累计进度图 + 学习旅程时间线）
+- 新增组件：`HistoricalProgressChart`（tier 自适应配色，profile 页 + mastery 页共用）
+- mastery 页增强：进度折线图 + "查看学习画像" 入口按钮
+- 导航：Sidebar 加入 profile 链接；BottomNav 加入条目（wonder/cosmic 白名单不含，保持 3/4 tab）
+- i18n：`learningProfile` + `tierText.wonder/cosmic.learningProfile` 中英双语完整覆盖
+
+### Phase 4 交付物
+
+- 增强家长分析：纠正率分布、帮助频率明细、多孩对比
+- AI 学习建议 + 干预追踪：周 cron 生成建议、家长按需刷新、干预效果前后对比
+- 4 级年级自适应动画系统：GradeTierProvider + framer-motion + Lottie + Three.js
+- 全部学生页面改造：任务/批改/错题本/掌握度/导航 tier 全面适配
+- 学生画像可视化：学习旅程时间线 + 掌握度仪表盘 + 历史累计进度图
+- 家长/管理员始终 Pro 主题（studio tier）
+
+### Phase 4 推迟事项
+
+- CORRECTED 事件类型：EVENT_EMOJI/EVENT_DOT_COLOR 中声明但 router 暂不产生（MasteryState 无转换历史日志），i18n key 已就位，待 Phase 5 MasteryState 历史追踪实现后激活
 
 ## Phase 5: 持续优化
 

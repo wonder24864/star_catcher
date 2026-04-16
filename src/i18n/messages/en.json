@@ -25,7 +25,8 @@
     "adminEval": "AI Quality Eval",
     "tasks": "Today's Tasks",
     "parentComparison": "Learning Comparison",
-    "parentSuggestions": "Learning Suggestions"
+    "parentSuggestions": "Learning Suggestions",
+    "learningProfile": "Learning Profile"
   },
   "auth": {
     "login": "Login",
@@ -1010,6 +1011,42 @@
     "ms": "ms",
     "steps": "steps"
   },
+  "learningProfile": {
+    "title": "Learning Profile",
+    "viewProfile": "View Profile",
+    "empty": "No learning data yet",
+    "dashboard": {
+      "title": "Mastery Overview",
+      "mastered": "Mastered",
+      "inProgress": "In Progress",
+      "newError": "Needs Work",
+      "total": "Total"
+    },
+    "progress": {
+      "title": "Learning Progress",
+      "period30d": "Last 30 Days",
+      "period90d": "Last 90 Days",
+      "mastered": "Mastered",
+      "total": "Total KPs"
+    },
+    "journey": {
+      "title": "Learning Journey",
+      "empty": "No learning records yet",
+      "score": "Score: {score}",
+      "event": {
+        "MASTERED": "Mastered",
+        "NEW_ERROR": "New Error",
+        "CORRECTED": "Corrected",
+        "HOMEWORK_COMPLETED": "Completed Homework",
+        "INTERVENTION_DIAGNOSIS": "Diagnosis",
+        "INTERVENTION_HINT": "Got Hint",
+        "INTERVENTION_REVIEW": "Review",
+        "INTERVENTION_EXPLANATION": "Explanation",
+        "INTERVENTION_PRACTICE": "Practice Task",
+        "INTERVENTION_BRAIN_DECISION": "Learning Plan"
+      }
+    }
+  },
   "tier": {
     "wonder": "Magic Wonderland",
     "cosmic": "Cosmic Explorer",
@@ -1054,6 +1091,22 @@
         "noData": "No mistakes yet, awesome!",
         "errorCount": "You have {count} questions to look at"
       },
+      "learningProfile": {
+        "title": "My Learning Stars",
+        "empty": "No learning records yet~ Go do some homework!",
+        "dashboard": {
+          "title": "What I've Learned"
+        },
+        "journey": {
+          "title": "My Learning Story",
+          "empty": "No learning stories yet~",
+          "event": {
+            "MASTERED": "I learned it!",
+            "NEW_ERROR": "Little challenge",
+            "HOMEWORK_COMPLETED": "Homework done!"
+          }
+        }
+      },
       "mastery": {
         "title": "Knowledge Star Map",
         "empty": "No learning records yet~",
@@ -1075,6 +1128,15 @@
       }
     },
     "cosmic": {
+      "learningProfile": {
+        "title": "Learning Profile",
+        "journey": {
+          "event": {
+            "MASTERED": "Knowledge conquered!",
+            "NEW_ERROR": "Challenge encountered"
+          }
+        }
+      },
       "tasks": {
         "markComplete": "Done!"
       },

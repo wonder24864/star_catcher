@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useLocale } from "next-intl";
 import { motion } from "framer-motion";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
@@ -23,6 +25,7 @@ import { AgentSummaryCard } from "@/components/agent-summary-card";
 import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
 import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
 import { AdaptiveProgress } from "@/components/adaptive/adaptive-progress";
+import { HistoricalProgressChart } from "@/components/profile/historical-progress-chart";
 
 const SUBJECTS = [
   "MATH", "CHINESE", "ENGLISH", "PHYSICS", "CHEMISTRY",
@@ -59,6 +62,8 @@ export default function MasteryPage() {
   const t = useTranslations("mastery");
   const tCommon = useTranslations("common");
   const tT = useTierTranslations("mastery");
+  const tLP = useTierTranslations("learningProfile");
+  const locale = useLocale();
   const { data: session } = useSession();
   const selectedStudentId = useStudentStore((s) => s.selectedStudentId);
   const searchParams = useSearchParams();
@@ -163,8 +168,15 @@ export default function MasteryPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      {/* Header */}
-      <h1 className="text-2xl font-bold">{tT("title")}</h1>
+      {/* Header + View Profile link */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">{tT("title")}</h1>
+        <Link href={`/${locale}/student/profile`}>
+          <AdaptiveButton variant="outline" size="sm">
+            {tLP("viewProfile")}
+          </AdaptiveButton>
+        </Link>
+      </div>
 
       {/* Stats Summary — D45: keep semantic colors, wrap in AdaptiveCard */}
       <div className="flex gap-3 overflow-x-auto">
@@ -195,6 +207,9 @@ export default function MasteryPage() {
           </AdaptiveCard>
         )}
       </div>
+
+      {/* Historical Progress Chart (D48: shared component) */}
+      <HistoricalProgressChart studentId={studentId ?? undefined} />
 
       {/* Subject Tabs */}
       <Tabs value={subjectFilter} onValueChange={setSubjectFilter}>
