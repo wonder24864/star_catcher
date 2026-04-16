@@ -1,0 +1,8 @@
+{
+  "operation": "FIND_SIMILAR",
+  "version": "1.0.0",
+  "exactMatchFields": [],
+  "judgedFields": [],
+  "cases": [],
+  "unavailableReason": "FIND_SIMILAR 不是 AI 操作 — 是确定性双路检索（KP 过滤 + pgvector 余弦相似度），实现在 src/lib/domain/similar-questions/find.ts。质量由 pgvector 性能基准 + 单测覆盖，不适合 EVAL_JUDGE 打分。见 registry.ts:167-175 注释。"
+}

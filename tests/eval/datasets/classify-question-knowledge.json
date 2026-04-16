@@ -1,0 +1,69 @@
+{
+  "operation": "CLASSIFY_QUESTION_KNOWLEDGE",
+  "version": "1.0.0",
+  "promptVersion": "1.0.0",
+  "exactMatchFields": [],
+  "judgedFields": ["mappings"],
+  "cases": [
+    {
+      "id": "cqk-add-carry",
+      "input": {
+        "questionText": "28 + 39 = ?",
+        "questionSubject": "MATH",
+        "questionGrade": "Grade2",
+        "candidates": [
+          { "id": "kp-add-carry", "name": "两位数加法（进位）", "description": "个位相加超过 10 需要进位" },
+          { "id": "kp-sub-borrow", "name": "两位数减法（退位）", "description": "个位不够减需要借位" },
+          { "id": "kp-multiply-single", "name": "一位数乘法" },
+          { "id": "kp-time-read", "name": "认识时间" }
+        ]
+      },
+      "expected": {
+        "mappings": [
+          { "knowledgePointId": "kp-add-carry", "confidence": 0.9 }
+        ]
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "cqk-fraction-add-diff-denom",
+      "input": {
+        "questionText": "1/2 + 1/3 = ?",
+        "questionSubject": "MATH",
+        "questionGrade": "Grade5",
+        "candidates": [
+          { "id": "kp-fraction-add-same", "name": "同分母分数加减" },
+          { "id": "kp-fraction-add-diff", "name": "异分母分数加减" },
+          { "id": "kp-fraction-multiply", "name": "分数乘法" },
+          { "id": "kp-decimal-add", "name": "小数加减" }
+        ]
+      },
+      "expected": {
+        "mappings": [
+          { "knowledgePointId": "kp-fraction-add-diff", "confidence": 0.9 }
+        ]
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "cqk-english-present-simple",
+      "input": {
+        "questionText": "Fill in the blank: He ___ (go) to school every day.",
+        "questionSubject": "ENGLISH",
+        "questionGrade": "Grade5",
+        "candidates": [
+          { "id": "kp-present-simple-3rd", "name": "一般现在时第三人称单数" },
+          { "id": "kp-past-simple", "name": "一般过去时" },
+          { "id": "kp-be-verb", "name": "be 动词" },
+          { "id": "kp-present-continuous", "name": "现在进行时" }
+        ]
+      },
+      "expected": {
+        "mappings": [
+          { "knowledgePointId": "kp-present-simple-3rd", "confidence": 0.9 }
+        ]
+      },
+      "locale": "zh-CN"
+    }
+  ]
+}

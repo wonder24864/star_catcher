@@ -45,6 +45,7 @@ model User {
   dailyTaskPacks    DailyTaskPack[]     @relation("StudentDailyPacks")
   weaknessProfiles  WeaknessProfile[]   @relation("StudentWeakness")
   verifiedMappings  QuestionKnowledgeMapping[] @relation("MappingVerifier") // Sprint 15
+  evalRuns          EvalRun[]           // Sprint 16 — EvalFramework trigger relation
 
   @@index([username])
   @@index([role])
@@ -779,4 +780,65 @@ model SemanticCache {
   @@unique([operationType, promptHash, promptVersion])
   @@index([operationType, promptVersion, expiresAt])
   @@index([expiresAt])
+}
+
+// ==================== EvalFramework (Sprint 16) ====================
+// See docs/user-stories/admin-phase3.md US-058 and docs/sprints/sprint-16.md
+
+enum EvalRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum EvalCaseStatus {
+  PASS
+  FAIL
+  ERROR    // provider exception — not counted toward failure rate
+  SKIPPED  // dataset has unavailableReason or no cases
+}
+
+model EvalRun {
+  id            String        @id @default(cuid())
+  triggeredBy   String        // adminId
+  operations    String[]      // covered AIOperationType names
+  status        EvalRunStatus @default(RUNNING)
+  startedAt     DateTime      @default(now()) @db.Timestamptz
+  completedAt   DateTime?     @db.Timestamptz
+  totalCases    Int           @default(0)
+  passedCases   Int           @default(0)
+  failedCases   Int           @default(0)
+  erroredCases  Int           @default(0)
+  skippedCases  Int           @default(0)
+  passRate      Float?        // passed / (total - skipped). null when no evaluable cases.
+  note          String?       @db.Text
+
+  admin User       @relation(fields: [triggeredBy], references: [id], onDelete: Cascade)
+  cases EvalCase[]
+
+  @@index([startedAt])
+  @@index([triggeredBy, startedAt])
+  @@index([status, startedAt])
+}
+
+model EvalCase {
+  id              String          @id @default(cuid())
+  runId           String
+  operation       AIOperationType
+  caseId          String          @db.VarChar(64) // dataset-local id (e.g. "de-add-carry-01")
+  status          EvalCaseStatus
+  input           Json
+  expected        Json
+  actual          Json?
+  judgeScore      Float?          // 1-5 from EVAL_JUDGE, null when unused (exact-match pass or other)
+  judgeReasoning  String?         @db.Text
+  failureReason   String?         @db.Text // short reason for FAIL/ERROR/SKIPPED
+  durationMs      Int             @default(0)
+  createdAt       DateTime        @default(now()) @db.Timestamptz
+
+  run EvalRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, status])
+  @@index([operation, status])
+  @@index([runId, operation])
 }

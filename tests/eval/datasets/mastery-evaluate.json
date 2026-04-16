@@ -1,0 +1,76 @@
+{
+  "operation": "MASTERY_EVALUATE",
+  "version": "1.0.0",
+  "promptVersion": "1.0.0",
+  "exactMatchFields": [],
+  "judgedFields": ["recommendedTransition", "sm2Adjustment", "summary"],
+  "cases": [
+    {
+      "id": "me-to-mastered",
+      "input": {
+        "knowledgePointId": "kp-add-carry",
+        "kpName": "两位数加法（进位）",
+        "currentMasteryStatus": "REVIEWING",
+        "reviewSchedule": { "intervalDays": 7, "easeFactor": 2.5, "consecutiveCorrect": 3 },
+        "recentAttempts": [
+          { "taskType": "PRACTICE", "isCorrect": true, "completedAt": "2026-04-10T08:00:00Z" },
+          { "taskType": "REVIEW", "isCorrect": true, "completedAt": "2026-04-03T08:00:00Z" },
+          { "taskType": "REVIEW", "isCorrect": true, "completedAt": "2026-03-27T08:00:00Z" }
+        ],
+        "interventionHistory": [],
+        "masterySpeed": 1.0,
+        "currentWorkload": 2
+      },
+      "expected": {
+        "recommendedTransition": { "from": "REVIEWING", "to": "MASTERED", "reason": "连续 3 次正确且间隔覆盖超过 2 周，判定掌握" },
+        "sm2Adjustment": null,
+        "summary": "学生已连续 3 次正确完成复习，表现稳定，建议升级为 MASTERED 并暂停常规复习。"
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "me-regress",
+      "input": {
+        "knowledgePointId": "kp-fraction-add-diff",
+        "kpName": "异分母分数加减",
+        "currentMasteryStatus": "REVIEWING",
+        "reviewSchedule": { "intervalDays": 5, "easeFactor": 2.3, "consecutiveCorrect": 0 },
+        "recentAttempts": [
+          { "taskType": "PRACTICE", "isCorrect": false, "completedAt": "2026-04-10T08:00:00Z" },
+          { "taskType": "PRACTICE", "isCorrect": false, "completedAt": "2026-04-05T08:00:00Z" }
+        ],
+        "interventionHistory": [],
+        "masterySpeed": 0.3,
+        "currentWorkload": 3
+      },
+      "expected": {
+        "recommendedTransition": { "from": "REVIEWING", "to": "REGRESSED", "reason": "连续错误说明原掌握已退化" },
+        "sm2Adjustment": { "errorType": "concept", "intervalMultiplier": 0.5 },
+        "summary": "学生连续两次练习出错，表现回落，建议降级到 REGRESSED 并缩短复习间隔。"
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "me-hold-steady",
+      "input": {
+        "knowledgePointId": "kp-decimal-mul",
+        "kpName": "小数乘法",
+        "currentMasteryStatus": "REVIEWING",
+        "reviewSchedule": { "intervalDays": 3, "easeFactor": 2.5, "consecutiveCorrect": 1 },
+        "recentAttempts": [
+          { "taskType": "PRACTICE", "isCorrect": true, "completedAt": "2026-04-10T08:00:00Z" },
+          { "taskType": "PRACTICE", "isCorrect": false, "completedAt": "2026-04-07T08:00:00Z" }
+        ],
+        "interventionHistory": [],
+        "masterySpeed": 0.5,
+        "currentWorkload": 2
+      },
+      "expected": {
+        "recommendedTransition": null,
+        "sm2Adjustment": null,
+        "summary": "表现起伏，尚未形成稳定掌握，维持 REVIEWING 继续观察。"
+      },
+      "locale": "zh-CN"
+    }
+  ]
+}

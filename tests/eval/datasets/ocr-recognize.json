@@ -1,0 +1,79 @@
+{
+  "operation": "OCR_RECOGNIZE",
+  "version": "1.0.0",
+  "promptVersion": "1.0.0",
+  "exactMatchFields": ["subject"],
+  "judgedFields": ["questions"],
+  "cases": [
+    {
+      "id": "ocr-math-g2-01-synthetic",
+      "input": {
+        "imageFiles": ["math-g2-01.jpg"],
+        "hasExif": false
+      },
+      "expected": {
+        "subject": "MATH",
+        "questions": [
+          {
+            "questionNumber": 1,
+            "questionType": "CALCULATION",
+            "content": "28 + 35 =",
+            "studentAnswer": "53",
+            "correctAnswer": "63",
+            "isCorrect": false
+          },
+          {
+            "questionNumber": 2,
+            "questionType": "CALCULATION",
+            "content": "47 + 18 =",
+            "studentAnswer": "65",
+            "correctAnswer": "65",
+            "isCorrect": true
+          },
+          {
+            "questionNumber": 3,
+            "questionType": "CALCULATION",
+            "content": "36 + 29 =",
+            "studentAnswer": "65",
+            "correctAnswer": "65",
+            "isCorrect": true
+          }
+        ]
+      },
+      "locale": "zh-CN",
+      "note": "synthetic — machine-rendered SVG→JPG, not a production baseline; replace with real scanned homework when素材 ready. See tests/eval/fixtures/ocr/README.md"
+    },
+    {
+      "id": "ocr-chinese-g3-01-synthetic",
+      "input": {
+        "imageFiles": ["chinese-g3-01.jpg"],
+        "hasExif": false
+      },
+      "expected": {
+        "subject": "CHINESE",
+        "questions": [
+          {
+            "questionNumber": 1,
+            "questionType": "SHORT_ANSWER",
+            "content": "请用\"迫不及待\"造句：",
+            "studentAnswer": "他迫不及待地打开了礼物盒。"
+          },
+          {
+            "questionNumber": 2,
+            "questionType": "FILL_BLANK",
+            "content": "填空：画蛇__足。",
+            "studentAnswer": "添"
+          },
+          {
+            "questionNumber": 3,
+            "questionType": "SHORT_ANSWER",
+            "content": "解释\"亡羊补牢\"的意思：",
+            "studentAnswer": "羊丢了再修羊圈，比喻出了问题后及时补救。"
+          }
+        ]
+      },
+      "locale": "zh-CN",
+      "note": "synthetic — machine-rendered SVG→JPG, not a production baseline"
+    }
+  ]
+}

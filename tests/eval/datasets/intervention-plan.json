@@ -1,0 +1,68 @@
+{
+  "operation": "INTERVENTION_PLAN",
+  "version": "1.0.0",
+  "promptVersion": "1.0.0",
+  "exactMatchFields": [],
+  "judgedFields": ["tasks", "reasoning"],
+  "cases": [
+    {
+      "id": "ip-severe-add-carry",
+      "input": {
+        "weakPoints": [
+          { "kpId": "kp-add-carry", "kpName": "两位数加法（进位）", "severity": "HIGH", "trend": "DECLINING", "errorCount": 5 }
+        ],
+        "maxTasks": 3,
+        "grade": "Grade2"
+      },
+      "expected": {
+        "tasks": [
+          { "type": "EXPLANATION", "knowledgePointId": "kp-add-carry", "sortOrder": 0, "reason": "严重薄弱且下降趋势，先讲解巩固概念" },
+          { "type": "PRACTICE", "knowledgePointId": "kp-add-carry", "sortOrder": 1, "reason": "讲解后立即练习相似题" },
+          { "type": "REVIEW", "knowledgePointId": "kp-add-carry", "sortOrder": 2, "reason": "用原错题检验是否掌握" }
+        ],
+        "reasoning": "该 KP 严重薄弱且呈下降趋势，优先用\"讲解→练习→复习\"三段式修复。"
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "ip-multiple-mixed",
+      "input": {
+        "weakPoints": [
+          { "kpId": "kp-fraction-add-diff", "kpName": "异分母分数加减", "severity": "MEDIUM", "trend": "STABLE", "errorCount": 2 },
+          { "kpId": "kp-decimal-mul", "kpName": "小数乘法", "severity": "LOW", "trend": "IMPROVING", "errorCount": 1 }
+        ],
+        "maxTasks": 3,
+        "grade": "Grade5"
+      },
+      "expected": {
+        "tasks": [
+          { "type": "PRACTICE", "knowledgePointId": "kp-fraction-add-diff", "sortOrder": 0, "reason": "稳定性薄弱，优先练习巩固" },
+          { "type": "PRACTICE", "knowledgePointId": "kp-fraction-add-diff", "sortOrder": 1, "reason": "再来一道相似练习提高熟练度" },
+          { "type": "REVIEW", "knowledgePointId": "kp-decimal-mul", "sortOrder": 2, "reason": "上升趋势，仅需复习保持" }
+        ],
+        "reasoning": "对 MEDIUM 稳定的 KP 用两次 PRACTICE 加深，对 LOW 上升的 KP 仅保留一次 REVIEW。"
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "ip-cap-by-maxtasks",
+      "input": {
+        "weakPoints": [
+          { "kpId": "kp-a", "kpName": "KP A", "severity": "HIGH", "trend": "STABLE", "errorCount": 3 },
+          { "kpId": "kp-b", "kpName": "KP B", "severity": "HIGH", "trend": "STABLE", "errorCount": 3 },
+          { "kpId": "kp-c", "kpName": "KP C", "severity": "HIGH", "trend": "STABLE", "errorCount": 3 }
+        ],
+        "maxTasks": 2,
+        "grade": "Grade4"
+      },
+      "expected": {
+        "tasks": [
+          { "type": "PRACTICE", "knowledgePointId": "kp-a", "sortOrder": 0, "reason": "高优先级薄弱 KP" },
+          { "type": "PRACTICE", "knowledgePointId": "kp-b", "sortOrder": 1, "reason": "高优先级薄弱 KP" }
+        ],
+        "reasoning": "maxTasks=2 限制下只安排两个最优先 KP，KP C 顺延到下一日。"
+      },
+      "locale": "zh-CN"
+    }
+  ]
+}

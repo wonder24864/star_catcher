@@ -15,6 +15,7 @@ import { reportRouter } from "./report";
 import { agentTraceRouter } from "./agent-trace";
 import { dailyTaskRouter } from "./daily-task";
 import { brainRouter } from "./brain";
+import { evalRouter } from "./eval";
 
 export const appRouter = router({
   auth: authRouter,
@@ -33,6 +34,7 @@ export const appRouter = router({
   agentTrace: agentTraceRouter,
   dailyTask: dailyTaskRouter,
   brain: brainRouter,
+  eval: evalRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,0 +1,72 @@
+{
+  "operation": "GENERATE_EXPLANATION",
+  "version": "1.0.0",
+  "promptVersion": "1.0.0",
+  "exactMatchFields": [],
+  "judgedFields": ["title", "steps"],
+  "cases": [
+    {
+      "id": "ge-static-add-carry",
+      "input": {
+        "questionContent": "48 + 37 = ?",
+        "correctAnswer": "85",
+        "studentAnswer": "75",
+        "kpName": "两位数加法（进位）",
+        "subject": "MATH",
+        "grade": "Grade2",
+        "format": "static"
+      },
+      "expected": {
+        "title": "两位数加法进位讲解",
+        "steps": [
+          { "content": "从个位开始：8 + 7 = 15，个位写 5，向十位进 1。" },
+          { "content": "十位相加：4 + 3 = 7，再加上刚才进的 1，得到 8。" },
+          { "content": "结果：十位 8，个位 5，所以 48 + 37 = 85。" }
+        ]
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "ge-interactive-fraction",
+      "input": {
+        "questionContent": "1/4 + 1/6 = ?",
+        "correctAnswer": "5/12",
+        "studentAnswer": "2/10",
+        "kpName": "异分母分数加减",
+        "subject": "MATH",
+        "grade": "Grade5",
+        "format": "interactive"
+      },
+      "expected": {
+        "title": "异分母分数相加 — 先通分",
+        "steps": [
+          { "content": "第一步：找到 4 和 6 的最小公倍数。", "question": "4 和 6 的最小公倍数是多少？", "expectedAnswer": "12" },
+          { "content": "第二步：把两个分数都化成分母为 12 的等值分数。", "question": "1/4 = ?/12？", "expectedAnswer": "3/12" },
+          { "content": "第三步：通分后相加。", "question": "3/12 + 2/12 = ?", "expectedAnswer": "5/12" }
+        ]
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "ge-conversational-perimeter",
+      "input": {
+        "questionContent": "长方形长 8 cm，宽 5 cm，求周长。",
+        "correctAnswer": "26 cm",
+        "studentAnswer": "40 cm",
+        "kpName": "长方形周长",
+        "subject": "MATH",
+        "grade": "Grade3",
+        "format": "conversational"
+      },
+      "expected": {
+        "title": "周长和面积别搞混啦",
+        "steps": [
+          { "content": "我看你算成了 40，是不是把周长当成了面积呀？面积是长×宽。" },
+          { "content": "周长其实是围一圈的长度，公式是 2×(长+宽)。" },
+          { "content": "所以这道题是 2×(8+5) = 2×13 = 26 cm。下次记住：周长围一圈，面积盖一面。" }
+        ]
+      },
+      "locale": "zh-CN"
+    }
+  ]
+}

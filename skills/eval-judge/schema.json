@@ -1,0 +1,28 @@
+{
+  "name": "eval_judge",
+  "description": "Judge an AI operation's actual output against an expected reference. Returns a 1-5 score (5=equivalent, 3=pass boundary, 1=contradictory/unsafe) with a short reasoning. Scores correctness, completeness, and safety as a single integer. The caller already filters out fields that pass exact-match; only free-text judgedFields reach this skill.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "operation": {
+        "type": "string",
+        "description": "The AIOperationType being evaluated (e.g. DIAGNOSE_ERROR)"
+      },
+      "operationDescription": {
+        "type": "string",
+        "description": "Short human description of the operation's purpose"
+      },
+      "expected": {
+        "type": "object",
+        "description": "Reference output fields that should be conveyed",
+        "additionalProperties": true
+      },
+      "actual": {
+        "type": "object",
+        "description": "The AI operation's actual output fields",
+        "additionalProperties": true
+      }
+    },
+    "required": ["operation", "operationDescription", "expected", "actual"]
+  }
+}

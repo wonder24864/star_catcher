@@ -1,0 +1,8 @@
+{
+  "operation": "EVAL_JUDGE",
+  "version": "1.0.0",
+  "exactMatchFields": [],
+  "judgedFields": [],
+  "cases": [],
+  "unavailableReason": "self-referential — EVAL_JUDGE 是评估裁判本身，用自己评判自己会引入循环偏差，不作为 EvalFramework 的回归目标。裁判质量由 evalJudgeSchema.superRefine (禁止 passed 与 score 不一致) 和 eval-judge-schema.test.ts 覆盖。"
+}

@@ -1,0 +1,57 @@
+{
+  "operation": "DIAGNOSE_ERROR",
+  "version": "1.0.0",
+  "promptVersion": "1.0.0",
+  "exactMatchFields": ["errorPattern"],
+  "judgedFields": ["errorDescription", "recommendation"],
+  "cases": [
+    {
+      "id": "de-add-carry-concept",
+      "input": {
+        "question": "28 + 35 = ?",
+        "correctAnswer": "63",
+        "studentAnswer": "53",
+        "subject": "MATH",
+        "grade": "Grade2"
+      },
+      "expected": {
+        "errorPattern": "CONCEPT_CONFUSION",
+        "errorDescription": "学生在个位相加 8+5=13 时没有向十位进位，直接把十位简单相加得到 5，显示对进位规则的理解有偏差。",
+        "recommendation": "重新讲解两位数加法的进位规则，多做带进位的口算练习直到形成条件反射。"
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "de-fraction-careless",
+      "input": {
+        "question": "3/4 + 1/4 = ?",
+        "correctAnswer": "1",
+        "studentAnswer": "4/4",
+        "subject": "MATH",
+        "grade": "Grade5"
+      },
+      "expected": {
+        "errorPattern": "CARELESS",
+        "errorDescription": "学生计算过程完全正确，只是没有把结果 4/4 化简为 1。属于最后一步约分疏忽。",
+        "recommendation": "答题时最后一步检查分数是否需要化简；可在草稿纸边缘写\"约分\"提醒。"
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "de-perimeter-method-wrong",
+      "input": {
+        "question": "一个长方形长 8 cm，宽 5 cm，求它的周长。",
+        "correctAnswer": "26 cm",
+        "studentAnswer": "40 cm²",
+        "subject": "MATH",
+        "grade": "Grade3"
+      },
+      "expected": {
+        "errorPattern": "METHOD_WRONG",
+        "errorDescription": "学生把求周长的题目当成了求面积（长×宽=40），既用错方法，单位也写成了 cm²。属于周长与面积概念混用。",
+        "recommendation": "重讲周长与面积的区别：周长是一圈的长度 (2×(长+宽))，单位是 cm；面积是表面大小 (长×宽)，单位是 cm²。"
+      },
+      "locale": "zh-CN"
+    }
+  ]
+}

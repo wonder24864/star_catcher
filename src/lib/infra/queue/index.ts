@@ -19,6 +19,7 @@ import type {
   InterventionPlanningJobData,
   MasteryEvaluationJobData,
   EmbeddingGenerateJobData,
+  EvalRunJobData,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -214,6 +215,24 @@ export async function enqueueEmbeddingGenerate(
     backoff: { type: "exponential", delay: 5000 },
     removeOnComplete: 100,
     removeOnFail: 200,
+  });
+  return job.id!;
+}
+
+/**
+ * Enqueue EvalFramework run — Sprint 16 US-058.
+ *
+ * Long-running (~3-6 min for Run All): single attempt, no retry (admin can
+ * re-trigger manually if the run fails). EvalRun row must already exist
+ * with status=RUNNING; handler finalizes it.
+ */
+export async function enqueueEvalRun(
+  data: EvalRunJobData,
+): Promise<string> {
+  const job = await getQueue().add("eval-run", data, {
+    attempts: 1,
+    removeOnComplete: 50,
+    removeOnFail: 100,
   });
   return job.id!;
 }

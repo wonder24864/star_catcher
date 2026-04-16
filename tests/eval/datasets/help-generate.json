@@ -1,0 +1,57 @@
+{
+  "operation": "HELP_GENERATE",
+  "version": "1.0.0",
+  "promptVersion": "1.0.0",
+  "exactMatchFields": ["level"],
+  "judgedFields": ["helpText"],
+  "cases": [
+    {
+      "id": "hg-level1-add",
+      "input": {
+        "questionContent": "18 + 27 = ?",
+        "studentAnswer": "35",
+        "correctAnswer": "45",
+        "helpLevel": 1,
+        "subject": "MATH",
+        "grade": "Grade2"
+      },
+      "expected": {
+        "level": 1,
+        "helpText": "引导学生回忆两位数加法的进位规则（个位相加 8+7=15，向十位进 1），但不直接给出答案 45。"
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "hg-level2-subtract-borrow",
+      "input": {
+        "questionContent": "52 - 37 = ?",
+        "studentAnswer": "25",
+        "correctAnswer": "15",
+        "helpLevel": 2,
+        "subject": "MATH",
+        "grade": "Grade2"
+      },
+      "expected": {
+        "level": 2,
+        "helpText": "列出退位减法的关键步骤：个位不够减时从十位借 1（变成 12-7），十位剩余 4-3。提示步骤但不直接计算出最终答案。"
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "hg-level3-fraction",
+      "input": {
+        "questionContent": "1/2 + 1/3 = ?",
+        "studentAnswer": "2/5",
+        "correctAnswer": "5/6",
+        "helpLevel": 3,
+        "subject": "MATH",
+        "grade": "Grade5"
+      },
+      "expected": {
+        "level": 3,
+        "helpText": "给出完整解答：通分到公分母 6，1/2 = 3/6，1/3 = 2/6，相加得 3/6 + 2/6 = 5/6。解释学生把分子分母分别相加是常见错误。"
+      },
+      "locale": "zh-CN"
+    }
+  ]
+}

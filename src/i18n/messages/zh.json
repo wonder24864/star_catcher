@@ -22,6 +22,7 @@
     "adminSkills": "Skill 管理",
     "adminKnowledgeGraph": "知识图谱",
     "adminBrain": "Brain 监控",
+    "adminEval": "AI 质量评估",
     "tasks": "今日任务"
   },
   "auth": {
@@ -475,6 +476,74 @@
     "jaeger": {
       "open": "Jaeger",
       "disabled": "OTEL 未启用或 Jaeger UI 未配置"
+    },
+    "eval": {
+      "title": "AI 输出质量评估",
+      "description": "对每个 AIOperationType 用 golden 数据集做回归：精确匹配字段 + AI 评判打分。通过率基线 ≥ 80%。",
+      "tabs": {
+        "datasets": "数据集",
+        "runs": "运行历史"
+      },
+      "actions": {
+        "runAll": "运行全部",
+        "runSelected": "运行所选",
+        "runOne": "运行",
+        "viewDetails": "详情",
+        "refresh": "刷新"
+      },
+      "summary": {
+        "totalDatasets": "数据集数",
+        "totalCases": "Golden cases 数",
+        "lastRun": "上次运行",
+        "lastRunPassRate": "上次通过率",
+        "neverRun": "尚未运行"
+      },
+      "datasetsTable": {
+        "operation": "操作",
+        "caseCount": "Case 数",
+        "lastStatus": "上次 case",
+        "lastAt": "上次时间",
+        "unavailable": "不可评估",
+        "reason": "原因"
+      },
+      "runsTable": {
+        "startedAt": "开始时间",
+        "triggeredBy": "触发者",
+        "operations": "覆盖操作",
+        "totals": "总计",
+        "passRate": "通过率",
+        "status": "状态",
+        "duration": "时长"
+      },
+      "status": {
+        "RUNNING": "运行中",
+        "COMPLETED": "已完成",
+        "FAILED": "失败",
+        "PASS": "通过",
+        "FAIL": "失败",
+        "ERROR": "错误",
+        "SKIPPED": "跳过"
+      },
+      "detail": {
+        "title": "运行详情",
+        "back": "返回列表",
+        "operationGroup": "操作：{op}",
+        "casesSummary": "{passed}/{total} 通过 · {failed} 失败 · {errored} 错误 · {skipped} 跳过",
+        "caseId": "Case",
+        "judgeScore": "评分",
+        "judgeReasoning": "评判理由",
+        "failureReason": "失败原因",
+        "inputLabel": "输入",
+        "expectedLabel": "期望",
+        "actualLabel": "实际",
+        "showPassed": "显示通过项",
+        "hidePassed": "隐藏通过项"
+      },
+      "empty": "尚无运行记录。点击「运行全部」开始。",
+      "confirmRun": "确认触发评估运行？将调用 LLM 约 40 次，耗时 3-6 分钟。",
+      "triggerSuccess": "评估运行已入队。刷新查看进度。",
+      "triggerFailed": "触发失败：{message}",
+      "pending": "等待中…"
     }
   },
   "validation": {

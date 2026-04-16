@@ -1,0 +1,66 @@
+{
+  "operation": "GRADE_ANSWER",
+  "version": "1.0.0",
+  "promptVersion": "1.0.0",
+  "exactMatchFields": ["isCorrect"],
+  "judgedFields": [],
+  "cases": [
+    {
+      "id": "ga-correct-math",
+      "input": {
+        "questionContent": "7 × 8 = ?",
+        "studentAnswer": "56",
+        "correctAnswer": "56",
+        "subject": "MATH",
+        "grade": "Grade2"
+      },
+      "expected": {
+        "isCorrect": true
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "ga-wrong-math",
+      "input": {
+        "questionContent": "7 × 8 = ?",
+        "studentAnswer": "54",
+        "correctAnswer": "56",
+        "subject": "MATH",
+        "grade": "Grade2"
+      },
+      "expected": {
+        "isCorrect": false
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "ga-correct-chinese-order",
+      "input": {
+        "questionContent": "请写出以下成语的正确顺序：天经地义 / 义气风发",
+        "studentAnswer": "天经地义、意气风发",
+        "correctAnswer": "天经地义、意气风发",
+        "subject": "CHINESE",
+        "grade": "Grade5"
+      },
+      "expected": {
+        "isCorrect": true
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "ga-correct-english-synonym",
+      "input": {
+        "questionContent": "Fill in the blank with a verb: She ___ to school every day.",
+        "studentAnswer": "walks",
+        "correctAnswer": "goes",
+        "subject": "ENGLISH",
+        "grade": "Grade4"
+      },
+      "expected": {
+        "isCorrect": true
+      },
+      "note": "语义等价应判为正确 — walks 与 goes 在该语境下都合法",
+      "locale": "zh-CN"
+    }
+  ]
+}

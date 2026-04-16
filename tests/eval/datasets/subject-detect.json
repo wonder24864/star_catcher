@@ -1,0 +1,53 @@
+{
+  "operation": "SUBJECT_DETECT",
+  "version": "1.0.0",
+  "promptVersion": "1.0.0",
+  "exactMatchFields": ["subject"],
+  "judgedFields": [],
+  "cases": [
+    {
+      "id": "sd-math-01",
+      "input": {
+        "questionContent": "计算：125 × 16 = ?",
+        "studentAnswer": "2000"
+      },
+      "expected": {
+        "subject": "MATH"
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "sd-chinese-01",
+      "input": {
+        "questionContent": "请用\"迫不及待\"造句。",
+        "studentAnswer": "他迫不及待地打开了礼物盒。"
+      },
+      "expected": {
+        "subject": "CHINESE"
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "sd-english-01",
+      "input": {
+        "questionContent": "Fill in the blank: She ___ (go) to school every day.",
+        "studentAnswer": "goes"
+      },
+      "expected": {
+        "subject": "ENGLISH"
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "sd-physics-01",
+      "input": {
+        "questionContent": "一个质量为 2 kg 的物体，受到 10 N 的水平合力，求其加速度。",
+        "studentAnswer": "5 m/s²"
+      },
+      "expected": {
+        "subject": "PHYSICS"
+      },
+      "locale": "zh-CN"
+    }
+  ]
+}

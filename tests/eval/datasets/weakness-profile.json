@@ -1,0 +1,8 @@
+{
+  "operation": "WEAKNESS_PROFILE",
+  "version": "1.0.0",
+  "exactMatchFields": [],
+  "judgedFields": [],
+  "cases": [],
+  "unavailableReason": "WEAKNESS_PROFILE 的实现路径是 weakness-profile Skill 直接经 Memory + search_knowledge_points 组合，不经 AIOperationType 层（Sprint 11 设计决策，见 src/lib/domain/ai/operations/registry.ts:119-121）。保留 AIOperationType 枚举条目是为将来统一入口预留，本 Sprint 不做端到端评估。"
+}

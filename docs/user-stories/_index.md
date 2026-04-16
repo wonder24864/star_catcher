@@ -61,3 +61,4 @@
 | US-055 | 低置信度映射审核 | [admin-phase3.md](admin-phase3.md) | Sprint 15 |
 | US-056 | KG 拖拽层级与排序 | [admin-phase3.md](admin-phase3.md) | Sprint 15 |
 | US-057 | Brain 执行监控 | [admin-phase3.md](admin-phase3.md) | Sprint 15 |
+| US-058 | AI 输出质量评估框架 (EvalFramework) | [admin-phase3.md](admin-phase3.md) | Sprint 16 |

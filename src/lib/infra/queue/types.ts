@@ -101,6 +101,18 @@ export interface EmbeddingGenerateJobData {
   correlationId?: string;
 }
 
+/**
+ * Eval run job — Sprint 16 US-058. EvalRun row is pre-created with
+ * status=RUNNING by the tRPC trigger; handler runs EvalRunner and writes
+ * cases + finalizes status.
+ */
+export interface EvalRunJobData {
+  runId: string;
+  operations: string[]; // AIOperationType[] — strings to avoid circular import
+  userId: string;       // triggering admin
+  locale: string;
+}
+
 export type AIJobData =
   | OcrRecognizeJobData
   | CorrectionPhotosJobData
@@ -112,7 +124,8 @@ export type AIJobData =
   | WeaknessProfileJobData
   | InterventionPlanningJobData
   | MasteryEvaluationJobData
-  | EmbeddingGenerateJobData;
+  | EmbeddingGenerateJobData
+  | EvalRunJobData;
 
 /** Job names matching ADR-003 timeout/retry configuration */
 export type AIJobName =
@@ -126,4 +139,5 @@ export type AIJobName =
   | "weakness-profile"
   | "intervention-planning"
   | "mastery-evaluation"
-  | "embedding-generate";
+  | "embedding-generate"
+  | "eval-run";

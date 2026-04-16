@@ -145,3 +145,80 @@ Sprint 15 交付：低置信度映射审核（D8）、KG 拖拽层级（D7）、
 ### 环境变量
 
 - `JAEGER_UI_URL`（可选，示例 `http://localhost:16686`）；未配置时 Jaeger 链接 disabled
+
+---
+
+## US-058: AI 输出质量评估框架 (EvalFramework)
+
+**As a** 管理员 / 工程团队
+**I want to** 为每个 AIOperationType 维护 golden 数据集，并一键回归全部 AI 操作的输出质量
+**So that** 当 prompt / provider / model / Skill 有改动时，能快速发现 AI 输出质量是否下降（correctness / completeness / safety）
+
+**验收标准：**
+- [ ] 路径 `/admin/eval`（`src/app/[locale]/(dashboard)/admin/eval/page.tsx`），ADMIN 访问
+- [ ] 数据集目录 `tests/eval/datasets/`，每个 AIOperationType 对应一个 JSON 文件；13 op 全覆盖（9 个真实 cases + OCR_RECOGNIZE 结构就绪待素材 + 3 stub 标 `unavailableReason`）
+- [ ] 评估维度：
+  - `exactMatchFields`（结构化字段）逐字段 deep-equal，任一不匹配即 FAIL（短路，不调 AI 评判省成本）
+  - `judgedFields`（自由文本字段）调 `EVAL_JUDGE` AI 操作打 1-5 分；score ≥ 3 为 PASS
+- [ ] EvalRunner 支持三种用例状态：PASS / FAIL / ERROR（provider 异常）/ SKIPPED（unavailableReason 或素材缺失）
+- [ ] 每次运行持久化：`EvalRun`（1 条 summary）+ `EvalCase[]`（每 case 1 条，含 input / expected / actual / judgeScore / judgeReasoning / failureReason / durationMs）
+- [ ] 手动触发：Run All / Select Operations；enqueue BullMQ `eval-run` job 异步执行
+- [ ] 详情页按 operation 分组显示 cases；默认折叠 PASS，展开 FAIL / ERROR；失败项展开完整 `input/expected/actual/judgeReasoning`
+- [ ] 通过率计算：`passed / (total - skipped)`；Phase 3 验收基线 ≥ 80%
+- [ ] 数据集加载在启动期做 Zod 校验；`cases: []` 且无 `unavailableReason` → 拒绝启动（避免运行时静默）
+- [ ] `eval-judge` Skill 自身不参与自评（数据集标 `self-referential`）
+- [ ] 触发动作写 AdminLog `action=eval-trigger`
+- [ ] i18n：`admin.eval.*` 中英双语完整覆盖
+
+**边界条件：**
+- 数据集 JSON Schema 校验失败：启动期抛错，不启动 Worker / dev server
+- EvalRun 状态为 RUNNING 超过 30 分钟：UI 标红"超时"（不自动清理，由管理员决定重跑）
+- 同一 op 可以只跑单 op（数据集页行尾 "Run" 按钮）
+- 非 ADMIN 访问任意 procedure：tRPC FORBIDDEN
+- provider 调用抛错 → EvalCase = ERROR（不计入失败率，避免 provider 暂时问题污染基线）
+
+**性能要求：**
+- 数据集加载 < 500ms（冷启动全部 13 个 JSON）
+- 单次 Run All（≈ 36-40 cases）受 LLM 调用限制，典型 3-6 分钟；UI 不阻塞，显示 RUNNING 状态
+- EvalRun 列表 query < 500ms（命中 `EvalRun.@@index([startedAt])`）
+
+**Memory 写入清单：** N/A（评估工具，不写学生 Memory）
+**Brain 触发条件：** N/A（独立于 Brain，仅 admin 触发）
+
+### tRPC 契约
+
+| 接口 | 输入 | 输出 | RBAC |
+|-----|------|------|------|
+| eval.listRuns | `{ page, pageSize, status? }` | `{ items, total }` 含 triggerAdmin nickname | ADMIN |
+| eval.getRun | `{ id }` | `{ run, cases: EvalCase[] }` | ADMIN |
+| eval.trigger | `{ operations?: AIOperationType[] }` | `{ runId, jobId }` | ADMIN |
+| eval.datasetStats | `{}` | `[{ operation, caseCount, unavailableReason?, lastRunStatus?, lastPassRate?, lastRunAt? }]` | ADMIN |
+
+### Schema 变更
+
+新增 `EvalRun` + `EvalCase` 模型（独立，不复用 AdminLog，因 AdminLog.details JSON 不适合大量结构化查询）。新增枚举 `EvalRunStatus`、`EvalCaseStatus`。`AIOperationType` 枚举无变更（`EVAL_JUDGE` 已存在，本 Sprint 把 registry stub 替换为真实 adapter）。
+
+### 新 helper
+
+- `src/lib/domain/ai/eval/eval-runner.ts` — 核心评估管道 `runEval(operations, adminId, deps)`
+- `src/lib/domain/ai/eval/dataset-schema.ts` — 数据集 Zod schema + `loadDataset(op)`
+- `src/lib/domain/ai/eval/compare.ts` — deep-equal helper（支持忽略字段顺序等配置）
+- `src/lib/domain/ai/eval/types.ts` — `EvalRunResult` / `EvalCaseStatus` 等类型
+
+### 新 AI 操作
+
+- `EVAL_JUDGE`：输入 `{operation, operationDescription, expected, actual}`；输出 `{score: 1-5, passed: boolean, reasoning}`；prompt v1.0.0
+
+### 新 Skill
+
+- `eval-judge`：`ctx.callAI("EVAL_JUDGE", input)` 薄包装（预留未来 Agent 组合使用；EvalRunner 内部走 `callAIOperation` 直调，避免嵌套沙箱）
+
+### 新 BullMQ Job
+
+- `"eval-run"` — AIJobName union 追加；`EvalRunJobData { runId, operations, userId, locale }`；超时 900s；重试 0（失败即标 FAILED，由管理员决定重跑）
+
+### Rule 8 溯源结论（3 个 stub）
+
+- **WEAKNESS_PROFILE**：Sprint 11 走 `weakness-profile` Skill 直接经 Memory + `search_knowledge_points`，operation 层为预留接口，不是遗漏。数据集 `unavailableReason: "WEAKNESS_PROFILE 由 weakness-profile Skill 直接实现，不经 operation 层 — 见 Sprint 11 设计"`
+- **FIND_SIMILAR**：`registry.ts:167-175` 注释明确非 AI op（deterministic dual-path retrieval）。数据集 `unavailableReason: "deterministic dual-path retrieval (KP + pgvector), not an AI operation"`
+- **EVAL_JUDGE**：自评无意义。数据集 `unavailableReason: "self-referential — not evaluated by itself"`

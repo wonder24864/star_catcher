@@ -22,6 +22,7 @@
     "adminSkills": "Skills",
     "adminKnowledgeGraph": "Knowledge Graph",
     "adminBrain": "Brain Monitor",
+    "adminEval": "AI Quality Eval",
     "tasks": "Today's Tasks"
   },
   "auth": {
@@ -475,6 +476,74 @@
     "jaeger": {
       "open": "Jaeger",
       "disabled": "OTEL not enabled or Jaeger UI not configured"
+    },
+    "eval": {
+      "title": "AI Quality Evaluation",
+      "description": "Golden dataset regression: exact-match fields + AI-as-judge scoring per AIOperationType. Pass rate baseline ≥ 80%.",
+      "tabs": {
+        "datasets": "Datasets",
+        "runs": "Run History"
+      },
+      "actions": {
+        "runAll": "Run All",
+        "runSelected": "Run Selected",
+        "runOne": "Run",
+        "viewDetails": "Details",
+        "refresh": "Refresh"
+      },
+      "summary": {
+        "totalDatasets": "Datasets",
+        "totalCases": "Golden cases",
+        "lastRun": "Last run",
+        "lastRunPassRate": "Last pass rate",
+        "neverRun": "Never run"
+      },
+      "datasetsTable": {
+        "operation": "Operation",
+        "caseCount": "Cases",
+        "lastStatus": "Last case",
+        "lastAt": "Last at",
+        "unavailable": "Unavailable",
+        "reason": "Reason"
+      },
+      "runsTable": {
+        "startedAt": "Started",
+        "triggeredBy": "Triggered by",
+        "operations": "Operations",
+        "totals": "Totals",
+        "passRate": "Pass rate",
+        "status": "Status",
+        "duration": "Duration"
+      },
+      "status": {
+        "RUNNING": "Running",
+        "COMPLETED": "Completed",
+        "FAILED": "Failed",
+        "PASS": "Pass",
+        "FAIL": "Fail",
+        "ERROR": "Error",
+        "SKIPPED": "Skipped"
+      },
+      "detail": {
+        "title": "Run Detail",
+        "back": "Back to runs",
+        "operationGroup": "Operation: {op}",
+        "casesSummary": "{passed}/{total} passed · {failed} failed · {errored} errored · {skipped} skipped",
+        "caseId": "Case",
+        "judgeScore": "Score",
+        "judgeReasoning": "Judge reasoning",
+        "failureReason": "Failure reason",
+        "inputLabel": "Input",
+        "expectedLabel": "Expected",
+        "actualLabel": "Actual",
+        "showPassed": "Show passed",
+        "hidePassed": "Hide passed"
+      },
+      "empty": "No eval runs yet. Click \"Run All\" to start.",
+      "confirmRun": "Trigger an eval run? This will call LLM ~40 times and take 3-6 minutes.",
+      "triggerSuccess": "Eval run enqueued. Refresh to watch progress.",
+      "triggerFailed": "Failed to enqueue eval run: {message}",
+      "pending": "Pending …"
     }
   },
   "validation": {

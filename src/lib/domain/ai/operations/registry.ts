@@ -23,6 +23,7 @@ import { interventionPlan } from "./intervention-plan";
 import { masteryEvaluate } from "./mastery-evaluate";
 import { generateExplanation } from "./generate-explanation";
 import type { ExplanationFormat } from "../harness/schemas/generate-explanation";
+import { evalJudge } from "./eval-judge";
 
 /**
  * Each operation adapter normalizes the generic `data` bag into
@@ -186,9 +187,15 @@ const OPERATION_REGISTRY: Record<AIOperationType, OperationAdapter> = {
       locale: data.locale as string | undefined,
       context,
     }),
-  EVAL_JUDGE: () => {
-    throw new Error("EVAL_JUDGE operation not yet implemented");
-  },
+  EVAL_JUDGE: (data, context) =>
+    evalJudge({
+      operation: data.operation as string,
+      operationDescription: data.operationDescription as string,
+      expected: data.expected as Record<string, unknown>,
+      actual: data.actual as Record<string, unknown>,
+      locale: data.locale as string | undefined,
+      context,
+    }),
 };
 
 /**

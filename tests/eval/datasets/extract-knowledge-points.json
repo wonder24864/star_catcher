@@ -1,0 +1,73 @@
+{
+  "operation": "EXTRACT_KNOWLEDGE_POINTS",
+  "version": "1.0.0",
+  "promptVersion": "1.0.0",
+  "exactMatchFields": [],
+  "judgedFields": ["knowledgePoints"],
+  "cases": [
+    {
+      "id": "kp-math-g1-toc",
+      "input": {
+        "tocText": "第一单元 准备课\n  数一数\n  比多少\n第二单元 位置\n  上、下、前、后\n  左、右\n第三单元 1~5 的认识和加减法\n  1~5 的认识\n  比大小\n  加法\n  减法\n  0 的认识和有关 0 的加减法",
+        "bookTitle": "义务教育教科书·数学 一年级上册",
+        "subject": "MATH",
+        "grade": "Grade1",
+        "schoolLevel": "PRIMARY"
+      },
+      "expected": {
+        "knowledgePoints": [
+          { "name": "数一数", "parentName": "准备课", "depth": 1 },
+          { "name": "比多少", "parentName": "准备课", "depth": 1 },
+          { "name": "上、下、前、后", "parentName": "位置", "depth": 1 },
+          { "name": "左、右", "parentName": "位置", "depth": 1 },
+          { "name": "1~5 的认识", "parentName": "1~5 的认识和加减法", "depth": 1 },
+          { "name": "比大小", "parentName": "1~5 的认识和加减法", "depth": 1 },
+          { "name": "加法", "parentName": "1~5 的认识和加减法", "depth": 1 },
+          { "name": "减法", "parentName": "1~5 的认识和加减法", "depth": 1 },
+          { "name": "0 的认识和有关 0 的加减法", "parentName": "1~5 的认识和加减法", "depth": 1 }
+        ]
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "kp-math-g5-short-toc",
+      "input": {
+        "tocText": "第一单元 小数乘法\n  小数乘整数\n  小数乘小数\n  积的近似数\n  整数乘法运算定律推广到小数",
+        "bookTitle": "义务教育教科书·数学 五年级上册",
+        "subject": "MATH",
+        "grade": "Grade5",
+        "schoolLevel": "PRIMARY"
+      },
+      "expected": {
+        "knowledgePoints": [
+          { "name": "小数乘整数", "parentName": "小数乘法", "depth": 1 },
+          { "name": "小数乘小数", "parentName": "小数乘法", "depth": 1 },
+          { "name": "积的近似数", "parentName": "小数乘法", "depth": 1 },
+          { "name": "整数乘法运算定律推广到小数", "parentName": "小数乘法", "depth": 1 }
+        ]
+      },
+      "locale": "zh-CN"
+    },
+    {
+      "id": "kp-english-simple",
+      "input": {
+        "tocText": "Unit 1 Greetings\n  Dialogue\n  Vocabulary\n  Grammar: be 动词\nUnit 2 My Family\n  Dialogue\n  Vocabulary\n  Grammar: 所有格代词",
+        "bookTitle": "英语三年级上册",
+        "subject": "ENGLISH",
+        "grade": "Grade3",
+        "schoolLevel": "PRIMARY"
+      },
+      "expected": {
+        "knowledgePoints": [
+          { "name": "Dialogue", "parentName": "Greetings", "depth": 1 },
+          { "name": "Vocabulary", "parentName": "Greetings", "depth": 1 },
+          { "name": "Grammar: be 动词", "parentName": "Greetings", "depth": 1 },
+          { "name": "Dialogue", "parentName": "My Family", "depth": 1 },
+          { "name": "Vocabulary", "parentName": "My Family", "depth": 1 },
+          { "name": "Grammar: 所有格代词", "parentName": "My Family", "depth": 1 }
+        ]
+      },
+      "locale": "zh-CN"
+    }
+  ]
+}

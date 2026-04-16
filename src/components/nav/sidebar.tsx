@@ -38,6 +38,7 @@ export function Sidebar() {
     { label: t("nav.adminKnowledgeGraph"), href: "/admin/knowledge-graph", roles: ["ADMIN"] },
     { label: t("nav.agentTraces"), href: "/admin/agent-traces", roles: ["ADMIN"] },
     { label: t("nav.adminBrain"), href: "/admin/brain", roles: ["ADMIN"] },
+    { label: t("nav.adminEval"), href: "/admin/eval", roles: ["ADMIN"] },
     { label: t("nav.adminSettings"), href: "/admin/settings", roles: ["ADMIN"] },
   ];
 

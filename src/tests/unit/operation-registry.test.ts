@@ -39,6 +39,12 @@ vi.mock("@/lib/domain/ai/operations/generate-explanation", () => ({
     data: { format: "static", title: "t", steps: [{ content: "x" }] },
   }),
 }));
+vi.mock("@/lib/domain/ai/operations/eval-judge", () => ({
+  evalJudge: vi.fn().mockResolvedValue({
+    success: true,
+    data: { score: 5, passed: true, reasoning: "exact match" },
+  }),
+}));
 
 import { callAIOperation } from "@/lib/domain/ai/operations/registry";
 import { recognizeHomework } from "@/lib/domain/ai/operations/recognize-homework";
@@ -49,6 +55,7 @@ import { extractKnowledgePoints } from "@/lib/domain/ai/operations/extract-knowl
 import { classifyQuestionKnowledge } from "@/lib/domain/ai/operations/classify-question-knowledge";
 import { diagnoseError } from "@/lib/domain/ai/operations/diagnose-error";
 import { generateExplanation } from "@/lib/domain/ai/operations/generate-explanation";
+import { evalJudge } from "@/lib/domain/ai/operations/eval-judge";
 
 const ctx = { userId: "u1", locale: "zh-CN", correlationId: "test" };
 
@@ -116,9 +123,26 @@ describe("Operation Registry", () => {
 
   test.each([
     "WEAKNESS_PROFILE",
-    "EVAL_JUDGE",
   ])("Phase 3 stub %s throws not-yet-implemented", async (op) => {
     await expect(callAIOperation(op, {}, ctx)).rejects.toThrow("not yet implemented");
+  });
+
+  test("routes EVAL_JUDGE (Sprint 16)", async () => {
+    const data = {
+      operation: "DIAGNOSE_ERROR",
+      operationDescription: "desc",
+      expected: { errorDescription: "x" },
+      actual: { errorDescription: "x" },
+    };
+    const result = await callAIOperation("EVAL_JUDGE", data, ctx);
+    expect(result.success).toBe(true);
+    expect(evalJudge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "DIAGNOSE_ERROR",
+        operationDescription: "desc",
+        context: ctx,
+      }),
+    );
   });
 
   test("routes GENERATE_EXPLANATION (Sprint 13)", async () => {

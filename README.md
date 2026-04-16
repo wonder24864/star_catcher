@@ -123,7 +123,7 @@ star_catcher/
 │   └── sprints/               # Sprint 计划（Phase 2: 1~9, Phase 3: 10a~16 DRAFT）
 │
 │── Skill 插件 ────────────────────────────────────────────
-├── skills/                    # Skill 插件源码 + 编译产物（16 个内置 Skill）
+├── skills/                    # Skill 插件源码 + 编译产物（17 个内置 Skill）
 │   ├── echo/                      # Echo Skill（IPC 流程测试用）
 │   ├── harness-call/              # AI 调用 Skill（IPC→Harness 链路测试用）
 │   ├── recognize-homework/        # OCR 识别 Skill（拍照 → 结构化题目）
@@ -139,7 +139,8 @@ star_catcher/
 │   ├── find-similar-questions/    # 类似题检索 Skill（KP + pgvector 双路，纯 IPC 编排）
 │   ├── generate-explanation-card/ # 讲解卡 Skill（三格式 AI 生成：static/interactive/conversational）
 │   ├── evaluate-mastery/          # 掌握评估 Skill（综合表现 → MasteryState 转换 + SM-2 调整建议）
-│   └── get-intervention-history/  # 干预历史读取 Skill（Memory 代理，提供更深历史窗口）
+│   ├── get-intervention-history/  # 干预历史读取 Skill（Memory 代理，提供更深历史窗口）
+│   └── eval-judge/                # AI 质量评判 Skill（Sprint 16 — 对比 actual vs expected 打 1-5 分）
 │
 │── 源码 ──────────────────────────────────────────────────
 └── src/
@@ -167,6 +168,7 @@ star_catcher/
     │   │   │   ├── knowledge-graph/       # 知识图谱管理（列表/层级编辑拖拽）
     │   │   │   │   └── mappings/          # 低置信度映射审核（Sprint 15 US-055）
     │   │   │   ├── brain/                 # Learning Brain 监控（Sprint 15 US-057）
+    │   │   │   ├── eval/                  # AI 质量评估（Sprint 16 US-058 — 数据集 + 运行历史 + 详情）
     │   │   │   ├── skills/                # Skill 管理
     │   │   │   └── agent-traces/[traceId]/ # Agent 追踪（列表 + 详情时序图 + Jaeger 链接）
     │   │   ├── family/                # 家庭组管理
@@ -212,6 +214,7 @@ star_catcher/
     │   │   │   ├── embedding/         # EmbeddingProvider 抽象层（Azure/未来 Ollama）
     │   │   │   ├── operations/        # 业务操作（13 个）+ registry.ts（通用路由）
     │   │   │   ├── prompts/           # Prompt 模板
+    │   │   │   ├── eval/              # EvalFramework（Sprint 16 US-058 — EvalRunner + 数据集 Zod + deep-equal compare）
     │   │   │   └── providers/         # AI 提供商（Azure OpenAI / FC 适配器）
     │   │   ├── skill/             # Skill 插件系统（Phase 2）
     │   │   │   ├── types.ts           # IPC 协议 + 执行上下文类型
@@ -272,23 +275,40 @@ star_catcher/
     │   ├── index.ts               # 入口（Handler Registry + Schedule Registry）
     │   ├── handler-registry.ts    # AIJobName → Handler 注册表（Rule 9）
     │   ├── schedule-registry.ts   # 声明式定时任务注册（Rule 9）
-    │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成 / 题目理解 / 诊断 / Learning Brain / 干预规划 / Embedding 生成
+    │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成 / 题目理解 / 诊断 / Learning Brain / 干预规划 / 掌握评估 / Embedding 生成 / Eval 运行（Sprint 16）
     │
     ├── cli/                   # ── CLI 工具 ──
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）
     │   └── skill-build.ts         # Skill 构建（校验 + 编译 + Prisma 检查）
     │
-    ├── tests/                 # ── 测试（51 文件，777+ 用例）──
+    ├── tests/                 # ── 测试（70 文件，991+ 用例）──
     │   ├── acceptance/            # 验收测试（9 个用户故事模块）
-    │   ├── unit/                  # 单元测试（含 Skill 运行时 / Agent 组件）
+    │   ├── unit/                  # 单元测试（含 Skill 运行时 / Agent 组件 / EvalRunner 等）
+    │   ├── integration/           # 集成测试（端到端闭环场景 Sprint 14→16）
     │   ├── harness/               # Harness 管道 + SemanticCache 测试
-    │   ├── worker/                # Handler Registry + Schedule Registry 测试
+    │   ├── worker/                # Handler Registry + Schedule Registry + eval-run handler
     │   ├── perf/                  # 性能测试（Knowledge Graph CTE 等）
     │   ├── architecture/          # 架构守护（Harness 完整性 + i18n 覆盖）
     │   ├── fixtures/skills/       # 测试用 Skill 夹具（echo/error/security）
     │   └── helpers/               # 测试辅助（mock-db/storage/auth/ai）
     │
     └── types/                 # TypeScript 类型声明
+│
+│── EvalFramework 数据集 ─────────────────────────────────
+tests/eval/
+├── datasets/                   # 每个 AIOperationType 一个 JSON（Sprint 16 US-058）
+│   ├── subject-detect.json     # 4 条：数学/中文/英语/物理学科识别
+│   ├── help-generate.json      # 3 条：L1/L2/L3 渐进提示
+│   ├── grade-answer.json       # 4 条：正确/错误/同义回答
+│   ├── extract-knowledge-points.json  # 3 条：教材 TOC → KP 树
+│   ├── classify-question-knowledge.json # 3 条：题目 → KP 候选分类
+│   ├── diagnose-error.json     # 3 条：加法进位/分数约分/周长面积混用
+│   ├── intervention-plan.json  # 3 条：严重/多 KP 混合/maxTasks 限制
+│   ├── mastery-evaluate.json   # 3 条：升为 MASTERED / 回落 REGRESSED / 维持 REVIEWING
+│   ├── generate-explanation.json  # 3 条：static/interactive/conversational 三格式
+│   ├── ocr-recognize.json      # 2 张合成图 smoke test（scripts/gen-ocr-fixtures.ts 生成），非生产基线
+│   └── {weakness-profile, find-similar, eval-judge}.json  # stub，明示 unavailableReason
+└── fixtures/ocr/README.md      # OCR 题图素材规格说明
 │
 │── 运维脚本 ────────────────────────────────────────────
 └── scripts/

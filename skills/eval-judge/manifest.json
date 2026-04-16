@@ -1,0 +1,8 @@
+{
+  "name": "eval-judge",
+  "version": "1.0.0",
+  "description": "AI-as-judge skill: compare an AI operation's actual output against an expected reference and return a 1-5 score with pass/fail. Used by EvalFramework (Sprint 16 US-058) for free-text (judgedFields) comparisons.",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 20000
+}

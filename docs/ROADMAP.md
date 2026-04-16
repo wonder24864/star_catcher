@@ -106,7 +106,40 @@
 | Sprint 13 | Week 18 | 类似题检索 + 讲解卡 | [x] |
 | Sprint 14 | Week 19 | 掌握评估 Agent + 闭环完成 + 家长控制 | [x] |
 | Sprint 15 | Week 20 | 管理员 UI (D7 KG拖拽 + D8 映射确认) + Brain 监控 | [x] |
-| Sprint 16 | Week 21 | EvalFramework + 全量集成测试 + Phase 3 收尾 | [ ] |
+| Sprint 16 | Week 21 | EvalFramework + 全量集成测试 + Phase 3 收尾 | [x] |
+
+### Phase 3 验收摘要 (2026-04-15)
+
+- 测试：70 files / 993 passed / 30 todo / 0 failed（Sprint 15 基线 65/948 → +5 文件 / +45 测试）
+- 构建：`npx tsc --noEmit` 0 错误；`npm run build` 成功
+- 新增模型：`EvalRun`, `EvalCase` (+ 枚举 `EvalRunStatus`, `EvalCaseStatus`)
+- 新增路由：`eval` (listRuns / getRun / trigger / datasetStats)
+- 新增页面：`/admin/eval`（数据集概览 + 运行历史 + 运行详情）
+- 新增 AI 操作：`EVAL_JUDGE`（1-5 评分 + `passed === score>=3` superRefine 防说谎）
+- 新增 Skill：`eval-judge`
+- 新增 BullMQ Job：`"eval-run"`（attempts=1，手动重试）
+- 新增数据集：`tests/eval/datasets/` 共 13 JSON（10 可评估 — 含 OCR 2 张合成图 smoke test + 3 stub `unavailableReason`）
+- i18n：`admin.eval.*` 中英双语完整覆盖
+- 集成测试：`end-to-end-loop.test.ts` 5 个场景（黄金路径 / cooldown / 回落 / 空状态 / EvalRunner 自回归）替换 Sprint 14 占位
+- Phase 3 验收 11 项全部勾选（见 `docs/sprints/sprint-16.md` 验证清单）
+
+### Phase 3 交付物
+
+- Learning Brain 每日 cron + Redis per-student lock + AdminLog 审计
+- 三层薄弱分析（实时 + 定期 + 全局）+ 年级过渡 archived 归档
+- Intervention Planning Agent + DailyTaskPack（含 PRACTICE/REVIEW/EXPLANATION 三类任务）
+- 类似题检索（pgvector + KP 双路 <100ms）
+- 讲解卡三格式（static/interactive/conversational）
+- Mastery Evaluation Agent + 掌握状态机闭环 + SM-2 混合调度
+- 家长控制（maxDailyTasks + learningTime 学习时段）
+- 管理员 UI：低置信度映射审核 (US-055)、KG 拖拽层级 (US-056)、Brain 监控 (US-057)
+- AI 质量评估框架 (US-058)：golden 数据集 + EVAL_JUDGE AI 裁判 + 管理员一键回归
+- 可观测性：OpenTelemetry + Jaeger + `otelTraceId` 贯通 Brain->Agent->Skill->AI
+
+### Phase 3 推迟事项
+
+- OCR_RECOGNIZE **真实**素材基线（当前 2 张合成图仅作 smoke test，不反映生产质量退化）—— 真实 K-12 扫描/拍照题图就绪后替换数据集 cases 即可建立严格基线
+- 进程级端到端测试（真实 Postgres+Redis+BullMQ worker）— `end-to-end-loop.test.ts` 保留 `test.todo`，列入 Phase 4 DevOps 动作
 
 ## Phase 4: 家长仪表盘 + 体验优化
 
