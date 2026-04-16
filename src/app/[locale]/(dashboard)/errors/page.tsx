@@ -4,14 +4,19 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
+import { motion } from "framer-motion";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
-import { SUBJECTS, SUBJECT_BADGE_CLASSES } from "@/lib/constants/subject-colors";
+import { useTier } from "@/components/providers/grade-tier-provider";
+import { useTierTranslations } from "@/hooks/use-tier-translations";
+import { SUBJECTS } from "@/lib/constants/subject-colors";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { MathText } from "@/components/ui/math-text";
+import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
+import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
+import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
 import {
   Select,
   SelectContent,
@@ -22,8 +27,10 @@ import {
 
 export default function ErrorsPage() {
   const t = useTranslations();
+  const tT = useTierTranslations("errors");
   const { data: session } = useSession();
   const selectedStudentId = useStudentStore((s) => s.selectedStudentId);
+  const { tierIndex } = useTier();
 
   const isParent = session?.user?.role === "PARENT";
   const studentId = isParent ? selectedStudentId : session?.user?.id;
@@ -66,17 +73,20 @@ export default function ErrorsPage() {
   if (isParent && !selectedStudentId) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">{t("homework.errors" as never) || t("nav.errors")}</h1>
+        <h1 className="text-2xl font-bold">{t("nav.errors")}</h1>
         <p className="text-muted-foreground">{t("homework.selectStudent")}</p>
       </div>
     );
   }
 
+  // Tier-branched list layout: wonder=single column large, others=compact
+  const listClass = tierIndex === 1 ? "space-y-4" : "space-y-2";
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">{t("nav.errors")}</h1>
+      <h1 className="text-2xl font-bold">{tT("title")}</h1>
 
-      {/* Filters */}
+      {/* Filters — wonder tier hides date pickers (D43) */}
       <div className="flex flex-wrap gap-3">
         <div className="flex-1 min-w-[200px]">
           <Input
@@ -86,9 +96,9 @@ export default function ErrorsPage() {
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           />
         </div>
-        <Button variant="outline" onClick={handleSearch}>
+        <AdaptiveButton variant="outline" onClick={handleSearch}>
           {t("common.search")}
-        </Button>
+        </AdaptiveButton>
 
         <Select value={subject || "ALL"} onValueChange={handleSubjectChange}>
           <SelectTrigger className="w-36">
@@ -104,94 +114,109 @@ export default function ErrorsPage() {
           </SelectContent>
         </Select>
 
-        <Input
-          type="date"
-          className="w-40"
-          value={dateFrom}
-          onChange={(e) => handleDateChange("from", e.target.value)}
-        />
-        <Input
-          type="date"
-          className="w-40"
-          value={dateTo}
-          onChange={(e) => handleDateChange("to", e.target.value)}
-        />
+        {/* Date pickers: hidden for wonder tier to reduce cognitive load */}
+        {tierIndex >= 2 && (
+          <>
+            <Input
+              type="date"
+              className="w-40"
+              value={dateFrom}
+              onChange={(e) => handleDateChange("from", e.target.value)}
+            />
+            <Input
+              type="date"
+              className="w-40"
+              value={dateTo}
+              onChange={(e) => handleDateChange("to", e.target.value)}
+            />
+          </>
+        )}
       </div>
 
       {/* List */}
       {isLoading ? (
         <p className="text-muted-foreground">{t("common.loading")}</p>
       ) : !data || data.items.length === 0 ? (
-        <p className="text-muted-foreground">{t("common.noData")}</p>
+        <AdaptiveCard>
+          <CardContent className="py-12 text-center">
+            <p className="text-lg text-muted-foreground">{tT("noData")}</p>
+          </CardContent>
+        </AdaptiveCard>
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            {t("homework.errorCount", { count: data.total })}
+            {tT("errorCount", { count: data.total })}
           </p>
-          <div className="space-y-2">
-            {data.items.map((eq) => (
-              <Link key={eq.id} href={`/errors/${eq.id}`}>
-                <Card className="hover:bg-accent/30 transition-colors cursor-pointer">
-                  <CardContent className="py-3 px-4 flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge
-                          className={
-                            SUBJECT_BADGE_CLASSES[eq.subject] ||
-                            SUBJECT_BADGE_CLASSES.OTHER
-                          }
-                        >
-                          {t(`homework.subjects.${eq.subject}`)}
-                        </Badge>
-                        {eq.isMastered && (
-                          <Badge variant="outline" className="text-green-600 border-green-600">
-                            {t("mastery.status.MASTERED")}
-                          </Badge>
+          <div className={listClass}>
+            {data.items.map((eq, index) => (
+              <motion.div
+                key={eq.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: Math.min(index, 15) * 0.06,
+                  duration: 0.25,
+                  ease: "easeOut",
+                }}
+              >
+                <Link href={`/errors/${eq.id}`}>
+                  <AdaptiveCard className="cursor-pointer">
+                    <CardContent className="py-3 px-4 flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <AdaptiveSubjectBadge subject={eq.subject}>
+                            {t(`homework.subjects.${eq.subject}`)}
+                          </AdaptiveSubjectBadge>
+                          {eq.isMastered && (
+                            <Badge variant="outline" className="text-green-600 border-green-600">
+                              {t("mastery.status.MASTERED")}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm line-clamp-2 text-foreground">
+                          <MathText text={eq.content} />
+                        </p>
+                        {eq.aiKnowledgePoint && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {t("homework.knowledgePoint")}: {eq.aiKnowledgePoint}
+                          </p>
                         )}
                       </div>
-                      <p className="text-sm line-clamp-2 text-foreground">
-                        <MathText text={eq.content} />
-                      </p>
-                      {eq.aiKnowledgePoint && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {t("homework.knowledgePoint")}: {eq.aiKnowledgePoint}
+                      <div className="text-right text-xs text-muted-foreground shrink-0">
+                        <p>{new Date(eq.createdAt).toLocaleDateString()}</p>
+                        <p className="mt-1">
+                          {t("homework.attemptCount", { count: eq.totalAttempts })}
                         </p>
-                      )}
-                    </div>
-                    <div className="text-right text-xs text-muted-foreground shrink-0">
-                      <p>{new Date(eq.createdAt).toLocaleDateString()}</p>
-                      <p className="mt-1">
-                        {t("homework.attemptCount", { count: eq.totalAttempts })}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                      </div>
+                    </CardContent>
+                  </AdaptiveCard>
+                </Link>
+              </motion.div>
             ))}
           </div>
 
           {/* Pagination */}
           {data.totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 pt-2">
-              <Button
+              <AdaptiveButton
                 variant="outline"
                 size="sm"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
               >
                 {t("common.back")}
-              </Button>
+              </AdaptiveButton>
               <span className="text-sm text-muted-foreground">
                 {page} / {data.totalPages}
               </span>
-              <Button
+              <AdaptiveButton
                 variant="outline"
                 size="sm"
                 disabled={page >= data.totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >
                 {t("common.next")}
-              </Button>
+              </AdaptiveButton>
             </div>
           )}
         </>

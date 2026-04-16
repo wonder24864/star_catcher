@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import { motion } from "framer-motion";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
+import { useTier } from "@/components/providers/grade-tier-provider";
+import { useTierTranslations } from "@/hooks/use-tier-translations";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -18,19 +20,14 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReviewDialog } from "@/components/mastery/review-dialog";
 import { AgentSummaryCard } from "@/components/agent-summary-card";
+import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
+import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
+import { AdaptiveProgress } from "@/components/adaptive/adaptive-progress";
 
 const SUBJECTS = [
   "MATH", "CHINESE", "ENGLISH", "PHYSICS", "CHEMISTRY",
   "BIOLOGY", "POLITICS", "HISTORY", "GEOGRAPHY", "OTHER",
 ] as const;
-
-const STATUS_COLORS: Record<string, string> = {
-  NEW_ERROR: "bg-red-500",
-  CORRECTED: "bg-orange-500",
-  REVIEWING: "bg-blue-500",
-  MASTERED: "bg-green-500",
-  REGRESSED: "bg-purple-500",
-};
 
 const STATUS_BADGE_STYLES: Record<string, string> = {
   NEW_ERROR: "bg-red-100 text-red-800 border-red-200",
@@ -61,9 +58,11 @@ type MasteryItem = {
 export default function MasteryPage() {
   const t = useTranslations("mastery");
   const tCommon = useTranslations("common");
+  const tT = useTierTranslations("mastery");
   const { data: session } = useSession();
   const selectedStudentId = useStudentStore((s) => s.selectedStudentId);
   const searchParams = useSearchParams();
+  const { tierIndex } = useTier();
 
   const isParent = session?.user?.role === "PARENT";
   const studentId = isParent ? selectedStudentId : session?.user?.id;
@@ -154,38 +153,46 @@ export default function MasteryPage() {
     return new Date(item.nextReviewAt) <= now;
   }
 
+  // D41: Tier-branched grid layout
+  const gridClass =
+    tierIndex === 1
+      ? "space-y-4"                           // wonder: single column, large cards
+      : tierIndex === 2
+        ? "grid grid-cols-2 gap-3"            // cosmic: two-column
+        : "grid gap-3 sm:grid-cols-2 lg:grid-cols-3"; // flow/studio: three-column
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
-      <h1 className="text-2xl font-bold">{t("title")}</h1>
+      <h1 className="text-2xl font-bold">{tT("title")}</h1>
 
-      {/* Stats Summary */}
+      {/* Stats Summary — D45: keep semantic colors, wrap in AdaptiveCard */}
       <div className="flex gap-3 overflow-x-auto">
-        <Card className="min-w-[100px] flex-1">
+        <AdaptiveCard className="min-w-[100px] flex-1">
           <CardContent className="p-3 text-center">
             <div className="text-2xl font-bold text-red-600">{weakCount}</div>
-            <div className="text-xs text-muted-foreground">{t("stats.weak")}</div>
+            <div className="text-xs text-muted-foreground">{tT("stats.weak")}</div>
           </CardContent>
-        </Card>
-        <Card className="min-w-[100px] flex-1">
+        </AdaptiveCard>
+        <AdaptiveCard className="min-w-[100px] flex-1">
           <CardContent className="p-3 text-center">
             <div className="text-2xl font-bold text-green-600">{masteredCount}</div>
-            <div className="text-xs text-muted-foreground">{t("stats.mastered")}</div>
+            <div className="text-xs text-muted-foreground">{tT("stats.mastered")}</div>
           </CardContent>
-        </Card>
-        <Card className="min-w-[100px] flex-1">
+        </AdaptiveCard>
+        <AdaptiveCard className="min-w-[100px] flex-1">
           <CardContent className="p-3 text-center">
             <div className="text-2xl font-bold text-orange-600">{newErrorCount}</div>
-            <div className="text-xs text-muted-foreground">{t("stats.newError")}</div>
+            <div className="text-xs text-muted-foreground">{tT("stats.newError")}</div>
           </CardContent>
-        </Card>
+        </AdaptiveCard>
         {overdueCount > 0 && (
-          <Card className="min-w-[100px] flex-1 border-red-200">
+          <AdaptiveCard className="min-w-[100px] flex-1 border-red-200">
             <CardContent className="p-3 text-center">
               <div className="text-2xl font-bold text-red-600">{overdueCount}</div>
-              <div className="text-xs text-muted-foreground">{t("overdueBadge")}</div>
+              <div className="text-xs text-muted-foreground">{tT("overdueBadge")}</div>
             </CardContent>
-          </Card>
+          </AdaptiveCard>
         )}
       </div>
 
@@ -204,19 +211,19 @@ export default function MasteryPage() {
       {/* Status Filter */}
       <div className="flex gap-2 flex-wrap">
         {STATUS_FILTERS.map((f) => (
-          <Button
+          <AdaptiveButton
             key={f}
             variant={statusFilter === f ? "default" : "outline"}
             size="sm"
             onClick={() => setStatusFilter(f)}
           >
-            {f === "OVERDUE" ? t("overdueBadge") : t(`filters.${f}` as `filters.ALL`)}
+            {f === "OVERDUE" ? tT("overdueBadge") : t(`filters.${f}` as `filters.ALL`)}
             {f === "OVERDUE" && overdueCount > 0 && (
               <Badge variant="destructive" className="ml-1 h-5 w-5 rounded-full p-0 text-[10px]">
                 {overdueCount}
               </Badge>
             )}
-          </Button>
+          </AdaptiveButton>
         ))}
       </div>
 
@@ -226,91 +233,99 @@ export default function MasteryPage() {
           {tCommon("loading")}
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="py-12 text-center text-muted-foreground">
-          {t("empty")}
-        </div>
+        <AdaptiveCard>
+          <CardContent className="py-12 text-center">
+            <p className="text-lg text-muted-foreground">{tT("empty")}</p>
+          </CardContent>
+        </AdaptiveCard>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredItems.map((item: MasteryItem) => {
+        <div className={gridClass}>
+          {filteredItems.map((item: MasteryItem, index: number) => {
             const accuracy = item.totalAttempts > 0
               ? Math.round((item.correctAttempts / item.totalAttempts) * 100)
               : 0;
             const overdue = isOverdue(item);
 
             return (
-              <Card
+              <motion.div
                 key={item.id}
-                className={`cursor-pointer transition-shadow hover:shadow-md ${overdue ? "border-red-300" : ""}`}
-                onClick={() => setSelectedKP(item.knowledgePointId)}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: Math.min(index, 15) * 0.06, // D46: cap stagger at 15 items
+                  duration: 0.25,
+                  ease: "easeOut",
+                }}
               >
-                <CardContent className="p-4">
-                  <div className="mb-2 flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium leading-tight">
-                        {item.knowledgePointName}
-                      </h3>
-                      {item.parentName && (
-                        <span className="text-xs text-muted-foreground">
-                          {item.parentName}
+                <AdaptiveCard
+                  className={`cursor-pointer ${overdue ? "border-red-300" : ""}`}
+                  onClick={() => setSelectedKP(item.knowledgePointId)}
+                >
+                  <CardContent className="p-4">
+                    <div className="mb-2 flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium leading-tight">
+                          {item.knowledgePointName}
+                        </h3>
+                        {item.parentName && (
+                          <span className="text-xs text-muted-foreground">
+                            {item.parentName}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {overdue && (
+                          <Badge variant="destructive" className="text-[10px]">
+                            {tT("overdueBadge")}
+                          </Badge>
+                        )}
+                        <Badge
+                          variant="outline"
+                          className={STATUS_BADGE_STYLES[item.status] ?? ""}
+                        >
+                          {t(`status.${item.status}`)}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Accuracy — AdaptiveProgress replaces manual bar */}
+                    <div className="mt-3 space-y-1">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{t("accuracy")}</span>
+                        <span>{accuracy}%</span>
+                      </div>
+                      <AdaptiveProgress value={accuracy} />
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>
+                        {t("attempts", { count: item.totalAttempts })}
+                      </span>
+                      {item.status === "REVIEWING" && item.nextReviewAt && (
+                        <span>
+                          {t("nextReview", {
+                            date: new Date(item.nextReviewAt).toLocaleDateString(),
+                          })}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1">
-                      {overdue && (
-                        <Badge variant="destructive" className="text-[10px]">
-                          {t("overdueBadge")}
-                        </Badge>
-                      )}
-                      <Badge
-                        variant="outline"
-                        className={STATUS_BADGE_STYLES[item.status] ?? ""}
+
+                    {/* Start Review button for overdue items */}
+                    {overdue && !isParent && (
+                      <AdaptiveButton
+                        size="sm"
+                        className="mt-3 w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReviewKP(item.knowledgePointId);
+                        }}
                       >
-                        {t(`status.${item.status}`)}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{t("accuracy")}</span>
-                      <span>{accuracy}%</span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${accuracy}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      {t("attempts", { count: item.totalAttempts })}
-                    </span>
-                    {item.status === "REVIEWING" && item.nextReviewAt && (
-                      <span>
-                        {t("nextReview", {
-                          date: new Date(item.nextReviewAt).toLocaleDateString(),
-                        })}
-                      </span>
+                        {tT("startReview")}
+                      </AdaptiveButton>
                     )}
-                  </div>
-
-                  {/* Start Review button for overdue items */}
-                  {overdue && !isParent && (
-                    <Button
-                      size="sm"
-                      className="mt-3 w-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setReviewKP(item.knowledgePointId);
-                      }}
-                    >
-                      {t("startReview")}
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </AdaptiveCard>
+              </motion.div>
             );
           })}
         </div>

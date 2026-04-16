@@ -189,7 +189,7 @@ star_catcher/
     │   ├── dashboard/             # 首页组件（今日复习 Widget）
     │   ├── mastery/               # 掌握地图组件（复习对话框）
     │   ├── tasks/                 # 今日任务组件（TaskCard + PracticeDialog + ExplanationDialog + ExplanationCard 三格式）
-    │   ├── nav/                   # 侧边栏 / 底部导航（年级自适应）/ 学生切换
+    │   ├── nav/                   # 侧边栏（TierSidebar tier 门控）/ 底部导航（年级自适应）/ 学生切换
     │   ├── providers/             # Session / GradeTier Provider（4 级年级自适应）
     │   └── ui/                    # shadcn/ui 基础组件
     │

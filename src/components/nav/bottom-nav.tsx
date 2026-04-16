@@ -71,10 +71,15 @@ export function BottomNav() {
       ? "text-3xl leading-none"        // 44px equivalent
       : "text-lg leading-none";        // default
 
+  // wonder/cosmic: no sidebar → bottom nav visible on ALL screen sizes
+  // flow/studio: sidebar on md+ → bottom nav hidden on md+
+  const hasSidebar = tier === "flow" || tier === "studio";
+
   return (
     <nav
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 flex border-t bg-background md:hidden",
+        "fixed inset-x-0 bottom-0 z-40 flex border-t bg-background",
+        hasSidebar && "md:hidden",
         tier === "cosmic" && "border-primary/20 bg-background/80 backdrop-blur-md"
       )}
       aria-label="Bottom navigation"

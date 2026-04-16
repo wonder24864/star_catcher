@@ -744,6 +744,11 @@
     "uploadGuideTitle": "Bundle 格式说明",
     "uploadGuide": "execute 中可用 API：ctx.callAI()、ctx.readMemory()、ctx.writeMemory()、ctx.query()。构建命令：npx tsx src/cli/skill-build.ts skills/<名称>"
   },
+  "errors": {
+    "title": "错题本",
+    "noData": "暂无错题",
+    "errorCount": "{count} 条错题"
+  },
   "mastery": {
     "title": "掌握地图",
     "empty": "还没有学习记录",
@@ -1043,6 +1048,30 @@
           "complete": "全部做好了！",
           "backToList": "回去看看"
         }
+      },
+      "errors": {
+        "title": "我的错题小本本",
+        "noData": "还没有错题哦，真棒！",
+        "errorCount": "有 {count} 道小题目需要看看"
+      },
+      "mastery": {
+        "title": "知识星星地图",
+        "empty": "还没有学习记录哦～",
+        "startReview": "再看一遍",
+        "overdueBadge": "该复习啦",
+        "stats": {
+          "weak": "需要加油",
+          "mastered": "已经会了",
+          "newError": "新出现的"
+        },
+        "review": {
+          "selfAssess": "我来试试",
+          "correct": "答对啦！",
+          "incorrect": "没关系",
+          "submit": "提交",
+          "resultMastered": "太棒了！你已经学会了！",
+          "resultRegressed": "没关系，明天再来看看！"
+        }
       }
     },
     "cosmic": {
@@ -1055,6 +1084,12 @@
       "homework": {
         "help": {
           "button": "求助"
+        }
+      },
+      "mastery": {
+        "startReview": "开始复习",
+        "review": {
+          "resultMastered": "恭喜！知识点已掌握！"
         }
       }
     }

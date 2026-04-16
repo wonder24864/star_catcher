@@ -7,13 +7,15 @@ import { useSession } from "next-auth/react";
 import { useTranslations, useLocale } from "next-intl";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
+import { useTier } from "@/components/providers/grade-tier-provider";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { MathText } from "@/components/ui/math-text";
 import { AgentSummaryCard } from "@/components/agent-summary-card";
-import { SUBJECT_BADGE_CLASSES } from "@/lib/constants/subject-colors";
+import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
+import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
+import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
 
 export default function ErrorDetailPage() {
   const t = useTranslations();
@@ -21,6 +23,7 @@ export default function ErrorDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const { data: session } = useSession();
+  const { tierIndex } = useTier();
 
   const isParent = session?.user?.role === "PARENT";
 
@@ -86,6 +89,9 @@ export default function ErrorDetailPage() {
     { enabled: !!eq },
   );
 
+  // D40: wonder tier uses gentle amber instead of harsh red for wrong answers
+  const wrongAnswerColor = tierIndex === 1 ? "text-amber-600" : "text-red-600";
+
   if (isLoading) return <p className="text-muted-foreground">{t("common.loading")}</p>;
   if (!question) return <p className="text-muted-foreground">{t("common.noData")}</p>;
 
@@ -93,16 +99,16 @@ export default function ErrorDetailPage() {
     <div className="max-w-2xl space-y-4">
       {/* Back link */}
       <Link href={`/${locale}/errors`} className="text-sm text-muted-foreground hover:underline">
-        ← {t("common.back")}
+        &larr; {t("common.back")}
       </Link>
 
       {/* Question card */}
-      <Card>
+      <AdaptiveCard>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Badge className={SUBJECT_BADGE_CLASSES[question.subject] || SUBJECT_BADGE_CLASSES.OTHER}>
+            <AdaptiveSubjectBadge subject={question.subject}>
               {t(`homework.subjects.${question.subject}`)}
-            </Badge>
+            </AdaptiveSubjectBadge>
             {question.isMastered && (
               <Badge variant="outline" className="text-green-600 border-green-600">
                 {t("mastery.status.MASTERED")}
@@ -119,7 +125,7 @@ export default function ErrorDetailPage() {
           {question.studentAnswer && (
             <div>
               <p className="text-xs text-muted-foreground mb-1">{t("homework.studentAnswer")}</p>
-              <p className="text-sm text-red-600"><MathText text={question.studentAnswer} /></p>
+              <p className={`text-sm ${wrongAnswerColor}`}><MathText text={question.studentAnswer} /></p>
             </div>
           )}
 
@@ -143,14 +149,14 @@ export default function ErrorDetailPage() {
             <span>{new Date(question.createdAt).toLocaleDateString()}</span>
           </div>
         </CardContent>
-      </Card>
+      </AdaptiveCard>
 
       {/* Agent Analysis Summary */}
       <AgentSummaryCard trace={agentTrace} />
 
       {/* Parent notes section */}
       {(isParent || (question.parentNotes && question.parentNotes.length > 0)) && (
-        <Card>
+        <AdaptiveCard>
           <CardHeader>
             <CardTitle className="text-base">{t("parent.session.helpRecords")}</CardTitle>
           </CardHeader>
@@ -166,16 +172,16 @@ export default function ErrorDetailPage() {
                       rows={3}
                     />
                     <div className="flex gap-2">
-                      <Button
+                      <AdaptiveButton
                         size="sm"
                         onClick={() => editNote.mutate({ noteId: note.id, content: editContent })}
                         disabled={editNote.isPending}
                       >
                         {t("common.save")}
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setEditingNoteId(null)}>
+                      </AdaptiveButton>
+                      <AdaptiveButton size="sm" variant="outline" onClick={() => setEditingNoteId(null)}>
                         {t("common.cancel")}
-                      </Button>
+                      </AdaptiveButton>
                     </div>
                   </div>
                 ) : (
@@ -183,11 +189,11 @@ export default function ErrorDetailPage() {
                     <p className="text-sm whitespace-pre-wrap">{note.content}</p>
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-xs text-muted-foreground">
-                        {note.parent?.nickname} · {new Date(note.createdAt).toLocaleString()}
+                        {note.parent?.nickname} &middot; {new Date(note.createdAt).toLocaleString()}
                       </p>
                       {isParent && session?.user?.id === (note as { parentId?: string }).parentId && (
                         <div className="flex gap-1">
-                          <Button
+                          <AdaptiveButton
                             size="sm"
                             variant="ghost"
                             className="h-6 px-2 text-xs"
@@ -197,8 +203,8 @@ export default function ErrorDetailPage() {
                             }}
                           >
                             {t("common.edit")}
-                          </Button>
-                          <Button
+                          </AdaptiveButton>
+                          <AdaptiveButton
                             size="sm"
                             variant="ghost"
                             className="h-6 px-2 text-xs text-destructive"
@@ -206,7 +212,7 @@ export default function ErrorDetailPage() {
                             disabled={deleteNote.isPending}
                           >
                             {t("common.delete")}
-                          </Button>
+                          </AdaptiveButton>
                         </div>
                       )}
                     </div>
@@ -226,18 +232,18 @@ export default function ErrorDetailPage() {
                 />
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{noteContent.length}/500</span>
-                  <Button
+                  <AdaptiveButton
                     size="sm"
                     onClick={() => addNote.mutate({ errorQuestionId: id, content: noteContent })}
                     disabled={!noteContent.trim() || addNote.isPending}
                   >
                     {t("common.submit")}
-                  </Button>
+                  </AdaptiveButton>
                 </div>
               </div>
             )}
           </CardContent>
-        </Card>
+        </AdaptiveCard>
       )}
     </div>
   );

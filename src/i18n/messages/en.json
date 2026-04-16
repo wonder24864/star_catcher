@@ -744,6 +744,11 @@
     "uploadGuideTitle": "Bundle Format",
     "uploadGuide": "Available APIs in execute: ctx.callAI(), ctx.readMemory(), ctx.writeMemory(), ctx.query(). Build with: npx tsx src/cli/skill-build.ts skills/<name>"
   },
+  "errors": {
+    "title": "Error Book",
+    "noData": "No errors yet",
+    "errorCount": "{count} errors"
+  },
   "mastery": {
     "title": "Mastery Map",
     "empty": "No learning records yet",
@@ -1043,6 +1048,30 @@
           "complete": "All done!",
           "backToList": "Go back"
         }
+      },
+      "errors": {
+        "title": "My Little Mistake Book",
+        "noData": "No mistakes yet, awesome!",
+        "errorCount": "You have {count} questions to look at"
+      },
+      "mastery": {
+        "title": "Knowledge Star Map",
+        "empty": "No learning records yet~",
+        "startReview": "Let's look again!",
+        "overdueBadge": "Time to review!",
+        "stats": {
+          "weak": "Keep trying!",
+          "mastered": "I know this!",
+          "newError": "Just showed up"
+        },
+        "review": {
+          "selfAssess": "Let me try!",
+          "correct": "You got it!",
+          "incorrect": "That's okay!",
+          "submit": "Submit",
+          "resultMastered": "Amazing! You learned it!",
+          "resultRegressed": "It's okay, let's try again tomorrow!"
+        }
       }
     },
     "cosmic": {
@@ -1055,6 +1084,12 @@
       "homework": {
         "help": {
           "button": "Need help"
+        }
+      },
+      "mastery": {
+        "startReview": "Start review",
+        "review": {
+          "resultMastered": "Congrats! Knowledge point mastered!"
         }
       }
     }

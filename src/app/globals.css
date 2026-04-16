@@ -227,6 +227,15 @@ body {
   font-size: inherit;
 }
 
+/* ==================== Bottom nav clearance for no-sidebar tiers ==================== */
+/* wonder/cosmic: no sidebar → bottom nav visible on desktop → need bottom padding */
+@media (min-width: 768px) {
+  [data-theme="wonder"] main,
+  [data-theme="cosmic"] main {
+    padding-bottom: 5rem;
+  }
+}
+
 /* ==================== Cosmic backdrop utility ==================== */
 /* Cards in cosmic tier get glass effect to stay readable over star field */
 [data-theme="cosmic"] .card,

@@ -3,15 +3,19 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { trpc } from "@/lib/trpc/client";
+import { useTier } from "@/components/providers/grade-tier-provider";
+import { useTierTranslations } from "@/hooks/use-tier-translations";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
+import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
+import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
+import { Celebration } from "@/components/animation/celebration";
 
 interface ReviewDialogProps {
   knowledgePointId: string | null;
@@ -22,7 +26,9 @@ type ReviewPhase = "material" | "assess" | "result";
 
 export function ReviewDialog({ knowledgePointId, onClose }: ReviewDialogProps) {
   const t = useTranslations("mastery.review");
+  const tT = useTierTranslations("mastery");
   const utils = trpc.useUtils();
+  const { tierIndex } = useTier();
 
   const [phase, setPhase] = useState<ReviewPhase>("material");
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -63,6 +69,9 @@ export function ReviewDialog({ knowledgePointId, onClose }: ReviewDialogProps) {
   const isMastered = resultTransition?.includes("MASTERED");
   const isRegressed = resultTransition?.includes("REGRESSED");
 
+  // D40: wonder tier uses gentle amber instead of harsh red for wrong answers
+  const wrongAnswerColor = tierIndex === 1 ? "text-amber-500" : "text-red-500";
+
   return (
     <Dialog open={!!knowledgePointId} onOpenChange={() => handleClose()}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
@@ -89,7 +98,7 @@ export function ReviewDialog({ knowledgePointId, onClose }: ReviewDialogProps) {
             {reviewData.errorQuestions.length > 0 ? (
               <div className="space-y-3">
                 {reviewData.errorQuestions.map((eq) => (
-                  <Card key={eq.id}>
+                  <AdaptiveCard key={eq.id}>
                     <CardContent className="py-3 text-sm">
                       <p className="font-medium">{eq.content}</p>
                       {eq.correctAnswer && (
@@ -98,12 +107,12 @@ export function ReviewDialog({ knowledgePointId, onClose }: ReviewDialogProps) {
                         </p>
                       )}
                       {eq.studentAnswer && (
-                        <p className="mt-1 text-red-500 line-through">
+                        <p className={`mt-1 ${wrongAnswerColor} line-through`}>
                           {eq.studentAnswer}
                         </p>
                       )}
                     </CardContent>
-                  </Card>
+                  </AdaptiveCard>
                 ))}
               </div>
             ) : (
@@ -112,9 +121,9 @@ export function ReviewDialog({ knowledgePointId, onClose }: ReviewDialogProps) {
                   reviewData.knowledgePoint.name}
               </p>
             )}
-            <Button className="w-full" onClick={() => setPhase("assess")}>
-              {t("selfAssess")}
-            </Button>
+            <AdaptiveButton className="w-full" onClick={() => setPhase("assess")}>
+              {tT("review.selfAssess") || t("selfAssess")}
+            </AdaptiveButton>
           </div>
         )}
 
@@ -125,20 +134,20 @@ export function ReviewDialog({ knowledgePointId, onClose }: ReviewDialogProps) {
             <div className="space-y-2">
               <p className="text-sm font-medium">{t("selfAssess")}</p>
               <div className="grid grid-cols-2 gap-3">
-                <Button
+                <AdaptiveButton
                   variant={isCorrect === true ? "default" : "outline"}
                   onClick={() => setIsCorrect(true)}
                   className="h-12"
                 >
-                  {t("correct")}
-                </Button>
-                <Button
+                  {tT("review.correct") || t("correct")}
+                </AdaptiveButton>
+                <AdaptiveButton
                   variant={isCorrect === false ? "destructive" : "outline"}
                   onClick={() => setIsCorrect(false)}
                   className="h-12"
                 >
-                  {t("incorrect")}
-                </Button>
+                  {tT("review.incorrect") || t("incorrect")}
+                </AdaptiveButton>
               </div>
             </div>
 
@@ -147,7 +156,7 @@ export function ReviewDialog({ knowledgePointId, onClose }: ReviewDialogProps) {
               <p className="text-sm font-medium">{t("difficulty")}</p>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((n) => (
-                  <Button
+                  <AdaptiveButton
                     key={n}
                     variant={difficulty === n ? "default" : "outline"}
                     size="sm"
@@ -155,35 +164,41 @@ export function ReviewDialog({ knowledgePointId, onClose }: ReviewDialogProps) {
                     className="flex-1"
                   >
                     {t(`difficultyLabels.${n}` as `difficultyLabels.${1 | 2 | 3 | 4 | 5}`)}
-                  </Button>
+                  </AdaptiveButton>
                 ))}
               </div>
             </div>
 
-            <Button
+            <AdaptiveButton
               className="w-full"
               disabled={isCorrect === null || submitMutation.isPending}
               onClick={handleSubmit}
             >
-              {submitMutation.isPending ? t("submitting") : t("submit")}
-            </Button>
+              {submitMutation.isPending ? t("submitting") : (tT("review.submit") || t("submit"))}
+            </AdaptiveButton>
           </div>
         )}
 
         {/* Phase 3: Result */}
         {phase === "result" && submitMutation.data && (
           <div className="space-y-4 py-4 text-center">
+            {/* D42: Celebration for mastery achievement */}
+            <Celebration
+              show={!!isMastered}
+              onComplete={() => {}}
+            />
+
             {isMastered && (
               <div>
                 <p className="text-2xl">&#9733;</p>
                 <p className="mt-2 font-medium text-green-600">
-                  {t("resultMastered")}
+                  {tT("review.resultMastered") || t("resultMastered")}
                 </p>
               </div>
             )}
             {isRegressed && (
               <p className="font-medium text-orange-600">
-                {t("resultRegressed")}
+                {tT("review.resultRegressed") || t("resultRegressed")}
               </p>
             )}
             {!isMastered && !isRegressed && (
@@ -195,9 +210,9 @@ export function ReviewDialog({ knowledgePointId, onClose }: ReviewDialogProps) {
                 })}
               </p>
             )}
-            <Button variant="outline" className="w-full" onClick={handleClose}>
+            <AdaptiveButton variant="outline" className="w-full" onClick={handleClose}>
               {t("close")}
-            </Button>
+            </AdaptiveButton>
           </div>
         )}
       </DialogContent>

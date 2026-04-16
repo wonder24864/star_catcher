@@ -30,7 +30,7 @@ Phase 4 围绕"家长体验升级 + 沉浸式学生体验"实现 5 个模块：
 | 18 | Week 23 | 模块 B — AI 学习建议 + 干预追踪 | [sprint-18.md](sprints/sprint-18.md) | COMPLETED |
 | 19 | Week 24 | 模块 C — 动画系统基础设施 + 年级自适应组件库 | [sprint-19.md](sprints/sprint-19.md) | COMPLETED |
 | 20 | Week 25 | 模块 D(上) — 任务页 + 批改页年级自适应改造 | [sprint-20.md](sprints/sprint-20.md) | COMPLETED |
-| 21 | Week 26 | 模块 D(下) — 错题本 + 掌握度 + 导航全面改造 | [sprint-21.md](sprints/sprint-21.md) | DRAFT |
+| 21 | Week 26 | 模块 D(下) — 错题本 + 掌握度 + 导航全面改造 | [sprint-21.md](sprints/sprint-21.md) | COMPLETED |
 | 22 | Week 27 | 模块 E — 学生画像 + Phase 4 验收 | [sprint-22.md](sprints/sprint-22.md) | DRAFT |
 
 ---

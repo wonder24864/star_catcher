@@ -1,6 +1,6 @@
 import { auth } from "@/lib/domain/auth";
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/nav/sidebar";
+import { TierSidebar } from "@/components/nav/tier-sidebar";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { OfflineBanner } from "@/components/offline-banner";
 import { StarField } from "@/components/animation/star-field";
@@ -20,10 +20,8 @@ export default async function DashboardLayout({
       <OfflineBanner />
       {/* Three.js star field — only renders for cosmic tier (P4-6) */}
       <StarField />
-      {/* Sidebar: hidden on mobile, shown on md+ */}
-      <div className="hidden md:flex">
-        <Sidebar />
-      </div>
+      {/* Sidebar: tier-gated — hidden for wonder/cosmic, shown on md+ for flow/studio */}
+      <TierSidebar />
       {/* Main content: full-width on mobile, padded bottom for bottom nav */}
       <main className="flex-1 overflow-y-auto p-4 pb-20 md:p-6 md:pb-6">
         {children}
