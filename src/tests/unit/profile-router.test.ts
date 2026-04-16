@@ -10,6 +10,9 @@ vi.mock("@/lib/infra/db", () => ({
     masteryState: {
       findMany: vi.fn(),
     },
+    masteryStateHistory: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     interventionHistory: {
       findMany: vi.fn(),
     },
@@ -49,6 +52,7 @@ import { db } from "@/lib/infra/db";
 
 const mockDb = db as unknown as {
   masteryState: { findMany: ReturnType<typeof vi.fn> };
+  masteryStateHistory: { findMany: ReturnType<typeof vi.fn> };
   interventionHistory: { findMany: ReturnType<typeof vi.fn> };
   errorQuestion: { findMany: ReturnType<typeof vi.fn> };
   homeworkSession: { findMany: ReturnType<typeof vi.fn> };

@@ -27,13 +27,14 @@ type JourneyEvent = {
 
 export const profileRouter = router({
   /**
-   * Learning journey: merge events from 4 sources into a unified timeline.
+   * Learning journey: merge events from 5 sources into a unified timeline.
    *
-   * Sources (D49):
+   * Sources (D49 + D54):
    * - ErrorQuestion (new errors encountered)
    * - MasteryState.masteredAt (mastery milestones)
    * - InterventionHistory (help/diagnosis events)
    * - HomeworkSession (homework completions)
+   * - MasteryStateHistory (CORRECTED transitions — Phase 5 D53/D54)
    */
   learningJourney: protectedProcedure
     .input(
@@ -49,8 +50,13 @@ export const profileRouter = router({
         input.studentId,
       );
 
-      const [errorEvents, masteryEvents, interventionEvents, homeworkEvents] =
-        await Promise.all([
+      const [
+        errorEvents,
+        masteryEvents,
+        interventionEvents,
+        homeworkEvents,
+        correctedEvents,
+      ] = await Promise.all([
           // Source 1: ErrorQuestion — "遇到新错题"
           ctx.db.errorQuestion.findMany({
             where: { studentId, deletedAt: null },
@@ -108,6 +114,20 @@ export const profileRouter = router({
               title: true,
             },
           }),
+
+          // Source 5: MasteryStateHistory CORRECTED — "改正了错误" (D53/D54)
+          // Only show toStatus=CORRECTED; auto-REVIEWING transitions are noise.
+          ctx.db.masteryStateHistory.findMany({
+            where: { studentId, toStatus: "CORRECTED" },
+            orderBy: { transitionedAt: "desc" },
+            take: 50,
+            select: {
+              transitionedAt: true,
+              knowledgePoint: {
+                select: { name: true, subject: true },
+              },
+            },
+          }),
         ]);
 
       // Map to unified event structure
@@ -151,6 +171,16 @@ export const profileRouter = router({
           subject: hs.subject,
           timestamp: hs.createdAt,
           detail: hs.finalScore != null ? String(hs.finalScore) : null,
+        });
+      }
+
+      for (const ce of correctedEvents) {
+        events.push({
+          type: "CORRECTED",
+          kpName: ce.knowledgePoint.name,
+          subject: ce.knowledgePoint.subject,
+          timestamp: ce.transitionedAt,
+          detail: null,
         });
       }
 

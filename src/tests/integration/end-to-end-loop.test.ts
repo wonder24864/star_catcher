@@ -109,7 +109,10 @@ function createMemory(opts: {
 
 function createRedis(cooldownActive = false) {
   const store = new Map<string, string>();
-  if (cooldownActive) store.set("brain:intervention-cooldown:student-1", "1");
+  if (cooldownActive) {
+    store.set("brain:intervention-cooldown:student-1",
+      JSON.stringify({ tier: 1, setAt: new Date().toISOString() }));
+  }
   return {
     exists: vi.fn(async (key: string) => (store.has(key) ? 1 : 0)),
     set: vi.fn(async (key: string, value: string) => {

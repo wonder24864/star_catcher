@@ -1,22 +1,27 @@
 /**
- * Brain 监控 tRPC Router (Sprint 15 US-057)
+ * Brain 监控 tRPC Router (Sprint 15 US-057, Sprint 23 D55/D56)
  *
  * Admin-only procedures:
- *   - listRuns:       Brain 执行历史（读 AdminLog action="brain-run"）
- *   - studentStatus:  单学生状态（最近 run + cooldown + 下次 cron）
- *   - stats:          最近 N 天的 Brain 聚合统计
+ *   - listRuns:         Brain 执行历史（读 AdminLog action="brain-run"）
+ *   - studentStatus:    单学生状态（最近 run + cooldown + 下次 cron）
+ *   - stats:            最近 N 天的 Brain 聚合统计
+ *   - triggerBrain:     手动触发指定学生的 Brain（D56）
+ *   - overrideCooldown: 清除冷却（D56）
  *
  * 数据来源：
  *   - AdminLog（action="brain-run"） — 每次 Brain 执行的结构化记录
- *   - Redis `brain:intervention-cooldown:{sid}` — 24h intervention 冷却
+ *   - Redis `brain:intervention-cooldown:{sid}` — 渐进冷却 tier 1=6h/2=12h/3=24h（D55）
  *   - SCHEDULE_REGISTRY — 静态读 cron 配置
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { Prisma } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { router, adminProcedure } from "../trpc";
 import { redis } from "@/lib/infra/redis";
 import { SCHEDULE_REGISTRY } from "@/worker/schedule-registry";
+import { cooldownKey, parseCooldownValue, getCooldownTTL } from "@/lib/domain/brain";
+import { enqueueLearningBrain } from "@/lib/infra/queue";
+import { logAdminAction } from "@/lib/domain/admin-log";
 
 // ─── 类型 ──────────────────────────────────────────────────────
 
@@ -168,10 +173,13 @@ export const brainRouter = router({
         };
       });
 
-      // 3. Intervention cooldown（24h 冷却 key）
-      const cooldownKey = `brain:intervention-cooldown:${input.studentId}`;
-      const cooldownTtl = await redis.ttl(cooldownKey);
-      // ttl 返回：-2=key 不存在，-1=无过期，>=0=剩余秒数
+      // 3. Progressive intervention cooldown (D55)
+      const key = cooldownKey(input.studentId);
+      const [cooldownRaw, cooldownTtl] = await Promise.all([
+        redis.get(key),
+        redis.ttl(key),
+      ]);
+      const cooldownValue = parseCooldownValue(cooldownRaw);
       const cooldownSeconds = cooldownTtl >= 0 ? cooldownTtl : null;
 
       // 4. Brain 每日 cron 配置（静态读）
@@ -181,6 +189,10 @@ export const brainRouter = router({
         student,
         recentRuns,
         cooldownSeconds,
+        cooldownTier: cooldownValue?.tier ?? null,
+        cooldownTierMaxHours: cooldownValue
+          ? getCooldownTTL(cooldownValue.tier) / 3600
+          : null,
         brainSchedule: brainSchedule
           ? {
               pattern: brainSchedule.pattern,
@@ -245,5 +257,59 @@ export const brainRouter = router({
         agentDistribution,
         topSkippedReasons,
       };
+    }),
+
+  /**
+   * Manually trigger Brain for a specific student (D56).
+   * Enqueues a learning-brain job and logs the admin action.
+   */
+  triggerBrain: adminProcedure
+    .input(z.object({ studentId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Verify student exists
+      const student = await ctx.db.user.findUnique({
+        where: { id: input.studentId },
+        select: { id: true, role: true },
+      });
+      if (!student || student.role !== "STUDENT") {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Student not found" });
+      }
+
+      const jobId = await enqueueLearningBrain({
+        studentId: input.studentId,
+        userId: ctx.session.userId,
+        locale: ctx.session.locale ?? "zh",
+      });
+
+      await logAdminAction(
+        ctx.db as unknown as PrismaClient,
+        ctx.session.userId,
+        "brain-manual-trigger",
+        input.studentId,
+        { studentId: input.studentId, jobId },
+      );
+
+      return { jobId };
+    }),
+
+  /**
+   * Override (clear) intervention cooldown for a student (D56).
+   * Deletes the Redis cooldown key and logs the admin action.
+   */
+  overrideCooldown: adminProcedure
+    .input(z.object({ studentId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const key = cooldownKey(input.studentId);
+      const existed = await redis.del(key);
+
+      await logAdminAction(
+        ctx.db as unknown as PrismaClient,
+        ctx.session.userId,
+        "brain-cooldown-override",
+        input.studentId,
+        { studentId: input.studentId, keyExisted: existed > 0 },
+      );
+
+      return { cleared: existed > 0 };
     }),
 });

@@ -121,7 +121,8 @@ star_catcher/
 │   ├── adr/                   # 架构决策记录（11 个）
 │   ├── user-stories/          # 用户故事（14 个模块）
 │   ├── PHASE4-LAUNCH-PLAN.md  # Phase 4 启动计划（家长仪表盘 + 体验优化）
-│   └── sprints/               # Sprint 计划（Phase 2: 1~9, Phase 3: 10a~16, Phase 4: 17~22）
+│   ├── PHASE5-LAUNCH-PLAN.md  # Phase 5 启动计划（Brain 优化 + UI 现代化）
+│   └── sprints/               # Sprint 计划（Phase 2: 1~9, Phase 3: 10a~16, Phase 4: 17~22, Phase 5: 23~）
 │
 │── Skill 插件 ────────────────────────────────────────────
 ├── skills/                    # Skill 插件源码 + 编译产物（17 个内置 Skill）
@@ -279,7 +280,7 @@ star_catcher/
     ├── server/                # ── tRPC 服务端 ──
     │   ├── trpc.ts                # 初始化 + 角色中间件 + SSE 配置
     │   ├── context.ts             # 上下文工厂
-    │   └── routers/               # 路由器（15 个业务 + 1 个订阅，含 Sprint 22 profile router）
+    │   └── routers/               # 路由器（15 个业务 + 1 个订阅，含 Sprint 23 brain triggerBrain/overrideCooldown）
     │       └── shared/                # 共享工具（resolveStudentId 权限校验）
     │
     ├── worker/                # ── BullMQ Worker（独立 Docker 服务）──
@@ -292,7 +293,7 @@ star_catcher/
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）
     │   └── skill-build.ts         # Skill 构建（校验 + 编译 + Prisma 检查）
     │
-    ├── tests/                 # ── 测试（78 文件，1075+ 用例）──
+    ├── tests/                 # ── 测试（78 文件，1091+ 用例）──
     │   ├── acceptance/            # 验收测试（9 个用户故事模块）
     │   ├── unit/                  # 单元测试（含 Skill 运行时 / Agent 组件 / EvalRunner 等）
     │   ├── integration/           # 集成测试（端到端闭环场景 Sprint 14→16）

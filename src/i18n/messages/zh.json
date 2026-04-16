@@ -1103,6 +1103,7 @@
           "event": {
             "MASTERED": "学会啦！",
             "NEW_ERROR": "遇到小困难",
+            "CORRECTED": "改对啦！",
             "HOMEWORK_COMPLETED": "作业做完啦！"
           }
         }
@@ -1133,7 +1134,8 @@
         "journey": {
           "event": {
             "MASTERED": "知识点攻克！",
-            "NEW_ERROR": "遭遇挑战"
+            "NEW_ERROR": "遭遇挑战",
+            "CORRECTED": "纠正成功！"
           }
         }
       },

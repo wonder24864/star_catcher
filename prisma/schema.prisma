@@ -47,6 +47,7 @@ model User {
   verifiedMappings  QuestionKnowledgeMapping[] @relation("MappingVerifier") // Sprint 15
   evalRuns          EvalRun[]           // Sprint 16 — EvalFramework trigger relation
   learningSuggestions LearningSuggestion[] @relation("StudentSuggestions") // Sprint 18
+  masteryHistory      MasteryStateHistory[] @relation("StudentMasteryHistory") // Sprint 23
 
   @@index([username])
   @@index([role])
@@ -450,6 +451,7 @@ model KnowledgePoint {
   relationsTo     KnowledgeRelation[] @relation("RelationTo")
   questionMappings  QuestionKnowledgeMapping[]
   masteryStates     MasteryState[]
+  masteryHistory    MasteryStateHistory[] // Sprint 23
   reviewSchedules   ReviewSchedule[]
   interventions     InterventionHistory[]
   dailyTasks        DailyTask[]
@@ -537,6 +539,25 @@ model MasteryState {
   @@index([studentId, status])
   @@index([studentId, archived, status])
   @@index([knowledgePointId])
+}
+
+// Phase 5: MasteryState transition audit trail (D53)
+// Records every state transition for timeline and analytics.
+// CORRECTED is transient (auto→REVIEWING), but recorded for audit completeness.
+model MasteryStateHistory {
+  id               String        @id @default(cuid())
+  studentId        String
+  knowledgePointId String
+  fromStatus       MasteryStatus
+  toStatus         MasteryStatus
+  reason           String        @db.Text
+  transitionedAt   DateTime      @default(now()) @db.Timestamptz
+
+  student        User           @relation("StudentMasteryHistory", fields: [studentId], references: [id])
+  knowledgePoint KnowledgePoint @relation(fields: [knowledgePointId], references: [id])
+
+  @@index([studentId, knowledgePointId, transitionedAt])
+  @@index([studentId, toStatus, transitionedAt])
 }
 
 model ReviewSchedule {

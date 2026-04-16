@@ -114,7 +114,26 @@ export class StudentMemoryImpl implements StudentMemory {
       throw new OptimisticLockError(current.id, current.version);
     }
 
-    // 5. Log the transition as an intervention
+    // 5. Record state transition in audit history (D53)
+    // Best-effort: audit trail failure must not block the main transition.
+    try {
+      await this.db.masteryStateHistory.create({
+        data: {
+          studentId,
+          knowledgePointId,
+          fromStatus: transition.from,
+          toStatus: transition.to,
+          reason: transition.reason,
+        },
+      });
+    } catch (historyErr) {
+      createLogger("student-memory").warn(
+        { studentId, knowledgePointId, err: historyErr },
+        "MasteryStateHistory write failed (audit only, main transition succeeded)",
+      );
+    }
+
+    // 6. Log the transition as an intervention
     await this.db.interventionHistory.create({
       data: {
         studentId,
@@ -127,7 +146,7 @@ export class StudentMemoryImpl implements StudentMemory {
       },
     });
 
-    // 6. Re-fetch and return
+    // 7. Re-fetch and return
     const result = await this.db.masteryState.findUnique({
       where: {
         studentId_knowledgePointId: { studentId, knowledgePointId },
@@ -135,7 +154,7 @@ export class StudentMemoryImpl implements StudentMemory {
     });
     const view = this.toMasteryView(result!);
 
-    // 7. Auto-transitions (best-effort, never fails the explicit transition)
+    // 8. Auto-transitions (best-effort, never fails the explicit transition)
     await this.handleAutoTransitions(studentId, knowledgePointId, transition.to);
 
     return view;
@@ -363,16 +382,37 @@ export class StudentMemoryImpl implements StudentMemory {
 
     if (!before) {
       // Brand-new state: create with this attempt counted.
+      const initialStatus = isCorrect ? "CORRECTED" : "NEW_ERROR";
       const created = await this.db.masteryState.create({
         data: {
           studentId,
           knowledgePointId,
-          status: isCorrect ? "CORRECTED" : "NEW_ERROR",
+          status: initialStatus,
           totalAttempts: 1,
           correctAttempts: isCorrect ? 1 : 0,
           lastAttemptAt: new Date(),
         },
       });
+      // Record initial CORRECTED in audit history (D53, best-effort)
+      // Conceptually NEW_ERROR → CORRECTED even though no prior DB row existed.
+      if (isCorrect) {
+        try {
+          await this.db.masteryStateHistory.create({
+            data: {
+              studentId,
+              knowledgePointId,
+              fromStatus: "NEW_ERROR",
+              toStatus: "CORRECTED",
+              reason: "First practice attempt correct — immediate correction",
+            },
+          });
+        } catch (historyErr) {
+          createLogger("student-memory").warn(
+            { studentId, knowledgePointId, err: historyErr },
+            "MasteryStateHistory write failed (audit only)",
+          );
+        }
+      }
       await this.logIntervention(studentId, knowledgePointId, "PRACTICE", {
         isCorrect,
         ...(metadata ?? {}),

@@ -14,11 +14,13 @@ import { describe, test, expect, vi, beforeEach } from "vitest";
 
 const mockRedisSet = vi.fn();
 const mockRedisDel = vi.fn();
+const mockRedisGet = vi.fn().mockResolvedValue(null);
 
 vi.mock("@/lib/infra/redis", () => ({
   redis: {
     set: (...args: unknown[]) => mockRedisSet(...args),
     del: (...args: unknown[]) => mockRedisDel(...args),
+    get: (...args: unknown[]) => mockRedisGet(...args),
   },
 }));
 
@@ -47,7 +49,12 @@ const mockRunLearningBrain = vi.fn();
 vi.mock("@/lib/domain/brain", () => ({
   runLearningBrain: (...args: unknown[]) => mockRunLearningBrain(...args),
   cooldownKey: (studentId: string) => `brain:intervention-cooldown:${studentId}`,
-  COOLDOWN_SECONDS: 86400,
+  getCooldownTTL: (tier: number) => [21600, 43200, 86400][Math.min(tier, 3) - 1] ?? 21600,
+  parseCooldownValue: (raw: string | null) => {
+    if (!raw) return null;
+    try { const p = JSON.parse(raw); return (typeof p.tier === "number" && typeof p.setAt === "string") ? p : null; } catch { return null; }
+  },
+  MAX_COOLDOWN_TIER: 3,
 }));
 
 const mockLogAdminAction = vi.fn().mockResolvedValue(undefined);

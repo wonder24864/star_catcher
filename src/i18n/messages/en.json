@@ -1103,6 +1103,7 @@
           "event": {
             "MASTERED": "I learned it!",
             "NEW_ERROR": "Little challenge",
+            "CORRECTED": "I fixed it!",
             "HOMEWORK_COMPLETED": "Homework done!"
           }
         }
@@ -1133,7 +1134,8 @@
         "journey": {
           "event": {
             "MASTERED": "Knowledge conquered!",
-            "NEW_ERROR": "Challenge encountered"
+            "NEW_ERROR": "Challenge encountered",
+            "CORRECTED": "Error corrected!"
           }
         }
       },

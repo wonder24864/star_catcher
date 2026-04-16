@@ -1,7 +1,7 @@
-# ADR-011: 学习闭环架构（跨 Phase 2-3）
+# ADR-011: 学习闭环架构（跨 Phase 2-3-5）
 
 ## Status
-Accepted (Phase 2-3) — Phase 3 设计决策已确认（2026-04-13），见 PHASE3-LAUNCH-PLAN.md D11-D23
+Accepted (Phase 2-3-5) — Phase 3 设计决策 D11-D23 已确认；Phase 5 新增 D53-D57（2026-04-16）
 
 ## Context
 
@@ -95,3 +95,15 @@ Phase 3 启动计划已确认，关键设计决策：
 - **memoryWriteManifest**: AgentDefinition 新增 Memory 写入方法白名单 + MemoryWriteInterceptor 拦截器
 
 完整决策列表（D11-D23）见 `docs/PHASE3-LAUNCH-PLAN.md` §六。
+
+## Phase 5 设计决策（2026-04-16）
+
+Phase 5 对 Learning Brain 的优化和补全：
+
+- **D53**: 独立 `MasteryStateHistory` 审计表 — 语义不同于 InterventionHistory（状态转换 vs 干预记录），best-effort 写入（失败不阻断主转换）
+- **D54**: CORRECTED 是瞬态（auto→REVIEWING），profile router 只查 `toStatus=CORRECTED` 避免时间线噪音
+- **D55**: 渐进冷却替代固定 24h — tier 1=6h / 2=12h / 3=24h（cap），Redis value 从 `"1"` 改为 JSON `{tier, setAt}`
+- **D56**: 管理员手动触发 `triggerBrain` + 冷却覆盖 `overrideCooldown` — AdminLog 审计，运维必要能力
+- **D57**: Brain 批次缓存分析后不需要 — fan-out 模式每个学生是独立 BullMQ job，单学生 run 内无重复查询
+
+完整决策列表（D53-D57 + D35-D39）见 `docs/PHASE5-LAUNCH-PLAN.md` §四。

@@ -49,28 +49,69 @@ export interface BrainSkipRecord {
   reason: string;
 }
 
-// ─── Cooldown Check ─────────────────────────────
+// ─── Progressive Cooldown (D55) ─────────────────
+// Tier 1 = 6h, Tier 2 = 12h, Tier 3 = 24h (cap).
+// Redis value: JSON `{tier, setAt}`. Handler increments tier on each set.
 
-export const COOLDOWN_SECONDS = 24 * 60 * 60; // 24h
+/** Cooldown duration per tier (seconds). Index = tier - 1. */
+export const COOLDOWN_TIERS = [
+  6 * 3600,  // tier 1: 6h
+  12 * 3600, // tier 2: 12h
+  24 * 3600, // tier 3: 24h (cap)
+] as const;
+
+export const MAX_COOLDOWN_TIER = COOLDOWN_TIERS.length; // 3
+
+export interface CooldownValue {
+  tier: number;
+  setAt: string; // ISO timestamp
+}
 
 /**
  * Redis key for intervention-planning cooldown per student.
- * Set when Brain enqueues intervention-planning, expires after 24h.
+ * Set when Brain enqueues intervention-planning, expires per tier.
  */
 export function cooldownKey(studentId: string): string {
   return `brain:intervention-cooldown:${studentId}`;
 }
 
 /**
- * Check if intervention-planning was recently enqueued for this student.
- * Uses a Redis key with 24h TTL set by the handler after enqueuing.
+ * Parse Redis cooldown value with fault tolerance.
+ * Returns null if key doesn't exist or JSON is corrupt.
  */
-async function hasRecentInterventionPlanning(
+export function parseCooldownValue(raw: string | null): CooldownValue | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed.tier === "number" && typeof parsed.setAt === "string") {
+      return parsed as CooldownValue;
+    }
+    // Legacy "1" format or corrupt — treat as expired
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get cooldown TTL in seconds for a given tier (1-based).
+ * Tiers beyond MAX_COOLDOWN_TIER use the cap (24h).
+ */
+export function getCooldownTTL(tier: number): number {
+  const idx = Math.min(tier, MAX_COOLDOWN_TIER) - 1;
+  return COOLDOWN_TIERS[Math.max(0, idx)];
+}
+
+/**
+ * Check if intervention-planning is on cooldown for this student.
+ * Returns the current cooldown value if active, null if expired/absent.
+ */
+async function getActiveCooldown(
   redis: Redis,
   studentId: string,
-): Promise<boolean> {
-  const exists = await redis.exists(cooldownKey(studentId));
-  return exists === 1;
+): Promise<CooldownValue | null> {
+  const raw = await redis.get(cooldownKey(studentId));
+  return parseCooldownValue(raw);
 }
 
 // ─── Active Weak Points Filter ──────────────────
@@ -89,7 +130,7 @@ function filterActiveWeakPoints(weakPoints: MasteryStateView[]): MasteryStateVie
  * Decision logic:
  * 1. Read weak points (NEW_ERROR / CORRECTED / REGRESSED)
  * 2. Read overdue reviews (nextReviewAt <= now)
- * 3. Check 24h cooldown for intervention-planning
+ * 3. Check progressive cooldown for intervention-planning (D55: tier 1=6h, 2=12h, 3=24h)
  * 4. Weak points + no cooldown → enqueue intervention-planning
  * 5. Each overdue review → enqueue mastery-evaluation
  */
@@ -129,14 +170,15 @@ export async function runLearningBrain(
   const weakKPIds = weakPoints.map((wp) => wp.knowledgePointId);
   const allInterventionKPIds = [...new Set([...weakKPIds, ...worseningKPIds])];
 
-  // 5. Intervention planning (with 24h cooldown)
+  // 5. Intervention planning (with progressive cooldown — D55)
   if (allInterventionKPIds.length > 0) {
-    const cooledDown = await hasRecentInterventionPlanning(redis, studentId);
+    const cooldown = await getActiveCooldown(redis, studentId);
 
-    if (cooledDown) {
+    if (cooldown) {
+      const ttlHours = getCooldownTTL(cooldown.tier) / 3600;
       skipped.push({
         jobName: "intervention-planning",
-        reason: `Skipped: intervention-planning ran within last ${COOLDOWN_SECONDS / 3600}h for student ${studentId}`,
+        reason: `Skipped: intervention-planning on cooldown tier ${cooldown.tier} (${ttlHours}h) for student ${studentId}`,
       });
     } else {
       const reasonParts: string[] = [];

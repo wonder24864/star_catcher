@@ -18,7 +18,13 @@ import { db } from "@/lib/infra/db";
 import { redis } from "@/lib/infra/redis";
 import { enqueueLearningBrain, enqueueInterventionPlanning, enqueueMasteryEvaluation } from "@/lib/infra/queue";
 import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
-import { runLearningBrain, cooldownKey, COOLDOWN_SECONDS } from "@/lib/domain/brain";
+import {
+  runLearningBrain,
+  cooldownKey,
+  getCooldownTTL,
+  MAX_COOLDOWN_TIER,
+  parseCooldownValue,
+} from "@/lib/domain/brain";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { createLogger } from "@/lib/infra/logger";
 import type { InterventionPlanningJobData, MasteryEvaluationJobData } from "@/lib/infra/queue/types";
@@ -106,12 +112,22 @@ export async function handleLearningBrain(
 
     const jobIds = await enqueueDecision(decision);
 
-    // Set cooldown key if intervention-planning was enqueued
+    // Set progressive cooldown if intervention-planning was enqueued (D55)
     const hasIntervention = decision.agentsToLaunch.some(
       (a) => a.jobName === "intervention-planning",
     );
     if (hasIntervention) {
-      await redis.set(cooldownKey(studentId), "1", "EX", COOLDOWN_SECONDS);
+      // Read existing cooldown to determine next tier
+      const existing = parseCooldownValue(
+        await redis.get(cooldownKey(studentId)),
+      );
+      const nextTier = Math.min(
+        (existing?.tier ?? 0) + 1,
+        MAX_COOLDOWN_TIER,
+      );
+      const ttl = getCooldownTTL(nextTier);
+      const value = JSON.stringify({ tier: nextTier, setAt: new Date().toISOString() });
+      await redis.set(cooldownKey(studentId), value, "EX", ttl);
     }
     const durationMs = Date.now() - startTime;
 

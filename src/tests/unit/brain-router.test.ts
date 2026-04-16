@@ -30,6 +30,7 @@ type MockUser = {
 let logs: MockLog[];
 let users: MockUser[];
 let redisTtlMock: (key: string) => Promise<number>;
+let redisGetMock: (key: string) => Promise<string | null>;
 
 /**
  * Mock for Prisma.Sql template — applies filters encoded in the SQL by
@@ -123,11 +124,23 @@ function buildDb() {
   };
 }
 
-// Mock redis with configurable ttl
+// Mock redis with configurable ttl, get, and del
 vi.mock("@/lib/infra/redis", () => ({
   redis: {
     ttl: vi.fn((key: string) => redisTtlMock(key)),
+    get: vi.fn((key: string) => redisGetMock(key)),
+    del: vi.fn(async () => 1),
   },
+}));
+
+// Mock queue for triggerBrain
+vi.mock("@/lib/infra/queue", () => ({
+  enqueueLearningBrain: vi.fn(async () => "mock-job-id"),
+}));
+
+// Mock admin-log for triggerBrain/overrideCooldown
+vi.mock("@/lib/domain/admin-log", () => ({
+  logAdminAction: vi.fn(async () => {}),
 }));
 
 let db: ReturnType<typeof buildDb>;
@@ -136,6 +149,7 @@ beforeEach(() => {
   logs = [];
   users = [];
   redisTtlMock = async () => -2; // default: key doesn't exist
+  redisGetMock = async () => null; // default: no cooldown
   db = buildDb();
 });
 
@@ -248,12 +262,13 @@ describe("brain.listRuns", () => {
 });
 
 describe("brain.studentStatus", () => {
-  test("返回最近 5 次 run + cooldown + brainSchedule", async () => {
+  test("返回最近 5 次 run + progressive cooldown + brainSchedule", async () => {
     users.push({ id: "student1", nickname: "小明", username: "xm", role: "STUDENT" });
     for (let i = 0; i < 7; i++) {
       seedBrainRun({ target: "student1", createdAt: new Date(Date.now() - i * 3600000) });
     }
     redisTtlMock = async () => 3600; // cooldown active
+    redisGetMock = async () => JSON.stringify({ tier: 2, setAt: new Date().toISOString() });
 
     const caller = getCaller();
     const res = await caller.brain.studentStatus({ studentId: "student1" });
@@ -261,6 +276,8 @@ describe("brain.studentStatus", () => {
     expect(res.student.nickname).toBe("小明");
     expect(res.recentRuns).toHaveLength(5); // cap 5
     expect(res.cooldownSeconds).toBe(3600);
+    expect(res.cooldownTier).toBe(2);
+    expect(res.cooldownTierMaxHours).toBe(12); // tier 2 = 12h
     expect(res.brainSchedule).not.toBeNull();
     expect(res.brainSchedule?.pattern).toMatch(/\*/);
   });
@@ -323,6 +340,39 @@ describe("brain.stats", () => {
     expect(res.totalRuns).toBe(0);
     expect(res.avgDurationMs).toBe(0);
     expect(res.agentDistribution).toHaveLength(0);
+  });
+});
+
+describe("brain.triggerBrain", () => {
+  test("enqueues learning-brain job for valid student", async () => {
+    users.push({ id: "student1", nickname: "小明", username: "xm", role: "STUDENT" });
+
+    const caller = getCaller();
+    const res = await caller.brain.triggerBrain({ studentId: "student1" });
+
+    expect(res.jobId).toBe("mock-job-id");
+  });
+
+  test("rejects non-student user", async () => {
+    users.push({ id: "a1", nickname: "Admin", username: "adm", role: "ADMIN" });
+    const caller = getCaller();
+    await expect(caller.brain.triggerBrain({ studentId: "a1" })).rejects.toThrow();
+  });
+
+  test("rejects non-existent user", async () => {
+    const caller = getCaller();
+    await expect(caller.brain.triggerBrain({ studentId: "nonexistent" })).rejects.toThrow();
+  });
+});
+
+describe("brain.overrideCooldown", () => {
+  test("clears cooldown key and returns cleared=true", async () => {
+    users.push({ id: "student1", nickname: "小明", username: "xm", role: "STUDENT" });
+
+    const caller = getCaller();
+    const res = await caller.brain.overrideCooldown({ studentId: "student1" });
+
+    expect(res.cleared).toBe(true);
   });
 });
 

@@ -4,19 +4,33 @@
  * Verifies deterministic decision-making:
  * - Weak points → intervention-planning
  * - Overdue reviews → mastery-evaluation
- * - 24h cooldown enforcement
+ * - Progressive cooldown enforcement (D55: tier 1=6h, 2=12h, 3=24h)
  * - No side effects (pure decision output)
  */
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { runLearningBrain } from "@/lib/domain/brain/learning-brain";
+import {
+  parseCooldownValue,
+  getCooldownTTL,
+  COOLDOWN_TIERS,
+  MAX_COOLDOWN_TIER,
+} from "@/lib/domain/brain/learning-brain";
 import type { StudentMemory, MasteryStateView, ReviewScheduleView } from "@/lib/domain/memory/types";
 
 // ─── Mock Redis for cooldown checks ─────────────
 
-function createMockRedis(cooldownActive = false) {
+function createMockRedis(cooldownValue: string | null = null) {
   return {
-    exists: vi.fn().mockResolvedValue(cooldownActive ? 1 : 0),
+    get: vi.fn().mockResolvedValue(cooldownValue),
+    // Legacy exists used by deprecated hasRecentInterventionPlanning
+    exists: vi.fn().mockResolvedValue(cooldownValue ? 1 : 0),
   } as any;
+}
+
+/** Create a mock Redis with active cooldown at given tier */
+function createCooldownRedis(tier: number) {
+  const value = JSON.stringify({ tier, setAt: new Date().toISOString() });
+  return createMockRedis(value);
 }
 
 // ─── Mock Memory ────────────────────────────────
@@ -105,7 +119,7 @@ describe("Learning Brain", () => {
       makeMastery({ knowledgePointId: "kp-3", status: "REGRESSED" }),
     ];
     const memory = createMockMemory(weakPoints, []);
-    const mockRedis = createMockRedis(false); // no recent runs
+    const mockRedis = createMockRedis(); // no cooldown
 
     const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
 
@@ -158,7 +172,7 @@ describe("Learning Brain", () => {
       makeReview({ id: "rs-1", knowledgePointId: "kp-10" }),
     ];
     const memory = createMockMemory(weakPoints, overdueReviews);
-    const mockRedis = createMockRedis(false);
+    const mockRedis = createMockRedis(); // no cooldown
 
     const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
 
@@ -169,22 +183,37 @@ describe("Learning Brain", () => {
     expect(decision.eventsProcessed).toBe(2);
   });
 
-  // ── 24h cooldown ──
+  // ── Progressive cooldown (D55) ──
 
-  test("skips intervention-planning when recently run (24h cooldown)", async () => {
+  test("skips intervention-planning when cooldown tier 1 is active", async () => {
     const weakPoints = [
       makeMastery({ knowledgePointId: "kp-1", status: "NEW_ERROR" }),
     ];
     const memory = createMockMemory(weakPoints, []);
-    const mockRedis = createMockRedis(true); // cooldown active
+    const mockRedis = createCooldownRedis(1);
 
     const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
 
     expect(decision.agentsToLaunch).toEqual([]);
     expect(decision.skipped).toHaveLength(1);
     expect(decision.skipped[0].jobName).toBe("intervention-planning");
-    expect(decision.skipped[0].reason).toContain("24h");
+    expect(decision.skipped[0].reason).toContain("tier 1");
+    expect(decision.skipped[0].reason).toContain("6h");
     expect(decision.eventsProcessed).toBe(1);
+  });
+
+  test("skips intervention-planning when cooldown tier 3 (max) is active", async () => {
+    const weakPoints = [
+      makeMastery({ knowledgePointId: "kp-1", status: "NEW_ERROR" }),
+    ];
+    const memory = createMockMemory(weakPoints, []);
+    const mockRedis = createCooldownRedis(3);
+
+    const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
+
+    expect(decision.skipped).toHaveLength(1);
+    expect(decision.skipped[0].reason).toContain("tier 3");
+    expect(decision.skipped[0].reason).toContain("24h");
   });
 
   test("cooldown does not affect mastery-evaluation", async () => {
@@ -195,7 +224,7 @@ describe("Learning Brain", () => {
       makeReview({ id: "rs-1", knowledgePointId: "kp-10" }),
     ];
     const memory = createMockMemory(weakPoints, overdueReviews);
-    const mockRedis = createMockRedis(true); // cooldown active
+    const mockRedis = createCooldownRedis(2); // cooldown active
 
     const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
 
@@ -214,7 +243,7 @@ describe("Learning Brain", () => {
       makeMastery({ knowledgePointId: "kp-2", status: "REVIEWING" }),
     ];
     const memory = createMockMemory(weakPoints, []);
-    const mockRedis = createMockRedis(false);
+    const mockRedis = createMockRedis();
 
     const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
 
@@ -253,7 +282,7 @@ describe("Learning Brain", () => {
       generatedAt: new Date(),
       validUntil: null,
     });
-    const mockRedis = createMockRedis(false);
+    const mockRedis = createMockRedis();
 
     const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
 
@@ -283,7 +312,7 @@ describe("Learning Brain", () => {
       generatedAt: new Date(),
       validUntil: null,
     });
-    const mockRedis = createMockRedis(false);
+    const mockRedis = createMockRedis();
 
     const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
 
@@ -307,7 +336,7 @@ describe("Learning Brain", () => {
       generatedAt: new Date(),
       validUntil: null,
     });
-    const mockRedis = createMockRedis(true); // cooldown active
+    const mockRedis = createCooldownRedis(1); // cooldown active
 
     const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
 
@@ -322,7 +351,7 @@ describe("Learning Brain", () => {
     ];
     const memory = createMockMemory(weakPoints, []);
     // getWeaknessProfile already returns null by default
-    const mockRedis = createMockRedis(false);
+    const mockRedis = createMockRedis();
 
     const decision = await runLearningBrain(defaultInput, { memory, redis: mockRedis });
 
@@ -331,5 +360,59 @@ describe("Learning Brain", () => {
     expect(decision.agentsToLaunch[0]!.data).toMatchObject({
       knowledgePointIds: ["kp-1"],
     });
+  });
+});
+
+// ─── Progressive Cooldown Utilities (D55) ──────
+
+describe("parseCooldownValue", () => {
+  test("parses valid JSON with tier and setAt", () => {
+    const raw = JSON.stringify({ tier: 2, setAt: "2026-04-16T12:00:00Z" });
+    const result = parseCooldownValue(raw);
+    expect(result).toEqual({ tier: 2, setAt: "2026-04-16T12:00:00Z" });
+  });
+
+  test("returns null for null input", () => {
+    expect(parseCooldownValue(null)).toBeNull();
+  });
+
+  test("returns null for legacy '1' format", () => {
+    expect(parseCooldownValue("1")).toBeNull();
+  });
+
+  test("returns null for corrupt JSON", () => {
+    expect(parseCooldownValue("{invalid")).toBeNull();
+  });
+
+  test("returns null for missing tier field", () => {
+    expect(parseCooldownValue(JSON.stringify({ setAt: "2026-01-01" }))).toBeNull();
+  });
+
+  test("returns null for missing setAt field", () => {
+    expect(parseCooldownValue(JSON.stringify({ tier: 1 }))).toBeNull();
+  });
+});
+
+describe("getCooldownTTL", () => {
+  test("tier 1 = 6 hours", () => {
+    expect(getCooldownTTL(1)).toBe(6 * 3600);
+  });
+
+  test("tier 2 = 12 hours", () => {
+    expect(getCooldownTTL(2)).toBe(12 * 3600);
+  });
+
+  test("tier 3 = 24 hours", () => {
+    expect(getCooldownTTL(3)).toBe(24 * 3600);
+  });
+
+  test("tier beyond max is capped at tier 3", () => {
+    expect(getCooldownTTL(5)).toBe(24 * 3600);
+    expect(getCooldownTTL(100)).toBe(24 * 3600);
+  });
+
+  test("tier 0 or negative uses tier 1", () => {
+    expect(getCooldownTTL(0)).toBe(6 * 3600);
+    expect(getCooldownTTL(-1)).toBe(6 * 3600);
   });
 });

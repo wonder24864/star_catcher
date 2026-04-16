@@ -179,8 +179,33 @@
 
 ### Phase 4 推迟事项
 
-- CORRECTED 事件类型：EVENT_EMOJI/EVENT_DOT_COLOR 中声明但 router 暂不产生（MasteryState 无转换历史日志），i18n key 已就位，待 Phase 5 MasteryState 历史追踪实现后激活
+> 以下事项在 Phase 4 推迟，Phase 5 已逐项评估。
 
-## Phase 5: 持续优化
+| # | 事项 | 推迟原因 | 最终 Phase |
+|---|------|---------|-----------|
+| D9 | CORRECTED 事件类型（EVENT_EMOJI/EVENT_DOT_COLOR 声明但 router 无数据源） | MasteryState 无转换历史日志 | **Phase 5 Sprint 23** ✅ 已解决 |
 
-Learning Brain 全局编排、本地模型部署(Ollama/vLLM)、Android APK、多教材版本支持、安全增强、真实 OCR 数据集基线、进程级 e2e 测试
+## Phase 5: Learning Brain 优化 + UI 现代化
+
+> **重要**：Phase 5 的 Learning Brain 工作是**优化+补全**（Phase 3 已完成核心编排）。
+> 核心新增：MasteryStateHistory 审计表、渐进式冷却、管理员手动触发、家长/管理端 UI 现代化。
+> 推迟事项决策：D9（CORRECTED 事件）纳入 Sprint 23；Ollama/APK/多教材等继续推迟。
+> 详见 `docs/PHASE5-LAUNCH-PLAN.md`
+
+| Sprint | 周期 | 范围 | 状态 |
+|--------|------|------|------|
+| Sprint 23 | Week 28 | MasteryStateHistory + CORRECTED 事件 + 渐进冷却 + 管理员触发 | [x] |
+| Sprint 24 | Week 29 | Pro 组件库 + Dashboard Layout 升级 | [ ] |
+| Sprint 25 | Week 30 | 家长端 UI 改造 | [ ] |
+| Sprint 26 | Week 31 | 管理端 UI 改造 + Phase 5 验收 | [ ] |
+
+### Phase 5 推迟到后续 Phase 的事项
+
+| # | 事项 | 推迟原因 |
+|---|------|---------|
+| D3 | 教材多版本管理 | 当前单版本已满足，多版本需扩展 KG schema |
+| D10 | 本地模型部署(Ollama/vLLM) | 需要独立基础设施评估 |
+| D11 | Android APK | 需 Capacitor/React Native 评估 |
+| D12 | 安全增强 | 独立安全审计 |
+| D13 | 真实 OCR 数据集基线 | 等待真实 K-12 题图素材就绪 |
+| D14 | 进程级 e2e 测试 | 需真实 Postgres+Redis+BullMQ 环境 |

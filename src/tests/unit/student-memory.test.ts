@@ -173,6 +173,17 @@ function createMockPrisma() {
       }),
       findMany: vi.fn().mockResolvedValue([]),
     },
+    masteryStateHistory: {
+      create: vi.fn().mockResolvedValue({
+        id: "msh-1",
+        studentId: "student-1",
+        knowledgePointId: "kp-1",
+        fromStatus: "NEW_ERROR",
+        toStatus: "CORRECTED",
+        reason: "test",
+        transitionedAt: new Date(),
+      }),
+    },
     weaknessProfile: {
       findFirst: vi.fn().mockResolvedValue(null),
       create: vi.fn(),
