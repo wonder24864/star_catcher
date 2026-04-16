@@ -24,6 +24,7 @@ import { masteryEvaluate } from "./mastery-evaluate";
 import { generateExplanation } from "./generate-explanation";
 import type { ExplanationFormat } from "../harness/schemas/generate-explanation";
 import { evalJudge } from "./eval-judge";
+import { learningSuggestion } from "./learning-suggestion";
 
 /**
  * Each operation adapter normalizes the generic `data` bag into
@@ -193,6 +194,31 @@ const OPERATION_REGISTRY: Record<AIOperationType, OperationAdapter> = {
       operationDescription: data.operationDescription as string,
       expected: data.expected as Record<string, unknown>,
       actual: data.actual as Record<string, unknown>,
+      locale: data.locale as string | undefined,
+      context,
+    }),
+  LEARNING_SUGGESTION: (data, context) =>
+    learningSuggestion({
+      weakPoints: data.weakPoints as Array<{
+        kpId: string;
+        kpName: string;
+        severity: string;
+        trend: string;
+        errorCount: number;
+      }>,
+      masteryStates: data.masteryStates as Array<{
+        kpId: string;
+        kpName: string;
+        status: string;
+        correctRate: number;
+      }>,
+      interventionHistory: data.interventionHistory as Array<{
+        kpName: string;
+        type: string;
+        createdAt: string;
+        preMasteryStatus: string | null;
+      }>,
+      grade: data.grade as string | undefined,
       locale: data.locale as string | undefined,
       context,
     }),

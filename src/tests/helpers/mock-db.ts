@@ -181,6 +181,9 @@ export function createMockDb() {
   const errorQuestions: MockErrorQuestion[] = [];
   const parentNotes: MockParentNote[] = [];
   const adminLogs: MockAdminLog[] = [];
+  const learningSuggestions: any[] = [];
+  const interventionHistories: any[] = [];
+  const masteryStates: any[] = [];
 
   return {
     user: {
@@ -394,7 +397,14 @@ export function createMockDb() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       findMany: async ({ where, orderBy, take, include }: { where?: Record<string, unknown>; orderBy?: any; take?: number; include?: any }) => {
         let result = [...homeworkSessions];
-        if (where?.studentId) result = result.filter((s) => s.studentId === where.studentId);
+        if (where?.studentId) {
+          const sid = where.studentId;
+          if (typeof sid === "object" && sid !== null && "in" in sid) {
+            result = result.filter((s) => (sid as { in: string[] }).in.includes(s.studentId));
+          } else {
+            result = result.filter((s) => s.studentId === sid);
+          }
+        }
         if (where?.status) result = result.filter((s) => s.status === where.status);
         // Date range filter
         if (where?.createdAt && typeof where.createdAt === "object") {
@@ -850,10 +860,17 @@ export function createMockDb() {
           return true;
         }) || null;
       },
-      findMany: async ({ where, orderBy, skip, take }: { where?: Record<string, unknown>; orderBy?: Record<string, unknown>; skip?: number; take?: number }) => {
+      findMany: async ({ where, orderBy, skip, take }: { where?: Record<string, unknown>; orderBy?: Record<string, unknown>; skip?: number; take?: number; select?: Record<string, unknown> }) => {
         let result = errorQuestions.filter((eq) => {
           if (where?.deletedAt !== undefined ? eq.deletedAt !== null : eq.deletedAt !== null) return false;
-          if (where?.studentId && eq.studentId !== where.studentId) return false;
+          if (where?.studentId) {
+            const sid = where.studentId;
+            if (typeof sid === "object" && sid !== null && "in" in sid) {
+              if (!(sid as { in: string[] }).in.includes(eq.studentId)) return false;
+            } else {
+              if (eq.studentId !== sid) return false;
+            }
+          }
           if (where?.subject && eq.subject !== where.subject) return false;
           if (where?.contentType && eq.contentType !== where.contentType) return false;
           if (where?.createdAt && typeof where.createdAt === "object") {
@@ -953,7 +970,110 @@ export function createMockDb() {
         return null;
       },
     },
+    // Sprint 18: LearningSuggestion
+    learningSuggestion: {
+      findMany: async ({ where, orderBy, take }: any) => {
+        let items = learningSuggestions.filter(
+          (s: any) => s.studentId === where?.studentId
+        );
+        if (orderBy?.createdAt === "desc") {
+          items.sort(
+            (a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime()
+          );
+        }
+        if (take) items = items.slice(0, take);
+        return items;
+      },
+      findFirst: async ({ where }: any) => {
+        return learningSuggestions.find(
+          (s: any) =>
+            s.studentId === where?.studentId &&
+            (!where?.type || s.type === where.type) &&
+            (!where?.createdAt?.gte || s.createdAt >= where.createdAt.gte)
+        ) ?? null;
+      },
+      findUnique: async ({ where }: any) => {
+        if (where?.studentId_weekStart_type) {
+          const { studentId, weekStart, type } = where.studentId_weekStart_type;
+          return learningSuggestions.find(
+            (s: any) =>
+              s.studentId === studentId &&
+              s.type === type &&
+              s.weekStart.getTime() === weekStart.getTime()
+          ) ?? null;
+        }
+        return learningSuggestions.find((s: any) => s.id === where?.id) ?? null;
+      },
+      create: async ({ data }: any) => {
+        const row = { id: `ls-${Date.now()}`, ...data, createdAt: new Date() };
+        learningSuggestions.push(row);
+        return row;
+      },
+      upsert: async ({ where, create, update }: any) => {
+        const existing = learningSuggestions.find(
+          (s: any) =>
+            s.studentId === where?.studentId_weekStart_type?.studentId &&
+            s.type === where?.studentId_weekStart_type?.type
+        );
+        if (existing) {
+          Object.assign(existing, update);
+          return existing;
+        }
+        const row = { id: `ls-${Date.now()}`, ...create, createdAt: new Date() };
+        learningSuggestions.push(row);
+        return row;
+      },
+    },
+
+    // Sprint 18: InterventionHistory (read-only mock for tRPC tests)
+    interventionHistory: {
+      findMany: async ({ where, include, orderBy, take }: any) => {
+        let items = interventionHistories.filter(
+          (h: any) =>
+            h.studentId === where?.studentId &&
+            (!where?.createdAt?.gte || h.createdAt >= where.createdAt.gte)
+        );
+        if (orderBy?.createdAt === "desc") {
+          items.sort(
+            (a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime()
+          );
+        }
+        if (take) items = items.slice(0, take);
+        if (include?.knowledgePoint) {
+          items = items.map((h: any) => ({
+            ...h,
+            knowledgePoint: { id: h.knowledgePointId, name: `KP-${h.knowledgePointId}` },
+          }));
+        }
+        return items;
+      },
+    },
+
+    // Sprint 18: MasteryState (read-only mock for tRPC tests)
+    masteryState: {
+      findMany: async ({ where, select }: any) => {
+        return masteryStates.filter(
+          (ms: any) =>
+            ms.studentId === where?.studentId &&
+            (!where?.knowledgePointId?.in || where.knowledgePointId.in.includes(ms.knowledgePointId))
+        );
+      },
+      findUnique: async ({ where }: any) => {
+        if (where?.studentId_knowledgePointId) {
+          return masteryStates.find(
+            (ms: any) =>
+              ms.studentId === where.studentId_knowledgePointId.studentId &&
+              ms.knowledgePointId === where.studentId_knowledgePointId.knowledgePointId
+          ) ?? null;
+        }
+        return null;
+      },
+    },
+
     // Expose internals for test assertions
+    _learningSuggestions: learningSuggestions,
+    _interventionHistories: interventionHistories,
+    _masteryStates: masteryStates,
     _users: users,
     _families: families,
     _familyMembers: familyMembers,

@@ -1,0 +1,14 @@
+{
+  "name": "generate_learning_suggestions",
+  "description": "Generate personalized learning suggestions for a student. Reads WeaknessProfile, MasteryState, and InterventionHistory via readMemory, then calls LEARNING_SUGGESTION AI operation to produce structured suggestions with attention items and parent actions.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "studentId": {
+        "type": "string",
+        "description": "The student to generate suggestions for"
+      }
+    },
+    "required": ["studentId"]
+  }
+}

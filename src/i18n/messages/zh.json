@@ -23,7 +23,9 @@
     "adminKnowledgeGraph": "知识图谱",
     "adminBrain": "Brain 监控",
     "adminEval": "AI 质量评估",
-    "tasks": "今日任务"
+    "tasks": "今日任务",
+    "parentComparison": "学习对比",
+    "parentSuggestions": "学习建议"
   },
   "auth": {
     "login": "登录",
@@ -303,7 +305,94 @@
       "period": {
         "7d": "近 7 天",
         "30d": "近 30 天"
+      },
+      "correctionRate": {
+        "title": "纠正率分布",
+        "oneAttempt": "1 次纠正",
+        "twoAttempts": "2 次纠正",
+        "threeOrMore": "3+ 次纠正"
+      },
+      "helpDetail": {
+        "title": "帮助频率明细",
+        "L1": "思路方向 (L1)",
+        "L2": "关键步骤 (L2)",
+        "L3": "完整解析 (L3)"
       }
+    },
+    "comparison": {
+      "title": "多孩学习对比",
+      "errorCount": "错题数",
+      "correctionRate": "纠正率",
+      "helpFrequency": "求助次数",
+      "masteryRate": "掌握率",
+      "noStudents": "暂无绑定学生",
+      "singleStudent": "绑定 2 个及以上学生后可对比",
+      "ratesChart": "学习成效对比",
+      "countsChart": "学习量对比"
+    },
+    "suggestions": {
+      "title": "学习建议",
+      "refreshBtn": "立即生成",
+      "refreshing": "生成中...",
+      "cooldownHint": "冷却中，{time} 后可再次生成",
+      "emptyTitle": "暂无学习建议",
+      "emptyDesc": "AI 建议将在每周自动生成，或点击上方按钮立即生成",
+      "weeklyAuto": "周自动",
+      "onDemand": "按需",
+      "suggestionsSection": "学习建议",
+      "attentionSection": "需要关注",
+      "parentActionsSection": "家长行动建议",
+      "priority": {
+        "high": "高优先",
+        "medium": "中等",
+        "low": "建议"
+      },
+      "category": {
+        "review_priority": "复习重点",
+        "practice_focus": "练习方向",
+        "learning_strategy": "学习策略"
+      },
+      "attentionType": {
+        "regression_risk": "退步风险",
+        "foundational_gap": "基础缺口",
+        "overload_warning": "负荷预警"
+      },
+      "frequency": {
+        "daily": "每天",
+        "weekly": "每周",
+        "as_needed": "按需"
+      },
+      "actionRequired": "需要行动"
+    },
+    "intervention": {
+      "kpColumn": "知识点",
+      "effectTitle": "干预效果",
+      "timelineTitle": "干预时间线",
+      "emptyEffect": "暂无干预效果数据",
+      "emptyTimeline": "暂无干预记录",
+      "preMastery": "干预前",
+      "postMastery": "当前",
+      "delta": "变化",
+      "noBaseline": "无基线",
+      "improved": "进步",
+      "unchanged": "持平",
+      "declined": "退步",
+      "type": {
+        "DIAGNOSIS": "诊断",
+        "HINT": "提示",
+        "REVIEW": "复习",
+        "EXPLANATION": "讲解",
+        "PRACTICE": "练习",
+        "BRAIN_DECISION": "Brain 决策"
+      },
+      "masteryStatus": {
+        "NEW_ERROR": "新错误",
+        "CORRECTED": "已纠正",
+        "REVIEWING": "复习中",
+        "MASTERED": "已掌握",
+        "REGRESSED": "已退步"
+      },
+      "foundational": "基础薄弱"
     },
     "session": {
       "corrected": "改正 {count} 题",

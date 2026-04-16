@@ -46,6 +46,7 @@ model User {
   weaknessProfiles  WeaknessProfile[]   @relation("StudentWeakness")
   verifiedMappings  QuestionKnowledgeMapping[] @relation("MappingVerifier") // Sprint 15
   evalRuns          EvalRun[]           // Sprint 16 — EvalFramework trigger relation
+  learningSuggestions LearningSuggestion[] @relation("StudentSuggestions") // Sprint 18
 
   @@index([username])
   @@index([role])
@@ -565,8 +566,9 @@ model InterventionHistory {
   content          Json?            // 干预详情
   agentId              String?  @db.VarChar(64) // 来源 Agent
   skillId              String?  @db.VarChar(64) // 来源 Skill
-  foundationalWeakness Boolean  @default(false) // KP 属于更低学段（年级过渡 D20）
-  createdAt            DateTime @default(now()) @db.Timestamptz
+  foundationalWeakness Boolean       @default(false) // KP 属于更低学段（年级过渡 D20）
+  preMasteryStatus     MasteryStatus? // 干预创建时快照当前掌握状态（D32）
+  createdAt            DateTime       @default(now()) @db.Timestamptz
 
   student        User           @relation("StudentIntervention", fields: [studentId], references: [id])
   knowledgePoint KnowledgePoint @relation(fields: [knowledgePointId], references: [id])
@@ -661,6 +663,7 @@ enum AIOperationType {
   FIND_SIMILAR
   GENERATE_EXPLANATION
   EVAL_JUDGE
+  LEARNING_SUGGESTION
 }
 
 model AICallLog {
@@ -841,4 +844,26 @@ model EvalCase {
   @@index([runId, status])
   @@index([operation, status])
   @@index([runId, operation])
+}
+
+// ==================== Learning Suggestions ====================
+// Phase 4 Sprint 18 — AI-generated personalized learning suggestions (D27)
+
+enum SuggestionType {
+  WEEKLY_AUTO
+  ON_DEMAND
+}
+
+model LearningSuggestion {
+  id        String         @id @default(cuid())
+  studentId String
+  type      SuggestionType
+  content   Json           // {suggestions, attentionItems, parentActions}
+  weekStart DateTime       @db.Date
+  createdAt DateTime       @default(now()) @db.Timestamptz
+
+  student User @relation("StudentSuggestions", fields: [studentId], references: [id])
+
+  @@unique([studentId, weekStart, type])
+  @@index([studentId, createdAt])
 }

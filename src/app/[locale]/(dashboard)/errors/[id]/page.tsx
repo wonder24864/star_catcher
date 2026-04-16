@@ -13,19 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { MathText } from "@/components/ui/math-text";
 import { AgentSummaryCard } from "@/components/agent-summary-card";
-
-const SUBJECT_COLORS: Record<string, string> = {
-  MATH: "bg-blue-100 text-blue-800",
-  CHINESE: "bg-red-100 text-red-800",
-  ENGLISH: "bg-green-100 text-green-800",
-  PHYSICS: "bg-purple-100 text-purple-800",
-  CHEMISTRY: "bg-yellow-100 text-yellow-800",
-  BIOLOGY: "bg-teal-100 text-teal-800",
-  POLITICS: "bg-orange-100 text-orange-800",
-  HISTORY: "bg-amber-100 text-amber-800",
-  GEOGRAPHY: "bg-cyan-100 text-cyan-800",
-  OTHER: "bg-gray-100 text-gray-800",
-};
+import { SUBJECT_BADGE_CLASSES } from "@/lib/constants/subject-colors";
 
 export default function ErrorDetailPage() {
   const t = useTranslations();
@@ -112,7 +100,7 @@ export default function ErrorDetailPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Badge className={SUBJECT_COLORS[question.subject] || SUBJECT_COLORS.OTHER}>
+            <Badge className={SUBJECT_BADGE_CLASSES[question.subject] || SUBJECT_BADGE_CLASSES.OTHER}>
               {t(`homework.subjects.${question.subject}`)}
             </Badge>
             {question.isMastered && (

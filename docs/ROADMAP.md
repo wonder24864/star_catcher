@@ -139,12 +139,24 @@
 ### Phase 3 推迟事项
 
 - OCR_RECOGNIZE **真实**素材基线（当前 2 张合成图仅作 smoke test，不反映生产质量退化）—— 真实 K-12 扫描/拍照题图就绪后替换数据集 cases 即可建立严格基线
-- 进程级端到端测试（真实 Postgres+Redis+BullMQ worker）— `end-to-end-loop.test.ts` 保留 `test.todo`，列入 Phase 4 DevOps 动作
+- 进程级端到端测试（真实 Postgres+Redis+BullMQ worker）— `end-to-end-loop.test.ts` 保留 `test.todo`，延至 Phase 5
 
 ## Phase 4: 家长仪表盘 + 体验优化
 
-完整家长仪表盘、详细分析报告、AI 学习建议、干预追踪、儿童友好 UI 优化
+> **重要**：Phase 4 在 Phase 3 学习闭环基础上升级家长体验 + 打造沉浸式学生界面。
+> 核心新增：4 级年级自适应动画系统（framer-motion + Lottie + Three.js）。
+> Phase 3 遗留项（真实 OCR 数据集、进程级 e2e 测试）不纳入，延至 Phase 5。
+> 详见 `docs/PHASE4-LAUNCH-PLAN.md`
+
+| Sprint | 周期 | 范围 | 状态 |
+|--------|------|------|------|
+| Sprint 17 | Week 22 | 增强家长分析（纠正率分布+帮助频率+多孩对比） | [x] |
+| Sprint 18 | Week 23 | AI 学习建议 + 干预追踪 | [x] |
+| Sprint 19 | Week 24 | 动画系统基础设施 + 年级自适应组件库 | [ ] |
+| Sprint 20 | Week 25 | 任务页 + 批改页年级自适应改造 | [ ] |
+| Sprint 21 | Week 26 | 错题本 + 掌握度 + 导航全面改造 | [ ] |
+| Sprint 22 | Week 27 | 学生画像 + Phase 4 验收 | [ ] |
 
 ## Phase 5: 持续优化
 
-Learning Brain 全局编排、本地模型部署(Ollama/vLLM)、Android APK、多教材版本支持、安全增强
+Learning Brain 全局编排、本地模型部署(Ollama/vLLM)、Android APK、多教材版本支持、安全增强、真实 OCR 数据集基线、进程级 e2e 测试

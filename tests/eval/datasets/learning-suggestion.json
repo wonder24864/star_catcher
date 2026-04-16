@@ -1,0 +1,269 @@
+{
+  "operation": "LEARNING_SUGGESTION",
+  "version": "1.0.0",
+  "promptVersion": "1.0.0",
+  "exactMatchFields": [],
+  "judgedFields": ["suggestions", "attentionItems", "parentActions"],
+  "cases": [
+    {
+      "id": "ls-single-weak-math",
+      "input": {
+        "weakPoints": [
+          {
+            "kpId": "kp-fraction-add",
+            "kpName": "分数加法",
+            "severity": "HIGH",
+            "trend": "WORSENING",
+            "errorCount": 7
+          }
+        ],
+        "masteryStates": [
+          {
+            "kpId": "kp-fraction-add",
+            "kpName": "分数加法",
+            "status": "NEW_ERROR",
+            "correctRate": 0.28
+          }
+        ],
+        "interventionHistory": [
+          {
+            "kpName": "分数加法",
+            "type": "EXPLANATION",
+            "createdAt": "2026-04-10T10:00:00Z",
+            "preMasteryStatus": "NEW_ERROR"
+          }
+        ],
+        "grade": "PRIMARY_5",
+        "locale": "zh-CN"
+      },
+      "expected": {
+        "suggestions": [
+          {
+            "category": "review_priority",
+            "title": "分数加法基础巩固",
+            "description": "分数加法正确率仅28%，需要从通分规则开始系统复习。建议每天完成3-5道同分母和异分母加法练习。",
+            "relatedKnowledgePoints": ["分数加法"],
+            "priority": "high"
+          }
+        ],
+        "attentionItems": [],
+        "parentActions": [
+          {
+            "action": "陪孩子用实物(如披萨切片)演示分数概念",
+            "reason": "五年级学生对分数的抽象理解需要具象化辅助",
+            "frequency": "weekly"
+          }
+        ]
+      },
+      "locale": "zh-CN",
+      "note": "单一高严重度薄弱点，恶化趋势"
+    },
+    {
+      "id": "ls-multi-weak-mixed",
+      "input": {
+        "weakPoints": [
+          {
+            "kpId": "kp-equation-solve",
+            "kpName": "一元一次方程求解",
+            "severity": "MEDIUM",
+            "trend": "STABLE",
+            "errorCount": 4
+          },
+          {
+            "kpId": "kp-geometry-area",
+            "kpName": "几何面积计算",
+            "severity": "HIGH",
+            "trend": "WORSENING",
+            "errorCount": 6
+          },
+          {
+            "kpId": "kp-word-problem",
+            "kpName": "应用题审题",
+            "severity": "LOW",
+            "trend": "IMPROVING",
+            "errorCount": 2
+          }
+        ],
+        "masteryStates": [
+          {
+            "kpId": "kp-equation-solve",
+            "kpName": "一元一次方程求解",
+            "status": "CORRECTED",
+            "correctRate": 0.5
+          },
+          {
+            "kpId": "kp-geometry-area",
+            "kpName": "几何面积计算",
+            "status": "NEW_ERROR",
+            "correctRate": 0.3
+          },
+          {
+            "kpId": "kp-word-problem",
+            "kpName": "应用题审题",
+            "status": "REVIEWING",
+            "correctRate": 0.7
+          }
+        ],
+        "interventionHistory": [
+          {
+            "kpName": "几何面积计算",
+            "type": "PRACTICE",
+            "createdAt": "2026-04-12T08:00:00Z",
+            "preMasteryStatus": "NEW_ERROR"
+          },
+          {
+            "kpName": "一元一次方程求解",
+            "type": "REVIEW",
+            "createdAt": "2026-04-11T09:00:00Z",
+            "preMasteryStatus": "CORRECTED"
+          }
+        ],
+        "grade": "JUNIOR_1",
+        "locale": "zh-CN"
+      },
+      "expected": {
+        "suggestions": [
+          {
+            "category": "review_priority",
+            "title": "几何面积计算专项突破",
+            "description": "面积计算正确率仅30%且持续恶化，建议从基础图形(矩形/三角形)面积公式重新推导，每天练习2-3道不同图形的面积题。",
+            "relatedKnowledgePoints": ["几何面积计算"],
+            "priority": "high"
+          },
+          {
+            "category": "practice_focus",
+            "title": "方程求解巩固",
+            "description": "一元一次方程正确率50%，已有改正但仍不稳定。建议系统练习移项和合并同类项。",
+            "relatedKnowledgePoints": ["一元一次方程求解"],
+            "priority": "medium"
+          }
+        ],
+        "attentionItems": [],
+        "parentActions": [
+          {
+            "action": "关注几何面积计算的改善情况，如一周内正确率无提升建议寻求教师帮助",
+            "reason": "HIGH严重度+恶化趋势表明自学可能不够",
+            "frequency": "weekly"
+          }
+        ]
+      },
+      "locale": "zh-CN",
+      "note": "多薄弱点混合场景，验证优先级排序"
+    },
+    {
+      "id": "ls-regression-risk",
+      "input": {
+        "weakPoints": [
+          {
+            "kpId": "kp-decimal-mult",
+            "kpName": "小数乘法",
+            "severity": "HIGH",
+            "trend": "WORSENING",
+            "errorCount": 3
+          }
+        ],
+        "masteryStates": [
+          {
+            "kpId": "kp-decimal-mult",
+            "kpName": "小数乘法",
+            "status": "REGRESSED",
+            "correctRate": 0.4
+          }
+        ],
+        "interventionHistory": [
+          {
+            "kpName": "小数乘法",
+            "type": "REVIEW",
+            "createdAt": "2026-04-08T10:00:00Z",
+            "preMasteryStatus": "MASTERED"
+          }
+        ],
+        "grade": "PRIMARY_4",
+        "locale": "zh-CN"
+      },
+      "expected": {
+        "suggestions": [
+          {
+            "category": "review_priority",
+            "title": "小数乘法回归复习",
+            "description": "小数乘法曾经掌握但出现退步，正确率降至40%。需要重新巩固小数点位移规则和估算验证方法。",
+            "relatedKnowledgePoints": ["小数乘法"],
+            "priority": "high"
+          }
+        ],
+        "attentionItems": [
+          {
+            "type": "regression_risk",
+            "description": "小数乘法从已掌握(MASTERED)退步为REGRESSED状态，需要立即关注",
+            "actionRequired": true
+          }
+        ],
+        "parentActions": [
+          {
+            "action": "每天安排5分钟小数乘法口算练习，帮助恢复已有技能",
+            "reason": "回归退步通常是遗忘导致，短期高频练习可快速恢复",
+            "frequency": "daily"
+          }
+        ]
+      },
+      "locale": "zh-CN",
+      "note": "REGRESSED状态触发regression_risk"
+    },
+    {
+      "id": "ls-overload-warning",
+      "input": {
+        "weakPoints": [
+          { "kpId": "kp-1", "kpName": "整数加法", "severity": "HIGH", "trend": "STABLE", "errorCount": 5 },
+          { "kpId": "kp-2", "kpName": "整数减法", "severity": "MEDIUM", "trend": "STABLE", "errorCount": 3 },
+          { "kpId": "kp-3", "kpName": "乘法口诀", "severity": "HIGH", "trend": "WORSENING", "errorCount": 8 },
+          { "kpId": "kp-4", "kpName": "除法基础", "severity": "MEDIUM", "trend": "STABLE", "errorCount": 4 },
+          { "kpId": "kp-5", "kpName": "混合运算", "severity": "HIGH", "trend": "WORSENING", "errorCount": 6 },
+          { "kpId": "kp-6", "kpName": "应用题", "severity": "LOW", "trend": "IMPROVING", "errorCount": 2 }
+        ],
+        "masteryStates": [
+          { "kpId": "kp-1", "kpName": "整数加法", "status": "NEW_ERROR", "correctRate": 0.3 },
+          { "kpId": "kp-2", "kpName": "整数减法", "status": "CORRECTED", "correctRate": 0.5 },
+          { "kpId": "kp-3", "kpName": "乘法口诀", "status": "NEW_ERROR", "correctRate": 0.2 },
+          { "kpId": "kp-4", "kpName": "除法基础", "status": "NEW_ERROR", "correctRate": 0.4 },
+          { "kpId": "kp-5", "kpName": "混合运算", "status": "NEW_ERROR", "correctRate": 0.25 },
+          { "kpId": "kp-6", "kpName": "应用题", "status": "REVIEWING", "correctRate": 0.65 }
+        ],
+        "interventionHistory": [],
+        "grade": "PRIMARY_3",
+        "locale": "zh-CN"
+      },
+      "expected": {
+        "suggestions": [
+          {
+            "category": "review_priority",
+            "title": "乘法口诀专项强化",
+            "description": "乘法口诀正确率仅20%且恶化中，建议每天背诵和练习口诀表，从2-5的口诀开始逐步扩展。",
+            "relatedKnowledgePoints": ["乘法口诀"],
+            "priority": "high"
+          }
+        ],
+        "attentionItems": [
+          {
+            "type": "overload_warning",
+            "description": "学生有6个薄弱知识点，建议集中精力先攻克2-3个最关键的，避免全面铺开导致学习压力过大",
+            "actionRequired": true
+          },
+          {
+            "type": "foundational_gap",
+            "description": "乘法口诀和整数加减法是更高级运算的基础，这些基础不牢会影响混合运算和除法的学习",
+            "actionRequired": true
+          }
+        ],
+        "parentActions": [
+          {
+            "action": "与老师沟通孩子的基础薄弱情况，了解课堂表现",
+            "reason": "多个基础知识点同时薄弱可能需要额外辅导支持",
+            "frequency": "as_needed"
+          }
+        ]
+      },
+      "locale": "zh-CN",
+      "note": "6个薄弱点触发overload_warning + foundational_gap"
+    }
+  ]
+}

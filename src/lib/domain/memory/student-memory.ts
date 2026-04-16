@@ -327,6 +327,12 @@ export class StudentMemoryImpl implements StudentMemory {
     source?: { agentId?: string; skillId?: string },
     options?: { foundationalWeakness?: boolean },
   ): Promise<InterventionRecord> {
+    // Snapshot current mastery status before creating the intervention (D32)
+    const currentMastery = await this.db.masteryState.findUnique({
+      where: { studentId_knowledgePointId: { studentId, knowledgePointId } },
+      select: { status: true },
+    });
+
     const row = await this.db.interventionHistory.create({
       data: {
         studentId,
@@ -336,6 +342,7 @@ export class StudentMemoryImpl implements StudentMemory {
         agentId: source?.agentId ?? null,
         skillId: source?.skillId ?? null,
         foundationalWeakness: options?.foundationalWeakness ?? false,
+        preMasteryStatus: currentMastery?.status ?? null,
       },
     });
     return this.toInterventionRecord(row);
@@ -802,6 +809,7 @@ export class StudentMemoryImpl implements StudentMemory {
     agentId: string | null;
     skillId: string | null;
     foundationalWeakness: boolean;
+    preMasteryStatus: string | null;
     createdAt: Date;
   }): InterventionRecord {
     return {
@@ -811,6 +819,7 @@ export class StudentMemoryImpl implements StudentMemory {
       agentId: row.agentId,
       skillId: row.skillId,
       foundationalWeakness: row.foundationalWeakness,
+      preMasteryStatus: row.preMasteryStatus,
       createdAt: row.createdAt,
     };
   }

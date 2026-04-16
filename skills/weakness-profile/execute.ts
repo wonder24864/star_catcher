@@ -31,7 +31,8 @@ interface InterventionRecord {
   id: string;
   type: string;
   content: unknown;
-  createdAt: Date;
+  preMasteryStatus?: string | null;
+  createdAt: string | Date;
 }
 
 interface WeakPointEntry {

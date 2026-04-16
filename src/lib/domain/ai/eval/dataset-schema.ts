@@ -56,6 +56,7 @@ export const DATASET_FILE_MAP: Record<AIOperationType, string> = {
   FIND_SIMILAR: "find-similar.json",
   GENERATE_EXPLANATION: "generate-explanation.json",
   EVAL_JUDGE: "eval-judge.json",
+  LEARNING_SUGGESTION: "learning-suggestion.json",
 };
 
 /**

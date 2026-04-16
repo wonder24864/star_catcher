@@ -12,6 +12,9 @@ const { mockDb, mockEnqueueWeaknessProfile, mockMemory, mockLogAdminAction } = v
     masteryState: {
       findMany: vi.fn().mockResolvedValue([]),
     },
+    reviewSchedule: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
   };
   const mockEnqueueWeaknessProfile = vi.fn().mockResolvedValue("job-1");
   const mockMemory = {

@@ -120,7 +120,8 @@ star_catcher/
 │   ├── phase3-db-schema.md    # Phase 3 DB 模型设计（Sprint 10a 迁移用）
 │   ├── adr/                   # 架构决策记录（11 个）
 │   ├── user-stories/          # 用户故事（14 个模块）
-│   └── sprints/               # Sprint 计划（Phase 2: 1~9, Phase 3: 10a~16 DRAFT）
+│   ├── PHASE4-LAUNCH-PLAN.md  # Phase 4 启动计划（家长仪表盘 + 体验优化）
+│   └── sprints/               # Sprint 计划（Phase 2: 1~9, Phase 3: 10a~16, Phase 4: 17~22）
 │
 │── Skill 插件 ────────────────────────────────────────────
 ├── skills/                    # Skill 插件源码 + 编译产物（17 个内置 Skill）
@@ -140,7 +141,8 @@ star_catcher/
 │   ├── generate-explanation-card/ # 讲解卡 Skill（三格式 AI 生成：static/interactive/conversational）
 │   ├── evaluate-mastery/          # 掌握评估 Skill（综合表现 → MasteryState 转换 + SM-2 调整建议）
 │   ├── get-intervention-history/  # 干预历史读取 Skill（Memory 代理，提供更深历史窗口）
-│   └── eval-judge/                # AI 质量评判 Skill（Sprint 16 — 对比 actual vs expected 打 1-5 分）
+│   ├── eval-judge/                # AI 质量评判 Skill（Sprint 16 — 对比 actual vs expected 打 1-5 分）
+│   └── generate-learning-suggestions/ # 学习建议 Skill（薄弱+掌握+干预 → AI 个性化建议三区）
 │
 │── 源码 ──────────────────────────────────────────────────
 └── src/
@@ -159,7 +161,9 @@ star_catcher/
     │   │   ├── tasks/                 # 今日任务包（三种卡片 + 进度条 + 标记完成）
     │   │   ├── parent/                # 家长视图
     │   │   │   ├── overview/              # 今日概览
-    │   │   │   ├── stats/                 # 学习统计
+    │   │   │   ├── stats/                 # 学习统计（含纠正率分布 + 帮助频率明细）
+    │   │   │   ├── suggestions/           # 学习建议（AI 三区 + 干预效果 + 时间线）
+    │   │   │   ├── comparison/            # 多孩学习对比（2+ 学生时可用）
     │   │   │   ├── sessions/[sessionId]/  # 检查时间线
     │   │   │   └── reports/               # 学习报告（周报/月报）
     │   │   ├── admin/                 # 管理后台
@@ -260,6 +264,8 @@ star_catcher/
     │   │   ├── content-hash.ts    # SHA256 去重哈希
     │   │   └── validations/       # Zod 校验（auth/upload/homework）
     │   │
+    │   ├── constants/         # 共享常量
+    │   │   └── subject-colors.ts  # 学科颜色（HEX + Tailwind Badge 类）
     │   ├── utils.ts           # cn() 工具函数
     │   ├── stores/            # Zustand 客户端状态
     │   ├── trpc/              # tRPC 客户端（含 SSE splitLink）

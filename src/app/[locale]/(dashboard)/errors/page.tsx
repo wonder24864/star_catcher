@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
+import { SUBJECTS, SUBJECT_BADGE_CLASSES } from "@/lib/constants/subject-colors";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,24 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const SUBJECTS = [
-  "MATH", "CHINESE", "ENGLISH", "PHYSICS", "CHEMISTRY",
-  "BIOLOGY", "POLITICS", "HISTORY", "GEOGRAPHY", "OTHER",
-] as const;
-
-const SUBJECT_COLORS: Record<string, string> = {
-  MATH: "bg-blue-100 text-blue-800",
-  CHINESE: "bg-red-100 text-red-800",
-  ENGLISH: "bg-green-100 text-green-800",
-  PHYSICS: "bg-purple-100 text-purple-800",
-  CHEMISTRY: "bg-yellow-100 text-yellow-800",
-  BIOLOGY: "bg-teal-100 text-teal-800",
-  POLITICS: "bg-orange-100 text-orange-800",
-  HISTORY: "bg-amber-100 text-amber-800",
-  GEOGRAPHY: "bg-cyan-100 text-cyan-800",
-  OTHER: "bg-gray-100 text-gray-800",
-};
 
 export default function ErrorsPage() {
   const t = useTranslations();
@@ -154,8 +137,8 @@ export default function ErrorsPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <Badge
                           className={
-                            SUBJECT_COLORS[eq.subject] ||
-                            SUBJECT_COLORS.OTHER
+                            SUBJECT_BADGE_CLASSES[eq.subject] ||
+                            SUBJECT_BADGE_CLASSES.OTHER
                           }
                         >
                           {t(`homework.subjects.${eq.subject}`)}

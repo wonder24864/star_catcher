@@ -56,6 +56,7 @@ export interface InterventionRecord {
   agentId: string | null;
   skillId: string | null;
   foundationalWeakness: boolean;
+  preMasteryStatus: string | null; // MasteryStatus snapshot at intervention creation (D32)
   createdAt: Date;
 }
 

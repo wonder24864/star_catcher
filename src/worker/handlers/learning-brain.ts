@@ -22,6 +22,7 @@ import { runLearningBrain, cooldownKey, COOLDOWN_SECONDS } from "@/lib/domain/br
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { createLogger } from "@/lib/infra/logger";
 import type { InterventionPlanningJobData, MasteryEvaluationJobData } from "@/lib/infra/queue/types";
+import { getActiveStudentIds } from "./shared-active-students";
 
 const log = createLogger("worker:learning-brain");
 
@@ -40,40 +41,6 @@ async function acquireLock(studentId: string): Promise<boolean> {
 
 async function releaseLock(studentId: string): Promise<void> {
   await redis.del(lockKey(studentId));
-}
-
-// ─── Active Students Query ──────────────────────
-
-/**
- * Find active students for Brain scanning.
- * Active = has non-MASTERED MasteryState OR has overdue ReviewSchedule.
- */
-async function getActiveStudentIds(): Promise<string[]> {
-  // Students with non-MASTERED, non-archived mastery states
-  const masteryStudents = await (db as any).masteryState.findMany({
-    where: {
-      status: { not: "MASTERED" },
-      archived: false,
-    },
-    select: { studentId: true },
-    distinct: ["studentId"],
-  });
-
-  // Students with overdue reviews
-  const reviewStudents = await (db as any).reviewSchedule.findMany({
-    where: {
-      nextReviewAt: { lte: new Date() },
-    },
-    select: { studentId: true },
-    distinct: ["studentId"],
-  });
-
-  // Merge and deduplicate
-  const studentIds = new Set<string>();
-  for (const row of masteryStudents) studentIds.add(row.studentId);
-  for (const row of reviewStudents) studentIds.add(row.studentId);
-
-  return [...studentIds];
 }
 
 // ─── Enqueue Helpers ────────────────────────────

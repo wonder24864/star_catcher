@@ -57,6 +57,7 @@ function makeIntervention(
     agentId: null,
     skillId: null,
     foundationalWeakness: false,
+    preMasteryStatus: null,
     createdAt: date,
   };
 }

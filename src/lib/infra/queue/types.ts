@@ -113,6 +113,17 @@ export interface EvalRunJobData {
   locale: string;
 }
 
+/**
+ * Learning suggestion job — Sprint 18 US-061. Handler loads weakness/mastery
+ * data, calls LEARNING_SUGGESTION AI operation, writes LearningSuggestion row.
+ */
+export interface LearningSuggestionJobData {
+  studentId: string;       // "__all__" for weekly fanout
+  userId: string;
+  locale: string;
+  type?: "WEEKLY_AUTO" | "ON_DEMAND";
+}
+
 export type AIJobData =
   | OcrRecognizeJobData
   | CorrectionPhotosJobData
@@ -125,7 +136,8 @@ export type AIJobData =
   | InterventionPlanningJobData
   | MasteryEvaluationJobData
   | EmbeddingGenerateJobData
-  | EvalRunJobData;
+  | EvalRunJobData
+  | LearningSuggestionJobData;
 
 /** Job names matching ADR-003 timeout/retry configuration */
 export type AIJobName =
@@ -140,4 +152,5 @@ export type AIJobName =
   | "intervention-planning"
   | "mastery-evaluation"
   | "embedding-generate"
-  | "eval-run";
+  | "eval-run"
+  | "learning-suggestion";

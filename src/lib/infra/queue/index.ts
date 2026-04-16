@@ -20,6 +20,7 @@ import type {
   MasteryEvaluationJobData,
   EmbeddingGenerateJobData,
   EvalRunJobData,
+  LearningSuggestionJobData,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -233,6 +234,22 @@ export async function enqueueEvalRun(
     attempts: 1,
     removeOnComplete: 50,
     removeOnFail: 100,
+  });
+  return job.id!;
+}
+
+/**
+ * Enqueue learning suggestion generation job — Sprint 18 US-061.
+ * Timeout: 60s (single AI call), Retries: 2.
+ */
+export async function enqueueLearningSuggestion(
+  data: LearningSuggestionJobData,
+): Promise<string> {
+  const job = await getQueue().add("learning-suggestion", data, {
+    attempts: 2,
+    backoff: { type: "exponential", delay: 5000 },
+    removeOnComplete: 100,
+    removeOnFail: 200,
   });
   return job.id!;
 }

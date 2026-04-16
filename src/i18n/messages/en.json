@@ -23,7 +23,9 @@
     "adminKnowledgeGraph": "Knowledge Graph",
     "adminBrain": "Brain Monitor",
     "adminEval": "AI Quality Eval",
-    "tasks": "Today's Tasks"
+    "tasks": "Today's Tasks",
+    "parentComparison": "Learning Comparison",
+    "parentSuggestions": "Learning Suggestions"
   },
   "auth": {
     "login": "Login",
@@ -303,7 +305,94 @@
       "period": {
         "7d": "Last 7 days",
         "30d": "Last 30 days"
+      },
+      "correctionRate": {
+        "title": "Correction Rate Distribution",
+        "oneAttempt": "1 Attempt",
+        "twoAttempts": "2 Attempts",
+        "threeOrMore": "3+ Attempts"
+      },
+      "helpDetail": {
+        "title": "Help Frequency Detail",
+        "L1": "Hint (L1)",
+        "L2": "Key Steps (L2)",
+        "L3": "Full Solution (L3)"
       }
+    },
+    "comparison": {
+      "title": "Multi-Child Comparison",
+      "errorCount": "Errors",
+      "correctionRate": "Correction Rate",
+      "helpFrequency": "Help Count",
+      "masteryRate": "Mastery Rate",
+      "noStudents": "No linked students",
+      "singleStudent": "Link 2+ students to compare",
+      "ratesChart": "Learning Effectiveness",
+      "countsChart": "Learning Volume"
+    },
+    "suggestions": {
+      "title": "Learning Suggestions",
+      "refreshBtn": "Generate Now",
+      "refreshing": "Generating...",
+      "cooldownHint": "Cooling down, available in {time}",
+      "emptyTitle": "No suggestions yet",
+      "emptyDesc": "AI suggestions are generated weekly, or click above to generate now",
+      "weeklyAuto": "Weekly",
+      "onDemand": "On Demand",
+      "suggestionsSection": "Suggestions",
+      "attentionSection": "Attention Items",
+      "parentActionsSection": "Parent Actions",
+      "priority": {
+        "high": "High Priority",
+        "medium": "Medium",
+        "low": "Suggested"
+      },
+      "category": {
+        "review_priority": "Review Priority",
+        "practice_focus": "Practice Focus",
+        "learning_strategy": "Learning Strategy"
+      },
+      "attentionType": {
+        "regression_risk": "Regression Risk",
+        "foundational_gap": "Foundational Gap",
+        "overload_warning": "Overload Warning"
+      },
+      "frequency": {
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "as_needed": "As Needed"
+      },
+      "actionRequired": "Action Required"
+    },
+    "intervention": {
+      "kpColumn": "Knowledge Point",
+      "effectTitle": "Intervention Effect",
+      "timelineTitle": "Intervention Timeline",
+      "emptyEffect": "No intervention effect data",
+      "emptyTimeline": "No intervention records",
+      "preMastery": "Before",
+      "postMastery": "Current",
+      "delta": "Change",
+      "noBaseline": "No baseline",
+      "improved": "Improved",
+      "unchanged": "Unchanged",
+      "declined": "Declined",
+      "type": {
+        "DIAGNOSIS": "Diagnosis",
+        "HINT": "Hint",
+        "REVIEW": "Review",
+        "EXPLANATION": "Explanation",
+        "PRACTICE": "Practice",
+        "BRAIN_DECISION": "Brain Decision"
+      },
+      "masteryStatus": {
+        "NEW_ERROR": "New Error",
+        "CORRECTED": "Corrected",
+        "REVIEWING": "Reviewing",
+        "MASTERED": "Mastered",
+        "REGRESSED": "Regressed"
+      },
+      "foundational": "Foundational Weakness"
     },
     "session": {
       "corrected": "{count} corrected",

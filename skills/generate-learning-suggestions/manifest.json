@@ -1,0 +1,8 @@
+{
+  "name": "generate-learning-suggestions",
+  "version": "1.0.0",
+  "description": "Generate personalized learning suggestions for a student based on weakness data, mastery states, and intervention history. Returns structured suggestions, attention items, and parent actions.",
+  "author": "system",
+  "main": "index.js",
+  "timeout": 60000
+}

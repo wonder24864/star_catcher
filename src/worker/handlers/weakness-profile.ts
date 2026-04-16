@@ -21,29 +21,9 @@ import { computeSemesterStart } from "@/lib/domain/weakness/semester";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { createLogger } from "@/lib/infra/logger";
 import type { InterventionRecord, WeaknessTier } from "@/lib/domain/memory/types";
+import { getActiveStudentIds } from "./shared-active-students";
 
 const log = createLogger("worker:weakness-profile");
-
-// ─── Active Students Query ──────────────────────
-
-/**
- * Find active students for weakness analysis.
- * Reuses the same logic as learning-brain: non-MASTERED + non-archived.
- */
-async function getActiveStudentIds(): Promise<string[]> {
-  const masteryStudents = await (db as any).masteryState.findMany({
-    where: {
-      status: { not: "MASTERED" },
-      archived: false,
-    },
-    select: { studentId: true },
-    distinct: ["studentId"],
-  });
-
-  const studentIds = new Set<string>();
-  for (const row of masteryStudents) studentIds.add(row.studentId);
-  return [...studentIds];
-}
 
 // ─── Handler ────────────────────────────────────
 

@@ -399,6 +399,7 @@ function describeOperation(op: AIOperationType): string {
     FIND_SIMILAR: "(non-AI deterministic retrieval)",
     GENERATE_EXPLANATION: "Generate an explanation card (static/interactive/conversational) for a knowledge point.",
     EVAL_JUDGE: "(self)",
+    LEARNING_SUGGESTION: "Generate personalized learning suggestions for a student based on weakness data, mastery states, and intervention history.",
   };
   return map[op];
 }

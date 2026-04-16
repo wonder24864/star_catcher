@@ -18,21 +18,9 @@ import {
 } from "recharts";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
+import { SUBJECT_HEX_COLORS } from "@/lib/constants/subject-colors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-const SUBJECT_COLORS: Record<string, string> = {
-  MATH: "#3b82f6",
-  CHINESE: "#ef4444",
-  ENGLISH: "#10b981",
-  PHYSICS: "#f59e0b",
-  CHEMISTRY: "#8b5cf6",
-  BIOLOGY: "#06b6d4",
-  POLITICS: "#f97316",
-  HISTORY: "#84cc16",
-  GEOGRAPHY: "#ec4899",
-  OTHER: "#6b7280",
-};
 
 export default function ParentStatsPage() {
   const t = useTranslations();
@@ -49,6 +37,14 @@ export default function ParentStatsPage() {
   }, [selectedStudentId, students, setSelectedStudentId]);
 
   const { data: stats, isLoading } = trpc.parent.stats.useQuery(
+    { studentId: effectiveStudentId!, period },
+    { enabled: !!effectiveStudentId }
+  );
+  const { data: corrDist } = trpc.parent.correctionRateDistribution.useQuery(
+    { studentId: effectiveStudentId!, period },
+    { enabled: !!effectiveStudentId }
+  );
+  const { data: helpDetail } = trpc.parent.helpFrequencyDetail.useQuery(
     { studentId: effectiveStudentId!, period },
     { enabled: !!effectiveStudentId }
   );
@@ -154,7 +150,7 @@ export default function ParentStatsPage() {
                       {stats.subjectDistribution.map((entry) => (
                         <Cell
                           key={entry.subject}
-                          fill={SUBJECT_COLORS[entry.subject] ?? "#6b7280"}
+                          fill={SUBJECT_HEX_COLORS[entry.subject] ?? "#6b7280"}
                         />
                       ))}
                     </Pie>
@@ -248,6 +244,92 @@ export default function ParentStatsPage() {
             </Card>
           )}
         </div>
+      )}
+
+      {/* Correction rate distribution */}
+      {corrDist && corrDist.bySubject.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">{t("parent.stats.correctionRate.title")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart
+                data={corrDist.bySubject.map((d) => ({
+                  ...d,
+                  label: t(`homework.subjects.${d.subject}`),
+                }))}
+                margin={{ top: 4, right: 4, left: -10, bottom: 0 }}
+              >
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar
+                  dataKey="oneAttempt"
+                  name={t("parent.stats.correctionRate.oneAttempt")}
+                  fill="#10b981"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="twoAttempts"
+                  name={t("parent.stats.correctionRate.twoAttempts")}
+                  fill="#f59e0b"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="threeOrMore"
+                  name={t("parent.stats.correctionRate.threeOrMore")}
+                  fill="#ef4444"
+                  radius={[2, 2, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Help frequency detail by level */}
+      {helpDetail && helpDetail.bySubject.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">{t("parent.stats.helpDetail.title")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart
+                data={helpDetail.bySubject.map((d) => ({
+                  ...d,
+                  label: t(`homework.subjects.${d.subject}`),
+                }))}
+                margin={{ top: 4, right: 4, left: -10, bottom: 0 }}
+              >
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar
+                  dataKey="L1"
+                  name={t("parent.stats.helpDetail.L1")}
+                  fill="#3b82f6"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="L2"
+                  name={t("parent.stats.helpDetail.L2")}
+                  fill="#f59e0b"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="L3"
+                  name={t("parent.stats.helpDetail.L3")}
+                  fill="#ef4444"
+                  radius={[2, 2, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

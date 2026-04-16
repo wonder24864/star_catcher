@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useTranslations, useLocale } from "next-intl";
+import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -22,11 +23,21 @@ export function Sidebar() {
   const { data: session } = useSession();
   const role = session?.user?.role;
 
+  // Used for conditional comparison nav (only show when 2+ students)
+  const { data: familyStudents } = trpc.family.students.useQuery(undefined, {
+    enabled: role === "PARENT",
+  });
+  const showComparison = (familyStudents?.length ?? 0) >= 2;
+
   const navItems: NavItem[] = [
     { label: t("nav.home"), href: "/", roles: ["STUDENT", "PARENT", "ADMIN"] },
     { label: t("nav.parentOverview"), href: "/parent/overview", roles: ["PARENT"] },
     { label: t("nav.parentStats"), href: "/parent/stats", roles: ["PARENT"] },
     { label: t("nav.parentReports"), href: "/parent/reports", roles: ["PARENT"] },
+    { label: t("nav.parentSuggestions"), href: "/parent/suggestions", roles: ["PARENT"] },
+    ...(showComparison
+      ? [{ label: t("nav.parentComparison"), href: "/parent/comparison", roles: ["PARENT"] }]
+      : []),
     { label: t("nav.check"), href: "/check", roles: ["STUDENT", "PARENT"] },
     { label: t("nav.errors"), href: "/errors", roles: ["STUDENT", "PARENT"] },
     { label: t("nav.mastery"), href: "/mastery", roles: ["STUDENT", "PARENT"] },

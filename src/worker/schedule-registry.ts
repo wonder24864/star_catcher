@@ -45,6 +45,13 @@ export const SCHEDULE_REGISTRY: ScheduleEntry[] = [
     data: { studentId: "__all__", userId: "system", locale: "zh" },
     description: "Weekly weakness profile generation",
   },
+  {
+    key: "learning-suggestion-weekly",
+    pattern: "0 4 * * 0", // Weekly Sunday 04:00 UTC (after weakness-profile)
+    jobName: "learning-suggestion",
+    data: { studentId: "__all__", userId: "system", locale: "zh" },
+    description: "Weekly learning suggestion generation",
+  },
 ];
 
 /**

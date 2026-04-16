@@ -168,6 +168,7 @@ function createMockPrisma() {
         agentId: null,
         skillId: null,
         foundationalWeakness: false,
+        preMasteryStatus: null,
         createdAt: new Date(),
       }),
       findMany: vi.fn().mockResolvedValue([]),
@@ -817,6 +818,8 @@ describe("StudentMemoryImpl", () => {
         content: {},
         agentId: null,
         skillId: null,
+        preMasteryStatus: "REVIEWING",
+        foundationalWeakness: false,
         createdAt: new Date(),
       });
       // Final getMasteryState re-fetch
@@ -844,13 +847,14 @@ describe("StudentMemoryImpl", () => {
         .mockResolvedValueOnce(reviewingRow) // getMasteryState
         .mockResolvedValueOnce(reviewingRow) // updateMasteryState load (for MASTERED transition)
         .mockResolvedValueOnce(createMockMasteryRow({ status: "MASTERED", version: 5 })) // updateMasteryState re-fetch
+        .mockResolvedValueOnce(reviewingRow) // logIntervention preMasteryStatus snapshot (D32)
         .mockResolvedValueOnce(createMockMasteryRow({ status: "MASTERED", version: 5 })); // final getMasteryState
       mockDb.reviewSchedule.findUnique.mockResolvedValue(scheduleAt2);
       mockDb.masteryState.updateMany.mockResolvedValue({ count: 1 });
       const updatedSchedule = { ...scheduleAt2, intervalDays: 15, consecutiveCorrect: 3 };
       mockDb.reviewSchedule.upsert.mockResolvedValue(updatedSchedule);
       mockDb.interventionHistory.create.mockResolvedValue({
-        id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, createdAt: new Date(),
+        id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, preMasteryStatus: "REVIEWING", foundationalWeakness: false, createdAt: new Date(),
       });
 
       const result = await memory.processReviewResult("s1", "kp-1", 4);
@@ -868,12 +872,13 @@ describe("StudentMemoryImpl", () => {
         .mockResolvedValueOnce(reviewingRow) // getMasteryState
         .mockResolvedValueOnce(reviewingRow) // updateMasteryState load (REVIEWING→REGRESSED)
         .mockResolvedValueOnce(regressedRow) // updateMasteryState re-fetch
+        .mockResolvedValueOnce(reviewingRow) // logIntervention preMasteryStatus snapshot (D32)
         .mockResolvedValueOnce(regressedRow); // final getMasteryState (may be REVIEWING after auto)
       mockDb.reviewSchedule.findUnique.mockResolvedValue(scheduleRow);
       mockDb.masteryState.updateMany.mockResolvedValue({ count: 1 });
       mockDb.reviewSchedule.upsert.mockResolvedValue(scheduleRow);
       mockDb.interventionHistory.create.mockResolvedValue({
-        id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, createdAt: new Date(),
+        id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, preMasteryStatus: "REVIEWING", foundationalWeakness: false, createdAt: new Date(),
       });
 
       const result = await memory.processReviewResult("s1", "kp-1", 1);
@@ -889,7 +894,7 @@ describe("StudentMemoryImpl", () => {
       mockDb.masteryState.updateMany.mockResolvedValue({ count: 1 });
       mockDb.reviewSchedule.upsert.mockResolvedValue({ ...scheduleRow, consecutiveCorrect: 1 });
       mockDb.interventionHistory.create.mockResolvedValue({
-        id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, createdAt: new Date(),
+        id: "int-1", type: "REVIEW", content: {}, agentId: null, skillId: null, preMasteryStatus: "REVIEWING", foundationalWeakness: false, createdAt: new Date(),
       });
       mockDb.masteryState.findUnique.mockResolvedValue(reviewingRow);
 

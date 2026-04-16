@@ -62,3 +62,16 @@
 | US-056 | KG 拖拽层级与排序 | [admin-phase3.md](admin-phase3.md) | Sprint 15 |
 | US-057 | Brain 执行监控 | [admin-phase3.md](admin-phase3.md) | Sprint 15 |
 | US-058 | AI 输出质量评估框架 (EvalFramework) | [admin-phase3.md](admin-phase3.md) | Sprint 16 |
+| — | — | **Phase 4 家长仪表盘 + 体验优化** | — |
+| US-059 | 增强家长学习统计 | [parent-analytics-phase4.md](parent-analytics-phase4.md) | Sprint 17 |
+| US-060 | 多孩对比视图 | [parent-analytics-phase4.md](parent-analytics-phase4.md) | Sprint 17 |
+| US-061 | AI 学习建议 | [parent-analytics-phase4.md](parent-analytics-phase4.md) | Sprint 18 |
+| US-062 | 干预效果追踪 | [parent-analytics-phase4.md](parent-analytics-phase4.md) | Sprint 18 |
+| US-063 | 年级自适应动画系统基础设施 | [child-friendly-ui.md](child-friendly-ui.md) | Sprint 19 |
+| US-064 | Tier 1 "魔法乐园" 组件 | [child-friendly-ui.md](child-friendly-ui.md) | Sprint 19 |
+| US-065 | Tier 2 "宇宙探索者" 组件 | [child-friendly-ui.md](child-friendly-ui.md) | Sprint 19 |
+| US-066 | Tier 3 "极简流" + Tier 4 "专业工作室" 组件 | [child-friendly-ui.md](child-friendly-ui.md) | Sprint 19 |
+| US-067 | 通用自适应组件 | [child-friendly-ui.md](child-friendly-ui.md) | Sprint 19 |
+| US-068 | 任务页 + 批改页年级自适应改造 | [child-friendly-ui.md](child-friendly-ui.md) | Sprint 20 |
+| US-069 | 错题本 + 掌握度 + 导航年级自适应改造 | [child-friendly-ui.md](child-friendly-ui.md) | Sprint 21 |
+| US-070 | 学生画像可视化 | [child-friendly-ui.md](child-friendly-ui.md) | Sprint 22 |
