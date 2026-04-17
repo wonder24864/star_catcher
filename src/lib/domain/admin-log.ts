@@ -7,7 +7,7 @@
  * but never crash the caller.
  */
 
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient, Prisma } from "@prisma/client";
 import { createLogger } from "@/lib/infra/logger";
 
 const log = createLogger("admin-log");
@@ -17,6 +17,10 @@ const log = createLogger("admin-log");
  * adminId = "system" (requires a system user in DB).
  *
  * Best-effort: wraps in try/catch, warns on failure, never throws.
+ *
+ * Sprint 26 D69: returns the created record id (or null on failure). This lets
+ * callers (e.g. Brain handler) use the real id in downstream events so that
+ * Subscription events and `listRuns` results dedupe on the same identity.
  */
 export async function logAdminAction(
   db: PrismaClient,
@@ -24,12 +28,20 @@ export async function logAdminAction(
   action: string,
   target: string | null,
   details: Record<string, unknown>,
-): Promise<void> {
+): Promise<string | null> {
   try {
-    await (db as any).adminLog.create({
-      data: { adminId, action, target, details },
+    const created = await db.adminLog.create({
+      data: {
+        adminId,
+        action,
+        target,
+        details: details as Prisma.InputJsonValue,
+      },
+      select: { id: true },
     });
+    return created.id;
   } catch (err) {
     log.warn({ err, action, target, adminId }, "Failed to write AdminLog entry");
+    return null;
   }
 }

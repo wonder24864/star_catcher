@@ -27,7 +27,7 @@ Phase 5 围绕"Brain 补全 + 体验升级"实现 3 个模块：
 | 23 | Week 28 | 模块 A — MasteryStateHistory + CORRECTED 事件 + 渐进冷却 + 管理员触发 | [sprint-23.md](sprints/sprint-23.md) | COMPLETED |
 | 24 | Week 29 | 模块 B — Pro 组件库 + Dashboard Layout 升级 | [sprint-24.md](sprints/sprint-24.md) | |
 | 25 | Week 30 | 模块 C(上) — 家长端 UI 改造 | [sprint-25.md](sprints/sprint-25.md) | COMPLETED |
-| 26 | Week 31 | 模块 C(下) — 管理端 UI 改造 + Phase 5 验收 | [sprint-26.md](sprints/sprint-26.md) | |
+| 26 | Week 31 | 模块 C(下) — 管理端 UI 改造 + Phase 5 验收 | [sprint-26.md](sprints/sprint-26.md) | COMPLETED |
 
 ---
 

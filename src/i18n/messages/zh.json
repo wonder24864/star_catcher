@@ -578,7 +578,11 @@
       "avgDuration": "平均耗时",
       "agentDistribution": "Agent 调度分布",
       "topSkipped": "Skipped Top 5 原因",
-      "statsEmpty": "暂无数据"
+      "statsEmpty": "暂无数据",
+      "live": {
+        "connected": "实时在线",
+        "disconnected": "未连接"
+      }
     },
     "jaeger": {
       "open": "Jaeger",
@@ -667,10 +671,23 @@
     "title": "知识图谱管理",
     "tabs": {
       "tree": "列表",
+      "graph": "力导向图",
       "hierarchy": "层级编辑",
       "import": "导入管理",
       "review": "待审核",
       "mappings": "映射审核"
+    },
+    "graph": {
+      "searchPlaceholder": "搜索知识点定位...",
+      "legend": "图例",
+      "legendPrerequisite": "前置关系",
+      "legendParallel": "平行关系",
+      "legendContains": "包含 / 父子层级",
+      "emptyGraph": "当前学科 + 学段暂无知识点",
+      "nodeLinkCount": "{nodes} 节点 · {links} 边",
+      "prerequisites": "前置知识点",
+      "dependents": "被依赖的知识点",
+      "openEditor": "打开编辑对话框"
     },
     "hierarchy": {
       "subjectPrompt": "选择学科 + 学段",
@@ -1185,6 +1202,7 @@
       "users": "用户管理",
       "skills": "技能管理",
       "knowledgeGraph": "知识图谱",
+      "kgGraph": "知识图谱 · 力导向图",
       "brain": "Brain 监控",
       "eval": "AI 评估",
       "settings": "系统设置",

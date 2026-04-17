@@ -115,3 +115,79 @@ export async function* subscribeToChannel(
     await sub.quit().catch(() => {});
   }
 }
+
+// ---------------------------------------------------------------------------
+// Sprint 26 D62/D64 — Brain run event pipeline (parallel to JobResultEvent)
+// ---------------------------------------------------------------------------
+
+/**
+ * Brain run completion event — one per learning-brain handler run.
+ * Payload mirrors the AdminLog `brain-run` details so the Brain monitor
+ * History tab can prepend without refetching.
+ */
+export type BrainRunEvent = {
+  logId: string;
+  studentId: string;
+  studentNickname: string | null;
+  eventsProcessed: number;
+  agentsLaunched: Array<{ jobName: string; reason: string }>;
+  skipped: Array<{ jobName: string; reason: string }>;
+  durationMs: number;
+  createdAt: string; // ISO 8601
+};
+
+export const BRAIN_RUNS_CHANNEL = "brain:runs";
+
+export async function publishBrainRun(event: BrainRunEvent): Promise<void> {
+  await getPublisher().publish(BRAIN_RUNS_CHANNEL, JSON.stringify(event));
+}
+
+/**
+ * Async generator yielding BrainRunEvent from the global brain:runs channel.
+ * Mirrors subscribeToChannel but for a fixed channel + typed event.
+ */
+export async function* subscribeToBrainRun(
+  signal: AbortSignal,
+): AsyncGenerator<BrainRunEvent> {
+  const sub = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+  });
+
+  const buffer: BrainRunEvent[] = [];
+  let resolve: (() => void) | null = null;
+
+  const onMessage = (ch: string, message: string) => {
+    if (ch !== BRAIN_RUNS_CHANNEL) return;
+    try {
+      buffer.push(JSON.parse(message) as BrainRunEvent);
+    } catch {
+      return;
+    }
+    if (resolve) {
+      resolve();
+      resolve = null;
+    }
+  };
+
+  sub.on("message", onMessage);
+  await sub.subscribe(BRAIN_RUNS_CHANNEL);
+
+  try {
+    while (!signal.aborted) {
+      while (buffer.length > 0) {
+        yield buffer.shift()!;
+      }
+      if (signal.aborted) break;
+      await new Promise<void>((r) => {
+        resolve = r;
+        if (signal.aborted) { r(); return; }
+        signal.addEventListener("abort", () => r(), { once: true });
+      });
+    }
+  } finally {
+    sub.off("message", onMessage);
+    await sub.unsubscribe(BRAIN_RUNS_CHANNEL).catch(() => {});
+    await sub.quit().catch(() => {});
+  }
+}

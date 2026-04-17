@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  KGForceGraph,
+  nodeColor,
+  linkColor,
+  type KGNode,
+  type KGLink,
+} from "@/components/admin/kg-force-graph";
 
 // Sprint 15: @dnd-kit 组件必须客户端渲染以避免 hydration 错配
 const KGTreeEditor = dynamic(
@@ -32,18 +41,44 @@ const KGTreeEditor = dynamic(
   { ssr: false },
 );
 
-type Tab = "tree" | "hierarchy" | "import" | "review";
+type Tab = "tree" | "graph" | "hierarchy" | "import" | "review";
 type Subject = "MATH" | "CHINESE" | "ENGLISH" | "PHYSICS" | "CHEMISTRY" | "BIOLOGY" | "HISTORY" | "GEOGRAPHY" | "POLITICS" | "OTHER";
 type SchoolLevel = "PRIMARY" | "JUNIOR" | "SENIOR";
 type RelationType = "PREREQUISITE" | "PARALLEL" | "CONTAINS";
 
+const VALID_TABS: readonly Tab[] = ["tree", "graph", "hierarchy", "import", "review"];
+
 export default function KnowledgeGraphPage() {
   const t = useTranslations();
-  const [tab, setTab] = useState<Tab>("tree");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Sprint 26 D65: accept ?tab=graph URL param (deep-link from Cmd+K) but
+  // default to `tree` to avoid disrupting existing workflows.
+  const urlTab = searchParams.get("tab") as Tab | null;
+  const [tab, setTab] = useState<Tab>(
+    urlTab && VALID_TABS.includes(urlTab) ? urlTab : "tree",
+  );
   const [subject, setSubject] = useState<Subject>("MATH");
   const [schoolLevel, setSchoolLevel] = useState<SchoolLevel>("JUNIOR");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+
+  // Sync tab → URL so sharing the link preserves the active view.
+  useEffect(() => {
+    const current = searchParams.get("tab");
+    if (tab === "tree" && !current) return; // default state = no param
+    if (current === tab) return;
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "tree") {
+      params.delete("tab");
+    } else {
+      params.set("tab", tab);
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [tab, pathname, router, searchParams]);
 
   return (
     <div className="max-w-5xl space-y-5">
@@ -58,7 +93,7 @@ export default function KnowledgeGraphPage() {
 
       {/* Tab switcher */}
       <div className="flex gap-2 border-b pb-2">
-        {(["tree", "hierarchy", "import", "review"] as Tab[]).map((tabKey) => (
+        {VALID_TABS.map((tabKey) => (
           <Button
             key={tabKey}
             variant={tab === tabKey ? "default" : "ghost"}
@@ -82,9 +117,273 @@ export default function KnowledgeGraphPage() {
           onPageChange={setPage}
         />
       )}
+      {tab === "graph" && (
+        <GraphTab
+          subject={subject}
+          schoolLevel={schoolLevel}
+          onSubjectChange={setSubject}
+          onSchoolLevelChange={setSchoolLevel}
+        />
+      )}
       {tab === "hierarchy" && <KGTreeEditor />}
       {tab === "import" && <ImportTab />}
       {tab === "review" && <ReviewTab subject={subject} />}
+    </div>
+  );
+}
+
+// ─── Graph Tab (Sprint 26) ───
+
+function GraphTab({
+  subject,
+  schoolLevel,
+  onSubjectChange,
+  onSchoolLevelChange,
+}: {
+  subject: Subject;
+  schoolLevel: SchoolLevel;
+  onSubjectChange: (v: Subject) => void;
+  onSchoolLevelChange: (v: SchoolLevel) => void;
+}) {
+  const t = useTranslations();
+  const [searchText, setSearchText] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [drawerEditId, setDrawerEditId] = useState<string | null>(null);
+
+  const { data, isLoading } = trpc.knowledgeGraph.listForGraph.useQuery({
+    subject,
+    schoolLevel,
+  });
+
+  const nodes: KGNode[] = data?.nodes ?? [];
+  const links: KGLink[] = (data?.links ?? []).map((l) => ({
+    id: l.id,
+    source: l.fromPointId,
+    target: l.toPointId,
+    type: l.type,
+    strength: l.strength,
+  }));
+
+  // Search: first node whose name contains the query (case-insensitive)
+  const highlightId = searchText.trim()
+    ? nodes.find((n) =>
+        n.name.toLowerCase().includes(searchText.trim().toLowerCase()),
+      )?.id ?? null
+    : null;
+
+  const selected = selectedId ? nodes.find((n) => n.id === selectedId) : null;
+
+  return (
+    <div className="space-y-4">
+      {/* Filters + Search */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Select value={subject} onValueChange={(v) => onSubjectChange(v as Subject)}>
+          <SelectTrigger className="w-32 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {["MATH", "CHINESE", "ENGLISH", "PHYSICS", "CHEMISTRY", "BIOLOGY", "HISTORY", "GEOGRAPHY", "POLITICS"].map((s) => (
+              <SelectItem key={s} value={s}>{t(`subjects.${s}`)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={schoolLevel} onValueChange={(v) => onSchoolLevelChange(v as SchoolLevel)}>
+          <SelectTrigger className="w-28 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="PRIMARY">{t("knowledgeGraph.primary")}</SelectItem>
+            <SelectItem value="JUNIOR">{t("knowledgeGraph.junior")}</SelectItem>
+            <SelectItem value="SENIOR">{t("knowledgeGraph.senior")}</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Input
+          type="text"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder={t("knowledgeGraph.graph.searchPlaceholder")}
+          className="w-56 text-sm"
+        />
+
+        <span className="text-xs text-muted-foreground ml-auto">
+          {t("knowledgeGraph.graph.nodeLinkCount", {
+            nodes: nodes.length,
+            links: links.length,
+          })}
+        </span>
+      </div>
+
+      {/* Graph canvas + overlays */}
+      <div className="relative rounded-lg border bg-card overflow-hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-[560px]">
+            <p className="text-muted-foreground text-sm">{t("common.loading")}</p>
+          </div>
+        ) : nodes.length === 0 ? (
+          <div className="flex items-center justify-center h-[560px]">
+            <p className="text-muted-foreground text-sm">
+              {t("knowledgeGraph.graph.emptyGraph")}
+            </p>
+          </div>
+        ) : (
+          <>
+            <KGForceGraph
+              nodes={nodes}
+              links={links}
+              schoolLevel={schoolLevel}
+              highlightId={highlightId}
+              onNodeClick={setSelectedId}
+            />
+
+            {/* Legend overlay */}
+            <div className="absolute top-3 right-3 rounded-md border bg-background/90 backdrop-blur-sm p-2 text-xs space-y-1 shadow-sm">
+              <div className="font-medium text-muted-foreground mb-1">
+                {t("knowledgeGraph.graph.legend")}
+              </div>
+              <LegendRow
+                swatch={<svg width="24" height="4"><line x1={0} y1={2} x2={24} y2={2} stroke={linkColor("PREREQUISITE")} strokeWidth={2} /></svg>}
+                label={t("knowledgeGraph.graph.legendPrerequisite")}
+              />
+              <LegendRow
+                swatch={<svg width="24" height="4"><line x1={0} y1={2} x2={24} y2={2} stroke={linkColor("PARALLEL")} strokeWidth={2} /></svg>}
+                label={t("knowledgeGraph.graph.legendParallel")}
+              />
+              <LegendRow
+                swatch={<svg width="24" height="4"><line x1={0} y1={2} x2={24} y2={2} stroke={linkColor("CONTAINS")} strokeWidth={2} /></svg>}
+                label={t("knowledgeGraph.graph.legendContains")}
+              />
+              <div className="border-t pt-1 mt-1 flex items-center gap-2">
+                <span
+                  className="inline-block w-3 h-3 rounded-full"
+                  style={{ background: nodeColor(schoolLevel) }}
+                />
+                <span>{t(`knowledgeGraph.${schoolLevel.toLowerCase()}` as never)}</span>
+              </div>
+            </div>
+
+            {/* Node detail drawer */}
+            <AnimatePresence>
+              {selected && (
+                <motion.div
+                  key={selected.id}
+                  initial={{ x: 320, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: 320, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  className="absolute top-0 right-0 h-full w-80 border-l bg-background/95 backdrop-blur-md p-4 overflow-y-auto"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <h3 className="font-semibold text-sm">{selected.name}</h3>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2"
+                      onClick={() => setSelectedId(null)}
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                  <NodeDetailCard nodeId={selected.id} onEdit={() => setDrawerEditId(selected.id)} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
+      </div>
+
+      {/* Edit dialog reuse */}
+      {drawerEditId && (
+        <KPEditDialog
+          kpId={drawerEditId}
+          open={!!drawerEditId}
+          onOpenChange={(open) => { if (!open) setDrawerEditId(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function LegendRow({ swatch, label }: { swatch: React.ReactNode; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      {swatch}
+      <span>{label}</span>
+    </div>
+  );
+}
+
+// Detail card fetches full KP + relations via getById
+function NodeDetailCard({ nodeId, onEdit }: { nodeId: string; onEdit: () => void }) {
+  const t = useTranslations();
+  const { data, isLoading } = trpc.knowledgeGraph.getById.useQuery({ id: nodeId });
+
+  if (isLoading || !data) {
+    return <p className="text-xs text-muted-foreground">{t("common.loading")}</p>;
+  }
+
+  return (
+    <div className="space-y-3 text-xs">
+      <div className="flex flex-wrap gap-1.5">
+        <Badge variant="outline">
+          {t("knowledgeGraph.difficulty")} {data.difficulty}
+        </Badge>
+        <Badge variant="outline">
+          {t("knowledgeGraph.edit.importance")} {data.importance}
+        </Badge>
+        <Badge variant="outline">
+          {t("knowledgeGraph.edit.examFrequency")} {data.examFrequency}
+        </Badge>
+      </div>
+
+      {data.description && (
+        <p className="text-muted-foreground leading-relaxed">{data.description}</p>
+      )}
+
+      <div>
+        <p className="font-medium mb-1">
+          {t("knowledgeGraph.graph.prerequisites")} ({data.relationsFrom.length})
+        </p>
+        {data.relationsFrom.length === 0 ? (
+          <p className="text-muted-foreground">—</p>
+        ) : (
+          <ul className="space-y-0.5">
+            {data.relationsFrom.map((r) => (
+              <li key={r.id} className="flex items-center gap-1.5">
+                <Badge variant="secondary" className="text-[10px] px-1">
+                  {t(`knowledgeGraph.relations.${r.type}` as never)}
+                </Badge>
+                <span>{r.toPoint.name}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <p className="font-medium mb-1">
+          {t("knowledgeGraph.graph.dependents")} ({data.relationsTo.length})
+        </p>
+        {data.relationsTo.length === 0 ? (
+          <p className="text-muted-foreground">—</p>
+        ) : (
+          <ul className="space-y-0.5">
+            {data.relationsTo.map((r) => (
+              <li key={r.id} className="flex items-center gap-1.5">
+                <Badge variant="secondary" className="text-[10px] px-1">
+                  {t(`knowledgeGraph.relations.${r.type}` as never)}
+                </Badge>
+                <span>{r.fromPoint.name}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <Button size="sm" className="w-full mt-2" onClick={onEdit}>
+        {t("knowledgeGraph.graph.openEditor")}
+      </Button>
     </div>
   );
 }

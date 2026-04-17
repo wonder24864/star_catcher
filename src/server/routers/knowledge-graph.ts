@@ -273,6 +273,79 @@ export const knowledgeGraphRouter = router({
       return roots;
     }),
 
+  /**
+   * Sprint 26: flat nodes + links for 2D force-directed graph visualization.
+   *
+   * Unlike `getTree` (hierarchical tree with parent/children), this returns a
+   * graph view: every non-deleted KP for the subject/schoolLevel plus every
+   * KnowledgeRelation where both endpoints are in the node set. Parent/child
+   * hierarchy is also projected as `CONTAINS` synthetic links so the layout
+   * shows the tree structure alongside explicit relations.
+   *
+   * Capped at 1000 nodes to bound client layout work (D67). K-12 per
+   * subject/level is typically < 500 nodes.
+   */
+  listForGraph: adminProcedure
+    .input(
+      z.object({
+        subject: subjectEnum,
+        schoolLevel: schoolLevelEnum,
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const points = await ctx.db.knowledgePoint.findMany({
+        where: {
+          ...notDeleted,
+          subject: input.subject,
+          schoolLevel: input.schoolLevel,
+        },
+        select: {
+          id: true,
+          name: true,
+          parentId: true,
+          depth: true,
+          difficulty: true,
+          importance: true,
+          examFrequency: true,
+        },
+        take: 1000,
+      });
+
+      const pointIds = new Set(points.map((p) => p.id));
+
+      // Explicit KnowledgeRelation edges (both endpoints must be visible)
+      const relations = await ctx.db.knowledgeRelation.findMany({
+        where: {
+          fromPointId: { in: [...pointIds] },
+          toPointId: { in: [...pointIds] },
+        },
+        select: {
+          id: true,
+          fromPointId: true,
+          toPointId: true,
+          type: true,
+          strength: true,
+        },
+      });
+
+      // Synthetic CONTAINS links from parent/child hierarchy (D65)
+      // Use a distinct id prefix so the client can tell them apart if needed.
+      const hierarchyLinks = points
+        .filter((p) => p.parentId && pointIds.has(p.parentId))
+        .map((p) => ({
+          id: `hierarchy:${p.id}`,
+          fromPointId: p.parentId!,
+          toPointId: p.id,
+          type: "CONTAINS" as const,
+          strength: 1.0,
+        }));
+
+      return {
+        nodes: points,
+        links: [...relations, ...hierarchyLinks],
+      };
+    }),
+
   /** Single knowledge point with relations and question count */
   getById: adminProcedure
     .input(z.object({ id: z.string() }))

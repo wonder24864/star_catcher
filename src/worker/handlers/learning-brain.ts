@@ -27,6 +27,7 @@ import {
 } from "@/lib/domain/brain";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { createLogger } from "@/lib/infra/logger";
+import { publishBrainRun } from "@/lib/infra/events";
 import type { InterventionPlanningJobData, MasteryEvaluationJobData } from "@/lib/infra/queue/types";
 import { getActiveStudentIds } from "./shared-active-students";
 
@@ -131,17 +132,48 @@ export async function handleLearningBrain(
     }
     const durationMs = Date.now() - startTime;
 
-    // AdminLog: brain-run (Rule 8)
-    await logAdminAction(db as unknown as PrismaClient, userId, "brain-run", studentId, {
+    // AdminLog: brain-run (Rule 8). Sprint 26 D69: capture id for SSE event.
+    const agentsLaunched = decision.agentsToLaunch.map((a) => ({
+      jobName: a.jobName,
+      reason: a.reason,
+    }));
+    const logId = await logAdminAction(
+      db as unknown as PrismaClient,
+      userId,
+      "brain-run",
       studentId,
-      eventsProcessed: decision.eventsProcessed,
-      agentsLaunched: decision.agentsToLaunch.map((a) => ({
-        jobName: a.jobName,
-        reason: a.reason,
-      })),
-      skipped: decision.skipped,
-      durationMs,
-    });
+      {
+        studentId,
+        eventsProcessed: decision.eventsProcessed,
+        agentsLaunched,
+        skipped: decision.skipped,
+        durationMs,
+      },
+    );
+
+    // Sprint 26 D62/D64: publish to global brain:runs channel so the admin
+    // Brain monitor can prepend without refetching. Failure is non-fatal —
+    // surface the real error via logger.warn (Rule 7), not silent catch.
+    if (logId) {
+      const student = await db.user.findUnique({
+        where: { id: studentId },
+        select: { nickname: true },
+      });
+      try {
+        await publishBrainRun({
+          logId,
+          studentId,
+          studentNickname: student?.nickname ?? null,
+          eventsProcessed: decision.eventsProcessed,
+          agentsLaunched,
+          skipped: decision.skipped,
+          durationMs,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        jobLog.warn({ err, logId }, "Failed to publish brain-run event");
+      }
+    }
 
     jobLog.info(
       {

@@ -22,6 +22,7 @@ import { SCHEDULE_REGISTRY } from "@/worker/schedule-registry";
 import { cooldownKey, parseCooldownValue, getCooldownTTL } from "@/lib/domain/brain";
 import { enqueueLearningBrain } from "@/lib/infra/queue";
 import { logAdminAction } from "@/lib/domain/admin-log";
+import { subscribeToBrainRun, type BrainRunEvent } from "@/lib/infra/events";
 
 // ─── 类型 ──────────────────────────────────────────────────────
 
@@ -311,5 +312,25 @@ export const brainRouter = router({
       );
 
       return { cleared: existed > 0 };
+    }),
+
+  /**
+   * Sprint 26 D62: real-time Brain run completion stream.
+   *
+   * Admin subscribes once; every `learning-brain` handler that commits an
+   * AdminLog `brain-run` also publishes a `BrainRunEvent` to the global
+   * `brain:runs` channel. Client dedupes by `logId` against paginated
+   * `listRuns` results (D63).
+   *
+   * No input — admin monitor needs the global view; per-student subscriptions
+   * would multiply open SSE connections for no added value.
+   */
+  onBrainRunComplete: adminProcedure
+    .input(z.void())
+    .subscription(async function* (opts) {
+      const signal = opts.signal ?? AbortSignal.timeout(300_000); // 5 min max
+      for await (const event of subscribeToBrainRun(signal)) {
+        yield event satisfies BrainRunEvent;
+      }
     }),
 });

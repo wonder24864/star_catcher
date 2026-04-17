@@ -578,7 +578,11 @@
       "avgDuration": "Avg Duration",
       "agentDistribution": "Agent Distribution",
       "topSkipped": "Top 5 Skipped Reasons",
-      "statsEmpty": "No data"
+      "statsEmpty": "No data",
+      "live": {
+        "connected": "Live",
+        "disconnected": "Offline"
+      }
     },
     "jaeger": {
       "open": "Jaeger",
@@ -667,10 +671,23 @@
     "title": "Knowledge Graph",
     "tabs": {
       "tree": "List",
+      "graph": "Force Graph",
       "hierarchy": "Hierarchy Editor",
       "import": "Import",
       "review": "Review",
       "mappings": "Mapping Review"
+    },
+    "graph": {
+      "searchPlaceholder": "Search + focus node...",
+      "legend": "Legend",
+      "legendPrerequisite": "Prerequisite",
+      "legendParallel": "Parallel",
+      "legendContains": "Contains / Parent-Child",
+      "emptyGraph": "No knowledge points for this subject + level",
+      "nodeLinkCount": "{nodes} nodes · {links} links",
+      "prerequisites": "Prerequisites",
+      "dependents": "Dependents",
+      "openEditor": "Open Edit Dialog"
     },
     "hierarchy": {
       "subjectPrompt": "Pick subject + school level",
@@ -1185,6 +1202,7 @@
       "users": "User Management",
       "skills": "Skill Management",
       "knowledgeGraph": "Knowledge Graph",
+      "kgGraph": "Knowledge Graph · Force Layout",
       "brain": "Brain Monitor",
       "eval": "AI Evaluation",
       "settings": "System Settings",

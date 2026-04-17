@@ -40,6 +40,8 @@ const ADMIN_ITEMS: CommandItem[] = [
   { id: "admin-users", label: "commandPalette.items.users", icon: <Users className="h-4 w-4" />, href: "/admin/users" },
   { id: "admin-skills", label: "commandPalette.items.skills", icon: <Puzzle className="h-4 w-4" />, href: "/admin/skills" },
   { id: "admin-kg", label: "commandPalette.items.knowledgeGraph", icon: <Network className="h-4 w-4" />, href: "/admin/knowledge-graph" },
+  // Sprint 26: deep-link to the 2D force-directed graph view
+  { id: "admin-kg-graph", label: "commandPalette.items.kgGraph", icon: <Network className="h-4 w-4" />, href: "/admin/knowledge-graph?tab=graph" },
   { id: "admin-brain", label: "commandPalette.items.brain", icon: <Brain className="h-4 w-4" />, href: "/admin/brain" },
   { id: "admin-eval", label: "commandPalette.items.eval", icon: <FlaskConical className="h-4 w-4" />, href: "/admin/eval" },
   { id: "admin-settings", label: "commandPalette.items.settings", icon: <Settings className="h-4 w-4" />, href: "/admin/settings" },

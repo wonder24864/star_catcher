@@ -197,7 +197,29 @@
 | Sprint 23 | Week 28 | MasteryStateHistory + CORRECTED 事件 + 渐进冷却 + 管理员触发 | [x] |
 | Sprint 24 | Week 29 | Pro 组件库 + Dashboard Layout 升级 | [x] |
 | Sprint 25 | Week 30 | 家长端 UI 改造 | [x] |
-| Sprint 26 | Week 31 | 管理端 UI 改造 + Phase 5 验收 | [ ] |
+| Sprint 26 | Week 31 | 管理端 UI 改造 + Phase 5 验收 | [x] |
+
+### Phase 5 验收摘要 (2026-04-17)
+
+- 测试：83 files / 1153 passed / 4 skipped / 30 todo / 0 failed（Sprint 25 基线 82/1137 → +1 文件 / +16 测试）
+- 构建：`npx tsc --noEmit` 0 错误；`npm run build` 成功（11 个 admin 路由全部构建）
+- 新增模型：`MasteryStateHistory`（Sprint 23，掌握状态转换审计）
+- 新增路由：`brain.triggerBrain` / `brain.overrideCooldown`（Sprint 23，D56 运维），`brain.onBrainRunComplete`（Sprint 26，SSE subscription），`knowledgeGraph.listForGraph`（Sprint 26，力导向图数据）
+- 新增 AI 操作：无（Phase 5 聚焦基础设施 + UI 升级）
+- 新增 Pro 组件库：GlassCard / CountUp / GaugeChart / StatusPulse / GradientMesh / InteractiveChart / CommandPalette / StatCard（Sprint 24，8 组件 + Skeleton）
+- 管理端升级：仪表盘旗舰首页 + Cmd+K 全局搜索（Sprint 24）+ Brain 实时监控 SSE 流（Sprint 26）+ KG 2D 力导向图 d3-force/SVG（Sprint 26）
+- 家长端升级：overview/stats/reports 毛玻璃 + GaugeChart 掌握率 + errorTrend drill-down + 干预效果对比（Sprint 25）
+- i18n：`admin.brain.live.*` / `knowledgeGraph.graph.*` / `commandPalette.items.kgGraph` 中英双语完整覆盖
+
+### Phase 5 交付物
+
+- MasteryStateHistory 审计表 + CORRECTED 时间线激活（D9 收尾）
+- 渐进式 intervention 冷却（D55，tier 1=6h / 2=12h / 3=24h）
+- 管理员手动触发 Brain + 冷却覆盖（D56）
+- 家长端 Pro 视觉升级（毛玻璃 + drill-down + 干预效果成对 GaugeChart）
+- 管理端旗舰仪表盘 + Cmd+K + Brain SSE 实时流（LIVE 指示灯 + framer-motion layout + Stats CountUp 重播）
+- KG 2D 力导向图（d3-force simulation + SVG + d3-zoom + 节点 hover 邻居高亮 + PREREQUISITE/CONTAINS 箭头）
+- 共享 Pro 组件库 8 个（admin + parent 共用，不侵入学生 4-tier 体系）
 
 ### Phase 5 推迟到后续 Phase 的事项
 
