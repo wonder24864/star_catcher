@@ -132,12 +132,13 @@ export async function handleLearningBrain(
     }
     const durationMs = Date.now() - startTime;
 
-    // AdminLog: brain-run (Rule 8). Sprint 26 D69: capture id for SSE event.
+    // AdminLog: brain-run (Rule 8). Sprint 26 D69: capture { id, createdAt }
+    // so the SSE event carries DB-truth identity + timestamp.
     const agentsLaunched = decision.agentsToLaunch.map((a) => ({
       jobName: a.jobName,
       reason: a.reason,
     }));
-    const logId = await logAdminAction(
+    const created = await logAdminAction(
       db as unknown as PrismaClient,
       userId,
       "brain-run",
@@ -154,24 +155,24 @@ export async function handleLearningBrain(
     // Sprint 26 D62/D64: publish to global brain:runs channel so the admin
     // Brain monitor can prepend without refetching. Failure is non-fatal —
     // surface the real error via logger.warn (Rule 7), not silent catch.
-    if (logId) {
+    if (created) {
       const student = await db.user.findUnique({
         where: { id: studentId },
         select: { nickname: true },
       });
       try {
         await publishBrainRun({
-          logId,
+          logId: created.id,
           studentId,
           studentNickname: student?.nickname ?? null,
           eventsProcessed: decision.eventsProcessed,
           agentsLaunched,
           skipped: decision.skipped,
           durationMs,
-          createdAt: new Date().toISOString(),
+          createdAt: created.createdAt.toISOString(),
         });
       } catch (err) {
-        jobLog.warn({ err, logId }, "Failed to publish brain-run event");
+        jobLog.warn({ err, logId: created.id }, "Failed to publish brain-run event");
       }
     }
 

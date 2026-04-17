@@ -245,9 +245,9 @@ export function KGForceGraph({
   }
 
   const fillColor = nodeColor(schoolLevel);
-
-  // Use `tick` to force re-render when sim updates (x/y mutated in place)
-  void tick;
+  // NOTE: `tick` state drives re-renders; we don't read it, but setTick() in the
+  // simulation's `tick` handler forces React to re-run this function so the
+  // latest d3-mutated x/y positions flow into the SVG attributes below.
 
   const svgStyle: CSSProperties = {
     cursor: "grab",

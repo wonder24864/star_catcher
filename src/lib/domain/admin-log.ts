@@ -18,9 +18,10 @@ const log = createLogger("admin-log");
  *
  * Best-effort: wraps in try/catch, warns on failure, never throws.
  *
- * Sprint 26 D69: returns the created record id (or null on failure). This lets
- * callers (e.g. Brain handler) use the real id in downstream events so that
- * Subscription events and `listRuns` results dedupe on the same identity.
+ * Sprint 26 D69: returns the created record's id AND createdAt (or null on
+ * failure). Callers (e.g. Brain handler publishing SSE events) use the real
+ * DB-truth values so that Subscription events and later `listRuns` results
+ * agree on both identity and timestamp — avoiding flicker on pagination.
  */
 export async function logAdminAction(
   db: PrismaClient,
@@ -28,7 +29,7 @@ export async function logAdminAction(
   action: string,
   target: string | null,
   details: Record<string, unknown>,
-): Promise<string | null> {
+): Promise<{ id: string; createdAt: Date } | null> {
   try {
     const created = await db.adminLog.create({
       data: {
@@ -37,9 +38,9 @@ export async function logAdminAction(
         target,
         details: details as Prisma.InputJsonValue,
       },
-      select: { id: true },
+      select: { id: true, createdAt: true },
     });
-    return created.id;
+    return { id: created.id, createdAt: created.createdAt };
   } catch (err) {
     log.warn({ err, action, target, adminId }, "Failed to write AdminLog entry");
     return null;

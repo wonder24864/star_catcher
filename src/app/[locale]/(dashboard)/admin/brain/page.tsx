@@ -14,7 +14,7 @@
  *   - Stats tab subscription 命中时 utils.brain.stats.invalidate() 触发 CountUp 重播
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -53,6 +53,10 @@ export default function BrainMonitorPage() {
   // global subscription below. Using a single subscription at the page level
   // (rather than per-tab) avoids opening/closing SSE connections on tab switch.
   const [liveEvents, setLiveEvents] = useState<BrainRunEvent[]>([]);
+  // Sprint 26 D62: debounce stats invalidate. During `__all__` fan-out dozens
+  // of events arrive in seconds; without debounce each triggers a 7-day
+  // aggregate refetch while the Stats tab is open. 500ms coalesces the burst.
+  const statsInvalidateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const subscription = trpc.brain.onBrainRunComplete.useSubscription(undefined, {
     onData: (event) => {
@@ -61,10 +65,21 @@ export default function BrainMonitorPage() {
         if (prev.some((e) => e.logId === event.logId)) return prev;
         return [event, ...prev].slice(0, 50);
       });
-      // Sprint 26: refresh aggregate stats so counters animate on new run
-      utils.brain.stats.invalidate();
+      if (statsInvalidateTimer.current) clearTimeout(statsInvalidateTimer.current);
+      statsInvalidateTimer.current = setTimeout(() => {
+        utils.brain.stats.invalidate();
+      }, 500);
     },
   });
+
+  // Clean up the pending debounce timer on unmount so we don't fire
+  // invalidate against a disposed utils instance.
+  useEffect(
+    () => () => {
+      if (statsInvalidateTimer.current) clearTimeout(statsInvalidateTimer.current);
+    },
+    [],
+  );
 
   const isConnected = subscription.status === "pending";
 
@@ -277,7 +292,10 @@ function HistoryTab({
             <motion.div
               key={item.id}
               layout
-              initial={freshIds.has(item.id) ? { opacity: 0, y: -8 } : false}
+              // AnimatePresence initial={false} suppresses animation on the
+              // component's first render for already-present items. Newly-keyed
+              // items (live prepends) animate from here.
+              initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
             >
