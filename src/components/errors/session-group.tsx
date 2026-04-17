@@ -59,7 +59,12 @@ export function SessionGroup({ session, items, defaultOpen = false }: SessionGro
   // We use a plain border+bg-card wrapper instead of <AdaptiveCard> to avoid
   // double-translucency when a tier's card style uses `bg-card/80` (flow) or
   // `bg-card/90` (cosmic): nesting two translucent cards blended with the
-  // WonderField background made error text wash out (user feedback: "字基本看不清了").
+  // WonderField background made error text wash out.
+  //
+  // IMPORTANT: inside this `bg-card` wrapper, all text must use
+  // `text-card-foreground` (or an opacity of it for muted) — NOT `text-foreground`
+  // / `text-muted-foreground`. In cosmic tier `--foreground` is LIGHT (sized for
+  // the dark page bg), so `text-foreground` on a white `bg-card` renders white-on-white.
   return (
     <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
       <button
@@ -79,8 +84,8 @@ export function SessionGroup({ session, items, defaultOpen = false }: SessionGro
                 tier === "wonder"
                   ? "bg-gradient-to-br from-fuchsia-200 to-violet-200 text-fuchsia-800"
                   : tier === "cosmic"
-                    ? "bg-cyan-500/20 border border-cyan-400/50 text-cyan-100"
-                    : "bg-muted text-foreground",
+                    ? "bg-cyan-100 border border-cyan-400/70 text-cyan-800"
+                    : "bg-muted text-card-foreground",
               )}
             >
               <ClipboardList className="h-4 w-4" />
@@ -88,7 +93,7 @@ export function SessionGroup({ session, items, defaultOpen = false }: SessionGro
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-foreground truncate">
+                <span className="font-semibold text-card-foreground truncate">
                   {title}
                 </span>
                 {session?.subject && (
@@ -97,7 +102,7 @@ export function SessionGroup({ session, items, defaultOpen = false }: SessionGro
                   </AdaptiveSubjectBadge>
                 )}
               </div>
-              <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+              <div className="mt-0.5 flex items-center gap-2 text-xs text-card-foreground/70 flex-wrap">
                 {dateStr && <span>{dateStr}</span>}
                 {session?.finalScore != null && (
                   <>
@@ -110,7 +115,7 @@ export function SessionGroup({ session, items, defaultOpen = false }: SessionGro
                 <span>·</span>
                 <Badge
                   variant="outline"
-                  className="text-xs font-medium text-foreground border-foreground/20"
+                  className="text-xs font-medium text-card-foreground border-card-foreground/30"
                 >
                   {t("errors.group.errorCount", { count: items.length })}
                 </Badge>
@@ -120,7 +125,7 @@ export function SessionGroup({ session, items, defaultOpen = false }: SessionGro
             <motion.div
               animate={{ rotate: open ? 180 : 0 }}
               transition={{ duration: 0.2 }}
-              className="shrink-0 text-muted-foreground"
+              className="shrink-0 text-card-foreground/60"
             >
               <ChevronDown className="h-4 w-4" />
             </motion.div>

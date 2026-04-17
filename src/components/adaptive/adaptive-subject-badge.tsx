@@ -54,15 +54,20 @@ const WONDER_PALETTE: Record<string, SubjectColors> = {
   GEOGRAPHY: { bg: "bg-sky-200", text: "text-sky-800" },
 };
 
+// Cosmic was originally translucent `bg-{color}-500/15` + `text-{color}-300` to
+// look neon on the dark page bg. But badges also render inside `bg-card`
+// (opaque white) — SessionGroup header, ErrorItem, etc. — and `-300` text on
+// white is essentially invisible. Solid -100/-800 pair reads on both dark
+// page bg and white card, and the drop-shadow glow preserves the cosmic feel.
 const COSMIC_PALETTE: Record<string, SubjectColors> = {
-  MATH:    { bg: "bg-blue-500/15", text: "text-blue-300", glow: "drop-shadow-[0_0_4px_oklch(0.6_0.2_250)]" },
-  CHINESE: { bg: "bg-cyan-500/15", text: "text-cyan-300", glow: "drop-shadow-[0_0_4px_oklch(0.7_0.15_200)]" },
-  ENGLISH: { bg: "bg-amber-500/15", text: "text-amber-300", glow: "drop-shadow-[0_0_4px_oklch(0.75_0.15_80)]" },
-  PHYSICS: { bg: "bg-purple-500/15", text: "text-purple-300", glow: "drop-shadow-[0_0_4px_oklch(0.6_0.22_290)]" },
-  CHEMISTRY: { bg: "bg-emerald-500/15", text: "text-emerald-300", glow: "drop-shadow-[0_0_4px_oklch(0.7_0.15_165)]" },
-  BIOLOGY: { bg: "bg-green-500/15", text: "text-green-300", glow: "drop-shadow-[0_0_4px_oklch(0.7_0.15_145)]" },
-  HISTORY: { bg: "bg-orange-500/15", text: "text-orange-300", glow: "drop-shadow-[0_0_4px_oklch(0.7_0.15_55)]" },
-  GEOGRAPHY: { bg: "bg-sky-500/15", text: "text-sky-300", glow: "drop-shadow-[0_0_4px_oklch(0.65_0.18_230)]" },
+  MATH:    { bg: "bg-blue-100", text: "text-blue-800", glow: "drop-shadow-[0_0_4px_oklch(0.6_0.2_250_/_0.4)]" },
+  CHINESE: { bg: "bg-cyan-100", text: "text-cyan-800", glow: "drop-shadow-[0_0_4px_oklch(0.7_0.15_200_/_0.4)]" },
+  ENGLISH: { bg: "bg-amber-100", text: "text-amber-800", glow: "drop-shadow-[0_0_4px_oklch(0.75_0.15_80_/_0.4)]" },
+  PHYSICS: { bg: "bg-purple-100", text: "text-purple-800", glow: "drop-shadow-[0_0_4px_oklch(0.6_0.22_290_/_0.4)]" },
+  CHEMISTRY: { bg: "bg-emerald-100", text: "text-emerald-800", glow: "drop-shadow-[0_0_4px_oklch(0.7_0.15_165_/_0.4)]" },
+  BIOLOGY: { bg: "bg-green-100", text: "text-green-800", glow: "drop-shadow-[0_0_4px_oklch(0.7_0.15_145_/_0.4)]" },
+  HISTORY: { bg: "bg-orange-100", text: "text-orange-800", glow: "drop-shadow-[0_0_4px_oklch(0.7_0.15_55_/_0.4)]" },
+  GEOGRAPHY: { bg: "bg-sky-100", text: "text-sky-800", glow: "drop-shadow-[0_0_4px_oklch(0.65_0.18_230_/_0.4)]" },
 };
 
 // Text stepped to -700 (from -600) + bg to -100 (from -50): same rationale as

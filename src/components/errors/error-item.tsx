@@ -66,11 +66,15 @@ export function ErrorItem({ eq }: ErrorItemProps) {
               variant="outline"
               className={cn(
                 "gap-1",
+                // Note: we sit on a white `bg-card` (the outer wrapper uses
+                // `bg-card`), so cosmic's "emerald-200 on translucent bg"
+                // won't work — use an opaque emerald-100/-800 pair that's
+                // readable against white in every tier.
                 tier === "wonder"
                   ? "bg-amber-100 text-amber-800 border-amber-400"
                   : tier === "cosmic"
-                    ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/50"
-                    : "text-green-600 border-green-600"
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-500"
+                    : "text-green-700 border-green-600",
               )}
             >
               {tier === "wonder" && <Star className="h-3 w-3 fill-amber-500" />}
@@ -92,14 +96,17 @@ export function ErrorItem({ eq }: ErrorItemProps) {
         </p>
         {eq.aiKnowledgePoint && (
           <p className="text-xs mt-1">
-            <span className="text-muted-foreground">
+            {/* Muted-looking label, but derived from card-foreground so it
+                still contrasts against bg-card even in cosmic tier where
+                --muted-foreground flips light for the dark page bg. */}
+            <span className="text-card-foreground/60">
               {t("homework.knowledgePoint")}:
             </span>{" "}
             <span className="text-card-foreground">{eq.aiKnowledgePoint}</span>
           </p>
         )}
       </div>
-      <div className="text-right text-xs text-muted-foreground shrink-0">
+      <div className="text-right text-xs text-card-foreground/60 shrink-0">
         <p>{new Date(eq.createdAt).toLocaleDateString(dateLocale)}</p>
         <p className="mt-1">
           {t("homework.attemptCount", { count: eq.totalAttempts })}
