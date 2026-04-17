@@ -65,12 +65,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 }, // 7 days
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id!;
         token.role = user.role;
         token.grade = user.grade;
         token.locale = user.locale;
+      }
+      // Support `useSession().update({ user: { grade: ... } })` from the
+      // client — lets the grade switcher refresh the tier without re-login.
+      if (trigger === "update" && session?.user) {
+        if (session.user.grade !== undefined) token.grade = session.user.grade;
+        if (session.user.locale !== undefined) token.locale = session.user.locale;
+        if (session.user.name !== undefined) token.name = session.user.name;
       }
       return token;
     },

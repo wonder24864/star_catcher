@@ -168,6 +168,65 @@ export const adminRouter = router({
       return { tempPassword };
     }),
 
+  /** Admin updates a user's profile (grade / nickname). No role change. */
+  updateUserProfile: adminProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        grade: z
+          .enum([
+            "PRIMARY_1", "PRIMARY_2", "PRIMARY_3", "PRIMARY_4", "PRIMARY_5", "PRIMARY_6",
+            "JUNIOR_1", "JUNIOR_2", "JUNIOR_3",
+            "SENIOR_1", "SENIOR_2", "SENIOR_3",
+          ])
+          .nullable()
+          .optional(),
+        nickname: z.string().min(1).max(32).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findFirst({
+        where: { id: input.userId, deletedAt: null },
+        select: { id: true, role: true },
+      });
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+      type GradeEnum =
+        | "PRIMARY_1" | "PRIMARY_2" | "PRIMARY_3" | "PRIMARY_4" | "PRIMARY_5" | "PRIMARY_6"
+        | "JUNIOR_1"  | "JUNIOR_2"  | "JUNIOR_3"
+        | "SENIOR_1"  | "SENIOR_2"  | "SENIOR_3";
+      const patch: { grade?: GradeEnum | null; nickname?: string } = {};
+      if (input.grade !== undefined) {
+        // Only STUDENT role should carry a grade. Guard against accidental
+        // assignment to PARENT/ADMIN.
+        if (user.role !== "STUDENT" && input.grade !== null) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "GRADE_ONLY_FOR_STUDENT" });
+        }
+        patch.grade = input.grade;
+      }
+      if (input.nickname !== undefined) patch.nickname = input.nickname;
+
+      if (Object.keys(patch).length === 0) {
+        return { success: true };
+      }
+
+      await ctx.db.user.update({
+        where: { id: input.userId },
+        data: patch,
+      });
+
+      await ctx.db.adminLog.create({
+        data: {
+          adminId: ctx.session.userId,
+          action: "UPDATE_USER_PROFILE",
+          target: input.userId,
+          details: patch as Record<string, unknown>,
+        },
+      });
+
+      return { success: true };
+    }),
+
   /** System-wide stats: user counts by role, errors, sessions, AI calls */
   getStats: adminProcedure.query(async ({ ctx }) => {
 

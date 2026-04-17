@@ -92,6 +92,7 @@
     "all": "全部",
     "loading": "加载中...",
     "save": "保存",
+    "saving": "保存中...",
     "cancel": "取消",
     "delete": "删除",
     "edit": "编辑",
@@ -194,6 +195,8 @@
       "correctionPhotosUploaded": "已上传 {count} 张改正照片",
       "uploadingPhoto": "正在上传照片...",
       "submittingCorrections": "正在识别改正...",
+      "gradingInProgress": "AI 正在批改改正，请稍候…",
+      "gradingSubtitle": "识别新答案 → 对比原答案 → 重新评分，通常需要 3-10 秒",
       "yourNewAnswer": "改正答案",
       "answerPlaceholder": "输入你的答案...",
       "submitCorrections": "提交改正",
@@ -809,7 +812,15 @@
   "errors": {
     "title": "错题本",
     "noData": "暂无错题",
-    "errorCount": "{count} 条错题"
+    "errorCount": "{count} 条错题",
+    "view": {
+      "grouped": "按作业分组",
+      "flat": "单题视图"
+    },
+    "group": {
+      "manual": "手动添加",
+      "errorCount": "{count} 题"
+    }
   },
   "mastery": {
     "title": "掌握地图",
@@ -900,7 +911,17 @@
     "account": "我的账号",
     "adminLabel": "管理员",
     "myStudents": "关注的学生",
-    "noStudents": "暂无"
+    "noStudents": "暂无",
+    "changeGrade": "修改年级",
+    "changeGradeTitle": "修改年级",
+    "changeGradeSubtitle": "为 {name} 选择新的年级",
+    "gradeUpdated": "年级已更新",
+    "manageUsers": "管理所有用户",
+    "gradeGroup": {
+      "primary": "小学",
+      "junior": "初中",
+      "senior": "高中"
+    }
   },
   "student": {
     "account": "我的账号",

@@ -92,6 +92,7 @@
     "all": "All",
     "loading": "Loading...",
     "save": "Save",
+    "saving": "Saving...",
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
@@ -194,6 +195,8 @@
       "correctionPhotosUploaded": "{count} correction photo(s) uploaded",
       "uploadingPhoto": "Uploading photo...",
       "submittingCorrections": "Recognizing corrections...",
+      "gradingInProgress": "AI is grading your corrections, please wait…",
+      "gradingSubtitle": "Recognize new answers → compare with originals → regrade. Usually 3-10 seconds.",
       "yourNewAnswer": "Corrected answer",
       "answerPlaceholder": "Enter your answer...",
       "submitCorrections": "Submit Corrections",
@@ -809,7 +812,15 @@
   "errors": {
     "title": "Error Book",
     "noData": "No errors yet",
-    "errorCount": "{count} errors"
+    "errorCount": "{count} errors",
+    "view": {
+      "grouped": "By session",
+      "flat": "Flat list"
+    },
+    "group": {
+      "manual": "Manual entries",
+      "errorCount": "{count} errors"
+    }
   },
   "mastery": {
     "title": "Mastery Map",
@@ -900,7 +911,17 @@
     "account": "My Account",
     "adminLabel": "Admin",
     "myStudents": "My Students",
-    "noStudents": "None"
+    "noStudents": "None",
+    "changeGrade": "Change grade",
+    "changeGradeTitle": "Change grade",
+    "changeGradeSubtitle": "Select a new grade for {name}",
+    "gradeUpdated": "Grade updated",
+    "manageUsers": "Manage all users",
+    "gradeGroup": {
+      "primary": "Primary",
+      "junior": "Junior high",
+      "senior": "Senior high"
+    }
   },
   "student": {
     "account": "My Account",

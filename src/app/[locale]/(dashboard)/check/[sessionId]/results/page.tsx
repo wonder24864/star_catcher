@@ -582,7 +582,7 @@ export default function CheckResultsPage() {
 
       {/* Correction photo upload dialog */}
       <Dialog open={correctionDialogOpen} onOpenChange={(open) => {
-        if (!submitCorrectionPhotos.isPending && !isUploadingCorrection) {
+        if (!submitCorrectionPhotos.isPending && !isUploadingCorrection && !pendingCorrection) {
           setCorrectionDialogOpen(open);
         }
       }}>
@@ -596,7 +596,7 @@ export default function CheckResultsPage() {
 
           <div className="space-y-4 py-2">
             {/* Uploaded photo count */}
-            {correctionImageIds.length > 0 && (
+            {correctionImageIds.length > 0 && !pendingCorrection && (
               <div className="flex items-center gap-2 text-sm text-green-600">
                 <ImageIcon className="h-4 w-4" />
                 {t("homework.check.correctionPhotosUploaded", { count: correctionImageIds.length })}
@@ -611,19 +611,36 @@ export default function CheckResultsPage() {
               </div>
             )}
 
-            {/* Photo capture */}
-            <PhotoCapture
-              onFilesSelected={handleCorrectionFilesSelected}
-              disabled={isUploadingCorrection || submitCorrectionPhotos.isPending}
-              maxRemaining={MAX_IMAGES_PER_SESSION - correctionImageIds.length}
-            />
+            {/* Grading progress — shown after submit until worker publishes SSE.
+                Without this the UI had no feedback during the async BullMQ job
+                (submit mutation resolves in ms, worker takes several seconds),
+                so users thought the click did nothing. */}
+            {pendingCorrection ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-6 rounded-lg bg-muted/30">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <div className="text-center space-y-0.5">
+                  <p className="text-sm font-medium">
+                    {t("homework.check.gradingInProgress")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("homework.check.gradingSubtitle")}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <PhotoCapture
+                onFilesSelected={handleCorrectionFilesSelected}
+                disabled={isUploadingCorrection || submitCorrectionPhotos.isPending}
+                maxRemaining={MAX_IMAGES_PER_SESSION - correctionImageIds.length}
+              />
+            )}
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
             <AdaptiveButton
               variant="outline"
               onClick={() => setCorrectionDialogOpen(false)}
-              disabled={submitCorrectionPhotos.isPending || isUploadingCorrection}
+              disabled={submitCorrectionPhotos.isPending || isUploadingCorrection || pendingCorrection}
             >
               {t("common.cancel")}
             </AdaptiveButton>
@@ -632,10 +649,11 @@ export default function CheckResultsPage() {
               disabled={
                 correctionImageIds.length === 0 ||
                 isUploadingCorrection ||
-                submitCorrectionPhotos.isPending
+                submitCorrectionPhotos.isPending ||
+                pendingCorrection
               }
             >
-              {submitCorrectionPhotos.isPending ? (
+              {submitCorrectionPhotos.isPending || pendingCorrection ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   {t("homework.check.submittingCorrections")}

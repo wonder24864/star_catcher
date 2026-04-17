@@ -101,11 +101,50 @@ export const errorRouter = router({
           orderBy: { createdAt: "desc" },
           skip: (input.page - 1) * PAGE_SIZE,
           take: PAGE_SIZE,
+          // Include the originating homework session so the frontend can
+          // group errors by "作业会话" (see US-020 grouped view). A small
+          // projection keeps the payload lean; manual errors without a
+          // SessionQuestion link will have homeworkSession === null.
+          include: {
+            sessionQuestion: {
+              select: {
+                homeworkSession: {
+                  select: {
+                    id: true,
+                    title: true,
+                    subject: true,
+                    finalScore: true,
+                    createdAt: true,
+                  },
+                },
+              },
+            },
+          },
         }),
       ]);
 
+      // Flatten: pull homeworkSession up to the top level as `session` so
+      // consumers don't need to reach through `sessionQuestion`.
+      const flattened = items.map((eq) => {
+        const { sessionQuestion, ...rest } = eq as typeof eq & {
+          sessionQuestion: {
+            homeworkSession: {
+              id: string;
+              title: string | null;
+              subject: string | null;
+              finalScore: number | null;
+              createdAt: Date;
+            } | null;
+          } | null;
+        };
+        return {
+          ...rest,
+          session: sessionQuestion?.homeworkSession ?? null,
+        };
+      });
+
       return {
-        items,
+        items: flattened,
         total,
         page: input.page,
         pageSize: PAGE_SIZE,

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
+import { LayoutGrid, List as ListIcon } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
 import { useTier } from "@/components/providers/grade-tier-provider";
@@ -14,6 +15,8 @@ import { CardContent } from "@/components/ui/card";
 import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
 import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
 import { ErrorItem } from "@/components/errors/error-item";
+import { SessionGroup } from "@/components/errors/session-group";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -21,6 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+type ViewMode = "grouped" | "flat";
 
 export default function ErrorsPage() {
   const t = useTranslations();
@@ -38,6 +43,9 @@ export default function ErrorsPage() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
+  // "grouped": errors bucketed under their homework session card (default).
+  // "flat":    classic list used for quick scans / keyword search.
+  const [viewMode, setViewMode] = useState<ViewMode>("grouped");
 
   const { data, isLoading } = trpc.error.list.useQuery(
     {
@@ -79,9 +87,63 @@ export default function ErrorsPage() {
   // Tier-branched list layout: wonder=single column large, others=compact
   const listClass = tierIndex === 1 ? "space-y-4" : "space-y-2";
 
+  // Group items by sessionId for the grouped view. Preserves DB ordering
+  // (newest sessions first). Errors without a sessionQuestion land under a
+  // stable "manual" bucket so they don't disappear.
+  type Item = NonNullable<typeof data>["items"][number];
+  type SessionInfo = NonNullable<Item["session"]>;
+  const groups = useMemo<Array<{ session: SessionInfo | null; items: Item[] }>>(() => {
+    if (!data?.items) return [];
+    const bySessionId = new Map<string, { session: SessionInfo | null; items: Item[] }>();
+    for (const eq of data.items) {
+      const key = eq.session?.id ?? "__manual__";
+      const existing = bySessionId.get(key);
+      if (existing) {
+        existing.items.push(eq);
+      } else {
+        bySessionId.set(key, { session: eq.session, items: [eq] });
+      }
+    }
+    return Array.from(bySessionId.values());
+  }, [data?.items]);
+
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold">{tT("title")}</h1>
+    <div className="space-y-4 pt-12 md:pt-0">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">{tT("title")}</h1>
+        {/* View-mode toggle (grouped / flat). Kept minimal — a small segmented
+            switch — so it doesn't dominate the page header. */}
+        <div className="inline-flex rounded-md border bg-background p-0.5 text-sm">
+          <button
+            type="button"
+            onClick={() => setViewMode("grouped")}
+            aria-pressed={viewMode === "grouped"}
+            className={cn(
+              "inline-flex items-center gap-1 rounded px-2.5 py-1 transition-colors",
+              viewMode === "grouped"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{t("errors.view.grouped")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("flat")}
+            aria-pressed={viewMode === "flat"}
+            className={cn(
+              "inline-flex items-center gap-1 rounded px-2.5 py-1 transition-colors",
+              viewMode === "flat"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <ListIcon className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{t("errors.view.flat")}</span>
+          </button>
+        </div>
+      </div>
 
       {/* Filters — wonder tier hides date pickers (D43) */}
       <div className="flex flex-wrap gap-3">
@@ -144,22 +206,36 @@ export default function ErrorsPage() {
           <p className="text-sm text-muted-foreground">
             {tT("errorCount", { count: data.total })}
           </p>
-          <div className={listClass}>
-            {data.items.map((eq, index) => (
-              <motion.div
-                key={eq.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: Math.min(index, 15) * 0.06,
-                  duration: 0.25,
-                  ease: "easeOut",
-                }}
-              >
-                <ErrorItem eq={eq} />
-              </motion.div>
-            ))}
-          </div>
+
+          {viewMode === "grouped" ? (
+            <div className="space-y-3">
+              {groups.map((g, i) => (
+                <SessionGroup
+                  key={g.session?.id ?? `manual-${i}`}
+                  session={g.session}
+                  items={g.items}
+                  defaultOpen={i === 0}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className={listClass}>
+              {data.items.map((eq, index) => (
+                <motion.div
+                  key={eq.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: Math.min(index, 15) * 0.06,
+                    duration: 0.25,
+                    ease: "easeOut",
+                  }}
+                >
+                  <ErrorItem eq={eq} />
+                </motion.div>
+              ))}
+            </div>
+          )}
 
           {/* Pagination */}
           {data.totalPages > 1 && (

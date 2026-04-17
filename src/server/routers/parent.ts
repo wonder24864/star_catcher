@@ -6,6 +6,12 @@ import type { Context } from "../trpc";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { enqueueLearningSuggestion } from "@/lib/infra/queue";
 
+const gradeEnum = z.enum([
+  "PRIMARY_1", "PRIMARY_2", "PRIMARY_3", "PRIMARY_4", "PRIMARY_5", "PRIMARY_6",
+  "JUNIOR_1", "JUNIOR_2", "JUNIOR_3",
+  "SENIOR_1", "SENIOR_2", "SENIOR_3",
+]);
+
 async function verifyParentStudentAccess(
   db: Context["db"],
   parentId: string,
@@ -901,5 +907,47 @@ export const parentRouter = router({
       }));
 
       return { events };
+    }),
+
+  /**
+   * Parent updates a linked student's profile (grade / nickname).
+   * Only STUDENT-role users in the same family can be updated.
+   */
+  updateStudentProfile: protectedProcedure
+    .input(
+      z.object({
+        studentId: z.string(),
+        grade: gradeEnum.optional(),
+        nickname: z.string().min(1).max(32).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.role !== "PARENT") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      await verifyParentStudentAccess(ctx.db, ctx.session.userId, input.studentId);
+
+      // Guard: target must be STUDENT role (don't let parents rewrite other parents)
+      const target = await ctx.db.user.findUnique({
+        where: { id: input.studentId },
+        select: { role: true },
+      });
+      if (!target || target.role !== "STUDENT") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "NOT_A_STUDENT" });
+      }
+
+      const patch: { grade?: z.infer<typeof gradeEnum>; nickname?: string } = {};
+      if (input.grade !== undefined) patch.grade = input.grade;
+      if (input.nickname !== undefined) patch.nickname = input.nickname;
+
+      if (Object.keys(patch).length === 0) {
+        return { success: true };
+      }
+
+      await ctx.db.user.update({
+        where: { id: input.studentId },
+        data: patch,
+      });
+      return { success: true };
     }),
 });
