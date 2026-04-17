@@ -896,6 +896,40 @@
     "noTasks": "今天没有任务",
     "viewTasks": "查看任务"
   },
+  "user": {
+    "account": "我的账号",
+    "adminLabel": "管理员",
+    "myStudents": "关注的学生",
+    "noStudents": "暂无"
+  },
+  "student": {
+    "account": "我的账号",
+    "myFamily": "我的家庭",
+    "myParent": "我的家长",
+    "greeting": {
+      "lateNight": "夜深了，早点休息 🌙",
+      "morning": "早上好 ☀️",
+      "noon": "中午好 🌤️",
+      "afternoon": "下午好 🌈",
+      "evening": "晚上好 🌠"
+    },
+    "stats": {
+      "mastered": "已掌握",
+      "inProgress": "学习中",
+      "newError": "待攻克",
+      "total": "知识点"
+    },
+    "emptyStats": {
+      "title": "准备好开始冒险了吗？",
+      "subtitle": "拍下第一份作业，开启你的学习之旅！"
+    },
+    "recognition": {
+      "subtitleWonder": "小精灵正在帮你看作业啦 ✨",
+      "subtitleCosmic": "AI 探测器正在扫描你的作业...",
+      "subtitleFlow": "AI 正在识别作业内容，请稍候",
+      "subtitleStudio": "正在处理..."
+    }
+  },
   "tasks": {
     "title": "今日任务",
     "progress": "已完成 {completed}/{total}",

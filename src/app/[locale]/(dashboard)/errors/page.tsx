@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
@@ -10,13 +9,11 @@ import { useStudentStore } from "@/lib/stores/student-store";
 import { useTier } from "@/components/providers/grade-tier-provider";
 import { useTierTranslations } from "@/hooks/use-tier-translations";
 import { SUBJECTS } from "@/lib/constants/subject-colors";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { CardContent } from "@/components/ui/card";
-import { MathText } from "@/components/ui/math-text";
 import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
 import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
-import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
+import { ErrorItem } from "@/components/errors/error-item";
 import {
   Select,
   SelectContent,
@@ -159,38 +156,7 @@ export default function ErrorsPage() {
                   ease: "easeOut",
                 }}
               >
-                <Link href={`/errors/${eq.id}`}>
-                  <AdaptiveCard className="cursor-pointer">
-                    <CardContent className="py-3 px-4 flex items-start gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <AdaptiveSubjectBadge subject={eq.subject}>
-                            {t(`homework.subjects.${eq.subject}`)}
-                          </AdaptiveSubjectBadge>
-                          {eq.isMastered && (
-                            <Badge variant="outline" className="text-green-600 border-green-600">
-                              {t("mastery.status.MASTERED")}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm line-clamp-2 text-foreground">
-                          <MathText text={eq.content} />
-                        </p>
-                        {eq.aiKnowledgePoint && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {t("homework.knowledgePoint")}: {eq.aiKnowledgePoint}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right text-xs text-muted-foreground shrink-0">
-                        <p>{new Date(eq.createdAt).toLocaleDateString()}</p>
-                        <p className="mt-1">
-                          {t("homework.attemptCount", { count: eq.totalAttempts })}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </AdaptiveCard>
-                </Link>
+                <ErrorItem eq={eq} />
               </motion.div>
             ))}
           </div>

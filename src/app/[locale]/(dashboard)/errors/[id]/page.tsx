@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useTranslations, useLocale } from "next-intl";
+import { ArrowLeft, Star, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { useTier } from "@/components/providers/grade-tier-provider";
@@ -16,6 +18,8 @@ import { AgentSummaryCard } from "@/components/agent-summary-card";
 import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
 import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
 import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
+import { SUBJECT_HEX_COLORS } from "@/lib/constants/subject-colors";
+import { cn } from "@/lib/utils";
 
 export default function ErrorDetailPage() {
   const t = useTranslations();
@@ -23,7 +27,7 @@ export default function ErrorDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const { data: session } = useSession();
-  const { tierIndex } = useTier();
+  const { tier, tierIndex } = useTier();
 
   const isParent = session?.user?.role === "PARENT";
 
@@ -95,61 +99,134 @@ export default function ErrorDetailPage() {
   if (isLoading) return <p className="text-muted-foreground">{t("common.loading")}</p>;
   if (!question) return <p className="text-muted-foreground">{t("common.noData")}</p>;
 
+  const subjectHex = SUBJECT_HEX_COLORS[question.subject] ?? "#6b7280";
+
+  // Tier-specific question card styling
+  const questionCardStyle =
+    tier === "wonder"
+      ? { boxShadow: `0 18px 40px -16px ${subjectHex}80` }
+      : tier === "cosmic"
+        ? {
+            boxShadow: `inset 0 0 0 1px ${subjectHex}66, 0 0 28px -8px ${subjectHex}55`,
+          }
+        : undefined;
+  const questionContentClass =
+    tier === "wonder"
+      ? "text-base sm:text-lg leading-relaxed"
+      : "text-sm";
+
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-2xl space-y-4 pt-12 md:pt-0">
       {/* Back link */}
-      <Link href={`/${locale}/errors`} className="text-sm text-muted-foreground hover:underline">
-        &larr; {t("common.back")}
+      <Link
+        href={`/${locale}/errors`}
+        className={cn(
+          "inline-flex items-center gap-1 text-sm hover:underline",
+          tier === "wonder"
+            ? "text-fuchsia-700 dark:text-fuchsia-300 font-medium"
+            : "text-muted-foreground"
+        )}
+      >
+        <ArrowLeft className="h-4 w-4" />
+        {t("common.back")}
       </Link>
 
       {/* Question card */}
-      <AdaptiveCard>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <AdaptiveSubjectBadge subject={question.subject}>
-              {t(`homework.subjects.${question.subject}`)}
-            </AdaptiveSubjectBadge>
-            {question.isMastered && (
-              <Badge variant="outline" className="text-green-600 border-green-600">
-                {t("mastery.status.MASTERED")}
-              </Badge>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+      >
+        <AdaptiveCard className="relative overflow-hidden" style={questionCardStyle}>
+          {tier === "wonder" && (
+            <div
+              aria-hidden
+              className="absolute left-0 top-0 bottom-0 w-2"
+              style={{ backgroundColor: subjectHex }}
+            />
+          )}
+          <CardHeader className={cn(tier === "wonder" && "pl-6")}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <AdaptiveSubjectBadge subject={question.subject}>
+                {t(`homework.subjects.${question.subject}`)}
+              </AdaptiveSubjectBadge>
+              {question.isMastered && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "gap-1",
+                    tier === "wonder"
+                      ? "bg-amber-100 text-amber-800 border-amber-400"
+                      : tier === "cosmic"
+                        ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/50"
+                        : "text-green-600 border-green-600"
+                  )}
+                >
+                  {tier === "wonder" && <Star className="h-3 w-3 fill-amber-500" />}
+                  {t("mastery.status.MASTERED")}
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className={cn("space-y-3", tier === "wonder" && "pl-6")}>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">{t("homework.questionContent")}</p>
+              <p className={cn("whitespace-pre-wrap", questionContentClass)}>
+                <MathText text={question.content} />
+              </p>
+            </div>
+
+            {question.studentAnswer && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">{t("homework.studentAnswer")}</p>
+                <p className={cn(questionContentClass, wrongAnswerColor)}>
+                  <MathText text={question.studentAnswer} />
+                </p>
+              </div>
             )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">{t("homework.questionContent")}</p>
-            <p className="text-sm whitespace-pre-wrap"><MathText text={question.content} /></p>
-          </div>
 
-          {question.studentAnswer && (
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">{t("homework.studentAnswer")}</p>
-              <p className={`text-sm ${wrongAnswerColor}`}><MathText text={question.studentAnswer} /></p>
+            {/* Only parents can see correct answers; students should use the help system */}
+            {isParent && question.correctAnswer && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">{t("homework.correctAnswer")}</p>
+                <p className={cn(questionContentClass, "text-green-600")}>
+                  <MathText text={question.correctAnswer} />
+                </p>
+              </div>
+            )}
+
+            {question.aiKnowledgePoint && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">{t("homework.knowledgePoint")}</p>
+                <p
+                  className={cn(
+                    "inline-flex items-center gap-1",
+                    questionContentClass,
+                    tier === "wonder" &&
+                      "rounded-full bg-gradient-to-r from-fuchsia-100 to-violet-100 px-3 py-1 text-fuchsia-800 font-medium",
+                    tier === "cosmic" &&
+                      "rounded-full bg-cyan-500/10 border border-cyan-400/40 px-3 py-1 text-cyan-200"
+                  )}
+                >
+                  {(tier === "wonder" || tier === "cosmic") && (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  {question.aiKnowledgePoint}
+                </p>
+              </div>
+            )}
+
+            <div className="pt-2 text-xs text-muted-foreground flex gap-4">
+              <span>{t("homework.attemptCount", { count: question.totalAttempts })}</span>
+              <span>
+                {new Date(question.createdAt).toLocaleDateString(
+                  locale === "zh" ? "zh-CN" : "en-US",
+                )}
+              </span>
             </div>
-          )}
-
-          {/* Only parents can see correct answers; students should use the help system */}
-          {isParent && question.correctAnswer && (
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">{t("homework.correctAnswer")}</p>
-              <p className="text-sm text-green-600"><MathText text={question.correctAnswer} /></p>
-            </div>
-          )}
-
-          {question.aiKnowledgePoint && (
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">{t("homework.knowledgePoint")}</p>
-              <p className="text-sm">{question.aiKnowledgePoint}</p>
-            </div>
-          )}
-
-          <div className="pt-2 text-xs text-muted-foreground flex gap-4">
-            <span>{t("homework.attemptCount", { count: question.totalAttempts })}</span>
-            <span>{new Date(question.createdAt).toLocaleDateString()}</span>
-          </div>
-        </CardContent>
-      </AdaptiveCard>
+          </CardContent>
+        </AdaptiveCard>
+      </motion.div>
 
       {/* Agent Analysis Summary */}
       <AgentSummaryCard trace={agentTrace} />
@@ -189,7 +266,10 @@ export default function ErrorDetailPage() {
                     <p className="text-sm whitespace-pre-wrap">{note.content}</p>
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-xs text-muted-foreground">
-                        {note.parent?.nickname} &middot; {new Date(note.createdAt).toLocaleString()}
+                        {note.parent?.nickname} &middot;{" "}
+                        {new Date(note.createdAt).toLocaleString(
+                          locale === "zh" ? "zh-CN" : "en-US",
+                        )}
                       </p>
                       {isParent && session?.user?.id === (note as { parentId?: string }).parentId && (
                         <div className="flex gap-1">

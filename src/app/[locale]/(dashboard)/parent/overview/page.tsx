@@ -4,12 +4,23 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { motion } from "framer-motion";
+import { CalendarDays } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
 import { Badge } from "@/components/ui/badge";
 import { GlassCard, GradientMesh, StatusPulse } from "@/components/pro";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+
+function getParentGreeting(t: ReturnType<typeof useTranslations>): string {
+  const hour = new Date().getHours();
+  if (hour < 6) return t("student.greeting.lateNight");
+  if (hour < 11) return t("student.greeting.morning");
+  if (hour < 14) return t("student.greeting.noon");
+  if (hour < 18) return t("student.greeting.afternoon");
+  return t("student.greeting.evening");
+}
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -76,7 +87,7 @@ export default function ParentOverviewPage() {
 
   if (!effectiveStudentId) {
     return (
-      <div className="max-w-3xl">
+      <div className="max-w-3xl pt-12 md:pt-0">
         <h1 className="text-2xl font-bold">{t("parent.overview.title")}</h1>
         <p className="mt-4 text-muted-foreground">
           {t("homework.selectStudent")}
@@ -85,22 +96,58 @@ export default function ParentOverviewPage() {
     );
   }
 
+  const selectedStudent = students?.find((s) => s.id === effectiveStudentId);
+  const greeting = getParentGreeting(t);
+
   return (
-    <div className="relative min-h-full">
+    <div className="relative min-h-full pt-12 md:pt-0">
       <GradientMesh className="rounded-xl" />
 
       <div className="relative max-w-3xl space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{t("parent.overview.title")}</h1>
-          <input
-            type="date"
-            value={date}
-            max={todayStr()}
-            onChange={(e) => updateDate(e.target.value)}
-            className="rounded-md border bg-background/80 backdrop-blur-sm px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          />
-        </div>
+        {/* Hero header: greeting + who we're viewing + date picker */}
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="rounded-2xl border bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-50 dark:from-emerald-950/30 dark:via-teal-950/30 dark:to-sky-950/30 p-5 sm:p-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm text-muted-foreground">{greeting}</p>
+              <h1 className="mt-0.5 text-2xl sm:text-3xl font-bold truncate">
+                {t("parent.overview.title")}
+              </h1>
+              {selectedStudent && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <Badge
+                    variant="secondary"
+                    className="font-normal bg-white/60 dark:bg-white/10 backdrop-blur-sm"
+                  >
+                    {t("user.myStudents")}: {selectedStudent.nickname}
+                  </Badge>
+                  {selectedStudent.grade && (
+                    <Badge
+                      variant="outline"
+                      className="font-normal"
+                    >
+                      {t(`grades.${selectedStudent.grade}` as never)}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+            <label className="relative inline-flex items-center gap-2 self-start sm:self-auto">
+              <CalendarDays className="pointer-events-none absolute left-2.5 h-4 w-4 text-muted-foreground" />
+              <input
+                type="date"
+                value={date}
+                max={todayStr()}
+                onChange={(e) => updateDate(e.target.value)}
+                className="rounded-md border bg-white/80 dark:bg-background/60 backdrop-blur-sm pl-8 pr-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </label>
+          </div>
+        </motion.div>
 
         {/* Weekly check-in calendar */}
         {weeklyData && (

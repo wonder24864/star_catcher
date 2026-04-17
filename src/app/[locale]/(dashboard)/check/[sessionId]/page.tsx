@@ -29,6 +29,7 @@ import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
 import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
 import { AdaptiveScore } from "@/components/adaptive/adaptive-score";
 import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
+import { RecognitionOverlay } from "@/components/homework/recognition-overlay";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -110,14 +111,11 @@ export default function RecognitionResultsPage() {
     return null;
   }
 
-  // Show recognizing spinner when AI is processing
+  // AI is processing — full-screen tier-adaptive overlay.
+  // When arriving from /check/new the cache is pre-warmed with status=RECOGNIZING
+  // (optimistic update in the mutation), so this path matches without a flicker.
   if (session.status === "RECOGNIZING") {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-        <p className="text-muted-foreground">{t("homework.recognizing")}</p>
-      </div>
-    );
+    return <RecognitionOverlay open={true} />;
   }
 
   const questions = (session as Record<string, unknown>).questions as Array<{

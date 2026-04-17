@@ -61,14 +61,14 @@ export default function AdminDashboardPage() {
   const { data, isLoading } = trpc.admin.dashboard.useQuery();
 
   return (
-    <div className="relative min-h-full">
+    <div className="relative min-h-full pt-12 md:pt-0">
       {/* Background mesh */}
       <GradientMesh className="rounded-xl" />
 
       <div className="relative space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
+          <div className="min-w-0 pr-16 md:pr-0">
             <h1 className="text-2xl font-bold">{t("title")}</h1>
             <p className="text-sm text-muted-foreground">{t("systemStatus")}</p>
           </div>

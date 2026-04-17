@@ -896,6 +896,40 @@
     "noTasks": "No tasks today",
     "viewTasks": "View Tasks"
   },
+  "user": {
+    "account": "My Account",
+    "adminLabel": "Admin",
+    "myStudents": "My Students",
+    "noStudents": "None"
+  },
+  "student": {
+    "account": "My Account",
+    "myFamily": "My Family",
+    "myParent": "My Parents",
+    "greeting": {
+      "lateNight": "Late night, get some rest 🌙",
+      "morning": "Good morning ☀️",
+      "noon": "Good noon 🌤️",
+      "afternoon": "Good afternoon 🌈",
+      "evening": "Good evening 🌠"
+    },
+    "stats": {
+      "mastered": "Mastered",
+      "inProgress": "Learning",
+      "newError": "To tackle",
+      "total": "Topics"
+    },
+    "emptyStats": {
+      "title": "Ready to start an adventure?",
+      "subtitle": "Snap your first homework to begin your journey!"
+    },
+    "recognition": {
+      "subtitleWonder": "A little sprite is checking your work ✨",
+      "subtitleCosmic": "AI scanner is analyzing your homework...",
+      "subtitleFlow": "AI is recognizing your homework, please wait",
+      "subtitleStudio": "Processing..."
+    }
+  },
   "tasks": {
     "title": "Today's Tasks",
     "progress": "{completed} of {total} completed",

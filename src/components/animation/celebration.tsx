@@ -3,9 +3,10 @@
 /**
  * Tier-adaptive celebration animations.
  *
- * - wonder / cosmic: confetti burst (framer-motion, different color palettes)
- * - flow: ripple expansion (concentric circles)
- * - studio: sonner toast (no visual overlay)
+ * - wonder / cosmic: star burst — SVG stars exploding outward from the center
+ *   with rotation + trailing glow halo. Palettes differ (pastel vs neon).
+ * - flow: ripple expansion (concentric circles).
+ * - studio: sonner toast (no visual overlay).
  */
 
 import { useEffect, useMemo, useCallback, useRef } from "react";
@@ -40,31 +41,43 @@ const COSMIC_COLORS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Confetti burst (wonder + cosmic)
+// Star burst (wonder + cosmic)
 // ---------------------------------------------------------------------------
 
-const PARTICLE_COUNT = 20;
+const PARTICLE_COUNT = 18;
+const BURST_DURATION_MS = 1400; // slightly longer than 1.3s animation
 
-const CONFETTI_DURATION_MS = 1300; // slightly longer than 1.2s animation
+/** Classic 5-point star path on a 20×20 viewbox. */
+const STAR_PATH =
+  "M10 0l2.9 6.5 7.1.8-5.3 4.8 1.5 7-6.2-3.5-6.2 3.5 1.5-7L0 7.3l7.1-.8z";
 
-function ConfettiAnimation({
+function StarBurstAnimation({
   colors,
+  glow,
   onComplete,
 }: {
   colors: string[];
+  /** When true, add a soft outer halo on each star (cosmic neon look). */
+  glow: boolean;
   onComplete?: () => void;
 }) {
   const particles = useMemo(
     () =>
-      Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
-        id: i,
-        color: colors[i % colors.length],
-        x: (Math.random() - 0.5) * 300,
-        y: -(Math.random() * 200 + 100),
-        rotation: Math.random() * 720 - 360,
-        scale: Math.random() * 0.6 + 0.4,
-        size: Math.random() * 8 + 4,
-      })),
+      Array.from({ length: PARTICLE_COUNT }, (_, i) => {
+        // Angle around a circle, slightly randomized for organic feel.
+        const angle = (i / PARTICLE_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+        const distance = 160 + Math.random() * 120;
+        return {
+          id: i,
+          color: colors[i % colors.length],
+          x: Math.cos(angle) * distance,
+          y: Math.sin(angle) * distance,
+          rotation: Math.random() * 540 - 270,
+          scale: 0.8 + Math.random() * 0.7,
+          size: 18 + Math.floor(Math.random() * 10),
+          delay: Math.random() * 0.08,
+        };
+      }),
     [colors]
   );
 
@@ -78,34 +91,59 @@ function ConfettiAnimation({
         completeFired.current = true;
         onComplete?.();
       }
-    }, CONFETTI_DURATION_MS);
+    }, BURST_DURATION_MS);
     return () => clearTimeout(timer);
   }, [onComplete]);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+    <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
+      {/* Center flash ring */}
+      <motion.div
+        className="absolute left-1/2 top-1/2 rounded-full"
+        style={{
+          width: 120,
+          height: 120,
+          marginLeft: -60,
+          marginTop: -60,
+          background: glow
+            ? "radial-gradient(circle, rgba(168,85,247,0.45) 0%, rgba(168,85,247,0) 70%)"
+            : "radial-gradient(circle, rgba(255,220,180,0.55) 0%, rgba(255,220,180,0) 70%)",
+        }}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: [0, 1.6, 2.4], opacity: [0, 0.9, 0] }}
+        transition={{ duration: 0.9, ease: "easeOut" }}
+      />
+
       {particles.map((p) => (
-        <motion.div
+        <motion.svg
           key={p.id}
-          className="absolute left-1/2 top-1/2 rounded-sm"
+          viewBox="0 0 20 20"
+          className="absolute left-1/2 top-1/2"
           style={{
             width: p.size,
-            height: p.size * 1.4,
-            backgroundColor: p.color,
+            height: p.size,
+            marginLeft: -p.size / 2,
+            marginTop: -p.size / 2,
+            filter: glow
+              ? `drop-shadow(0 0 6px ${p.color})`
+              : `drop-shadow(0 2px 3px rgba(0,0,0,0.15))`,
           }}
           initial={{ x: 0, y: 0, rotate: 0, scale: 0 }}
           animate={{
             x: p.x,
-            y: p.y + 400, // gravity
+            y: p.y,
             rotate: p.rotation,
-            scale: [0, p.scale, p.scale, 0],
+            scale: [0, p.scale * 1.1, p.scale, 0],
           }}
           transition={{
-            duration: 1.2,
+            duration: 1.3,
+            delay: p.delay,
             ease: [0.25, 0.46, 0.45, 0.94],
-            scale: { times: [0, 0.15, 0.7, 1] },
+            scale: { times: [0, 0.2, 0.7, 1] },
           }}
-        />
+        >
+          <path d={STAR_PATH} fill={p.color} />
+        </motion.svg>
       ))}
     </div>
   );
@@ -131,7 +169,7 @@ function RippleAnimation({ onComplete }: { onComplete?: () => void }) {
   }, [onComplete]);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+    <div className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center">
       {[0, 1, 2].map((i) => (
         <motion.div
           key={i}
@@ -197,8 +235,9 @@ export function Celebration({ show, message, onComplete }: CelebrationProps) {
       {show && (
         <>
           {(celebration === "confetti" || celebration === "energy-burst") && (
-            <ConfettiAnimation
+            <StarBurstAnimation
               colors={celebration === "energy-burst" ? COSMIC_COLORS : WONDER_COLORS}
+              glow={celebration === "energy-burst"}
               onComplete={onComplete}
             />
           )}

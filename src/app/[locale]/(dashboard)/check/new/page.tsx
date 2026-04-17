@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc/client";
 import { useUpload, type UploadProgress } from "@/hooks/use-upload";
 import { PhotoCapture } from "@/components/homework/photo-capture";
 import { PhotoGrid } from "@/components/homework/photo-grid";
+import { RecognitionOverlay } from "@/components/homework/recognition-overlay";
 import { MAX_IMAGES_PER_SESSION } from "@/lib/domain/validations/upload";
 import { toast } from "sonner";
 
@@ -59,11 +60,26 @@ export default function NewCheckPage() {
     },
   });
 
+  const [recognizingOverlay, setRecognizingOverlay] = useState(false);
+
   const startRecognition = trpc.homework.startRecognition.useMutation({
+    onMutate: () => {
+      setRecognizingOverlay(true);
+    },
     onSuccess: () => {
+      // Optimistically flip cache to RECOGNIZING so /check/[sessionId]
+      // matches that branch on first render and the SSE subscription
+      // (enabled only when status === "RECOGNIZING") starts immediately.
+      // Without this, the stale cache shows the old status and the page
+      // renders wrong content until a manual refresh.
+      utils.homework.getSession.setData(
+        { sessionId: sessionId! },
+        (old) => (old ? { ...old, status: "RECOGNIZING" as const } : old),
+      );
       router.push(`/check/${sessionId}`);
     },
     onError: () => {
+      setRecognizingOverlay(false);
       utils.homework.getSession.invalidate({ sessionId: sessionId! });
       toast.error(t("homework.recognitionFailed"));
     },
@@ -180,6 +196,8 @@ export default function NewCheckPage() {
 
   return (
     <div className="flex flex-col h-full">
+      <RecognitionOverlay open={recognizingOverlay} />
+
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b">
         <div className="flex items-center gap-3">

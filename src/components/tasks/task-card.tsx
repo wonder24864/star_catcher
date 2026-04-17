@@ -1,33 +1,47 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Sparkles, Brain, RotateCw } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useTierTranslations } from "@/hooks/use-tier-translations";
 import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
 import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
 import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
+import { useTier } from "@/components/providers/grade-tier-provider";
+import { cn } from "@/lib/utils";
 
-const TYPE_STYLES: Record<string, { border: string; badge: string }> = {
+type TaskType = "REVIEW" | "PRACTICE" | "EXPLANATION";
+
+const TYPE_META: Record<
+  TaskType,
+  { icon: LucideIcon; hex: string; badgeClass: string; defaultBorder: string }
+> = {
   REVIEW: {
-    border: "border-l-4 border-l-blue-500",
-    badge: "bg-blue-100 text-blue-800",
+    icon: RotateCw,
+    hex: "#3b82f6",
+    badgeClass: "bg-blue-100 text-blue-800",
+    defaultBorder: "border-l-4 border-l-blue-500",
   },
   PRACTICE: {
-    border: "border-l-4 border-l-orange-500",
-    badge: "bg-orange-100 text-orange-800",
+    icon: Sparkles,
+    hex: "#f97316",
+    badgeClass: "bg-orange-100 text-orange-800",
+    defaultBorder: "border-l-4 border-l-orange-500",
   },
   EXPLANATION: {
-    border: "border-l-4 border-l-green-500",
-    badge: "bg-green-100 text-green-800",
+    icon: Brain,
+    hex: "#10b981",
+    badgeClass: "bg-green-100 text-green-800",
+    defaultBorder: "border-l-4 border-l-green-500",
   },
 };
 
 interface TaskCardProps {
   task: {
     id: string;
-    type: "REVIEW" | "PRACTICE" | "EXPLANATION";
+    type: TaskType;
     status: "PENDING" | "COMPLETED";
     content: { title?: string; description?: string } | null;
     knowledgePoint: { id: string; name: string; subject: string };
@@ -52,8 +66,10 @@ export function TaskCard({
   completing,
 }: TaskCardProps) {
   const t = useTierTranslations("tasks");
+  const { tier } = useTier();
   const isCompleted = task.status === "COMPLETED";
-  const style = TYPE_STYLES[task.type] ?? TYPE_STYLES.REVIEW;
+  const meta = TYPE_META[task.type] ?? TYPE_META.REVIEW;
+  const TypeIcon = meta.icon;
 
   function actionLabel() {
     if (task.type === "PRACTICE") return t("startPractice");
@@ -67,6 +83,21 @@ export function TaskCard({
     else onComplete(task.id);
   }
 
+  // Wonder: chunky left rail + drop shadow (inline style for type color)
+  // Cosmic: neon inset border + outer glow (inline style for type color)
+  // Flow / studio: legacy thin colored left border (from meta.defaultBorder)
+  const cardStyle =
+    tier === "wonder"
+      ? { boxShadow: `0 12px 32px -14px ${meta.hex}80` }
+      : tier === "cosmic"
+        ? {
+            boxShadow: `inset 0 0 0 1px ${meta.hex}66, 0 0 20px -6px ${meta.hex}55`,
+          }
+        : undefined;
+
+  const baseClass =
+    tier === "wonder" || tier === "cosmic" ? undefined : meta.defaultBorder;
+
   return (
     <motion.div
       animate={
@@ -74,14 +105,39 @@ export function TaskCard({
           ? { scale: 0.98, opacity: 0.55 }
           : { scale: 1, opacity: 1 }
       }
+      whileHover={!isCompleted && tier === "wonder" ? { y: -3 } : undefined}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      <AdaptiveCard className={style.border}>
-        <CardContent className="py-4">
+      <AdaptiveCard
+        className={cn(baseClass, "relative overflow-hidden")}
+        style={cardStyle}
+      >
+        {tier === "wonder" && (
+          <div
+            aria-hidden
+            className="absolute left-0 top-0 bottom-0 w-2"
+            style={{ backgroundColor: meta.hex }}
+          />
+        )}
+        <CardContent
+          className={cn(
+            "py-4",
+            tier === "wonder" && "pl-5"
+          )}
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="mb-1 flex items-center gap-2">
-                <Badge className={style.badge} variant="outline">
+              <div className="mb-1 flex items-center gap-2 flex-wrap">
+                <Badge
+                  className={cn(
+                    meta.badgeClass,
+                    tier === "wonder" && "gap-1 text-sm"
+                  )}
+                  variant="outline"
+                >
+                  {(tier === "wonder" || tier === "cosmic") && (
+                    <TypeIcon className="h-3.5 w-3.5" />
+                  )}
                   {t(`types.${task.type}`)}
                 </Badge>
                 <AdaptiveSubjectBadge subject={task.knowledgePoint.subject}>
@@ -112,7 +168,12 @@ export function TaskCard({
                   </Badge>
                 )}
               </div>
-              <p className="font-medium">
+              <p
+                className={cn(
+                  "font-medium",
+                  tier === "wonder" && "text-lg"
+                )}
+              >
                 {task.knowledgePoint.name}
               </p>
               {task.type === "REVIEW" && task.question?.content && (
@@ -133,9 +194,13 @@ export function TaskCard({
             {!readOnly && !isCompleted && (
               <AdaptiveButton
                 size="sm"
-                variant="outline"
+                variant={tier === "wonder" ? "default" : "outline"}
                 onClick={handleAction}
                 disabled={completing}
+                className={cn(
+                  tier === "wonder" &&
+                    "shadow-md font-bold bg-gradient-to-r from-fuchsia-500 to-violet-500 text-white border-0 hover:from-fuchsia-600 hover:to-violet-600"
+                )}
               >
                 {actionLabel()}
               </AdaptiveButton>

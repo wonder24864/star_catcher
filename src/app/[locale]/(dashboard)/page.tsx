@@ -16,6 +16,6 @@ export default async function HomePage() {
     redirect(`/${locale}/parent/overview`);
   }
 
-  // STUDENT — show student home
-  return <StudentHome userName={session?.user?.name ?? undefined} />;
+  // STUDENT — StudentHome reads session (nickname/grade/family) via hooks.
+  return <StudentHome />;
 }
