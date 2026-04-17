@@ -12,7 +12,14 @@ import Redis from "ioredis";
 // ---------------------------------------------------------------------------
 
 export type JobResultEvent = {
-  type: "ocr-recognize" | "correction-photos" | "help-generate" | "kg-import" | "question-understanding" | "diagnosis";
+  type:
+    | "ocr-recognize"
+    | "correction-photos"
+    | "help-generate"
+    | "kg-import"
+    | "question-understanding"
+    | "diagnosis"
+    | "learning-suggestion";
   status: "completed" | "failed";
   data?: unknown;
   error?: string;
@@ -32,6 +39,10 @@ export function helpChannel(sessionId: string, questionId: string): string {
 
 export function masteryChannel(studentId: string): string {
   return `mastery:student:${studentId}`;
+}
+
+export function learningSuggestionChannel(studentId: string): string {
+  return `job:result:learning-suggestion:${studentId}`;
 }
 
 /**

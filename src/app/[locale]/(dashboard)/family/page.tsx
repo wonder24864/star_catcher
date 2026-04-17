@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
+import { Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,8 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -24,12 +27,25 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 
+type ConfirmAction =
+  | {
+      type: "remove";
+      familyId: string;
+      userId: string;
+      memberName: string;
+    }
+  | {
+      type: "leave";
+      familyId: string;
+      familyName: string;
+    };
+
 export default function FamilyPage() {
   const t = useTranslations();
   const { data: session } = useSession();
   const isParent = session?.user?.role === "PARENT";
 
-  const { data: families, refetch } = trpc.family.list.useQuery();
+  const { data: families } = trpc.family.list.useQuery();
   const utils = trpc.useUtils();
 
   // Create family
@@ -42,6 +58,7 @@ export default function FamilyPage() {
       setCreateOpen(false);
       utils.family.list.invalidate();
     },
+    onError: (err) => toast.error(err.message),
   });
 
   // Join family
@@ -70,15 +87,37 @@ export default function FamilyPage() {
       toast.success(t("common.success"));
       utils.family.list.invalidate();
     },
+    onError: (err) => toast.error(err.message),
   });
 
-  // Remove member
+  // Remove member (covers both "remove other" and "leave self")
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const removeMember = trpc.family.removeMember.useMutation({
     onSuccess: () => {
       toast.success(t("common.success"));
+      setConfirmAction(null);
       utils.family.list.invalidate();
     },
+    onError: (err) => {
+      toast.error(err.message);
+      setConfirmAction(null);
+    },
   });
+
+  const confirmTitle =
+    confirmAction?.type === "leave"
+      ? t("family.confirmLeaveTitle")
+      : t("family.confirmRemoveTitle");
+
+  const confirmDesc =
+    confirmAction?.type === "leave"
+      ? t("family.confirmLeaveDesc", { family: confirmAction.familyName })
+      : confirmAction?.type === "remove"
+        ? t("family.confirmRemoveDesc", { member: confirmAction.memberName })
+        : "";
+
+  const confirmCta =
+    confirmAction?.type === "leave" ? t("family.leave") : t("family.remove");
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -108,6 +147,9 @@ export default function FamilyPage() {
                     disabled={!createName.trim() || createFamily.isPending}
                     className="w-full"
                   >
+                    {createFamily.isPending && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                     {t("common.confirm")}
                   </Button>
                 </div>
@@ -138,6 +180,9 @@ export default function FamilyPage() {
                   disabled={joinCode.length !== 6 || joinFamily.isPending}
                   className="w-full"
                 >
+                  {joinFamily.isPending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   {t("common.confirm")}
                 </Button>
               </div>
@@ -169,7 +214,11 @@ export default function FamilyPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => refreshCode.mutate({ familyId: family.id })}
+                  disabled={refreshCode.isPending}
                 >
+                  {refreshCode.isPending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   {t("family.invite")}
                 </Button>
               </div>
@@ -180,47 +229,104 @@ export default function FamilyPage() {
             <div>
               <h4 className="mb-2 text-sm font-medium">{t("family.members")}</h4>
               <div className="space-y-2">
-                {family.members.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between rounded-md border p-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{member.user.nickname}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {member.user.role === "STUDENT"
-                          ? t("auth.student")
-                          : t("auth.parent")}
-                      </Badge>
-                      {member.role === "OWNER" && (
-                        <Badge variant="secondary" className="text-xs">
-                          {t("family.owner")}
+                {family.members.map((member) => {
+                  const isSelf = member.userId === session?.user?.id;
+                  const canAct =
+                    (family.myRole === "OWNER" && !isSelf) ||
+                    (family.myRole !== "OWNER" && isSelf);
+
+                  return (
+                    <div key={member.id} className="flex items-center justify-between rounded-md border p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{member.user.nickname}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {member.user.role === "STUDENT"
+                            ? t("auth.student")
+                            : t("auth.parent")}
                         </Badge>
+                        {member.role === "OWNER" && (
+                          <Badge variant="secondary" className="text-xs">
+                            {t("family.owner")}
+                          </Badge>
+                        )}
+                      </div>
+                      {canAct && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() =>
+                            setConfirmAction(
+                              isSelf
+                                ? {
+                                    type: "leave",
+                                    familyId: family.id,
+                                    familyName: family.name,
+                                  }
+                                : {
+                                    type: "remove",
+                                    familyId: family.id,
+                                    userId: member.userId,
+                                    memberName: member.user.nickname,
+                                  },
+                            )
+                          }
+                        >
+                          {isSelf ? t("family.leave") : t("family.remove")}
+                        </Button>
                       )}
                     </div>
-                    {/* Owner can remove others; members can leave themselves */}
-                    {((family.myRole === "OWNER" && member.userId !== session?.user?.id) ||
-                      (family.myRole !== "OWNER" && member.userId === session?.user?.id)) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive"
-                        onClick={() =>
-                          removeMember.mutate({
-                            familyId: family.id,
-                            userId: member.userId,
-                          })
-                        }
-                      >
-                        {member.userId === session?.user?.id
-                          ? t("family.leave")
-                          : t("family.remove")}
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </CardContent>
         </Card>
       ))}
+
+      <Dialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open && !removeMember.isPending) setConfirmAction(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmTitle}</DialogTitle>
+            <DialogDescription>{confirmDesc}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmAction(null)}
+              disabled={removeMember.isPending}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!confirmAction) return;
+                const userId =
+                  confirmAction.type === "leave"
+                    ? session?.user?.id
+                    : confirmAction.userId;
+                if (!userId) return;
+                removeMember.mutate({
+                  familyId: confirmAction.familyId,
+                  userId,
+                });
+              }}
+              disabled={removeMember.isPending}
+            >
+              {removeMember.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {confirmCta}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

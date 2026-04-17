@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -52,12 +52,16 @@ export default function ParentOverviewPage() {
     return todayStr();
   });
 
+  const [isDatePending, startDateTransition] = useTransition();
+
   const updateDate = useCallback(
     (next: string) => {
-      setDate(next);
-      const params = new URLSearchParams(searchParams?.toString() ?? "");
-      params.set("date", next);
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      startDateTransition(() => {
+        setDate(next);
+        const params = new URLSearchParams(searchParams?.toString() ?? "");
+        params.set("date", next);
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      });
     },
     [searchParams, router, pathname],
   );
@@ -166,8 +170,9 @@ export default function ParentOverviewPage() {
                   </span>
                   <button
                     onClick={() => updateDate(day.date)}
+                    disabled={isDatePending && day.date !== date}
                     className={cn(
-                      "h-8 w-8 rounded-full text-xs font-medium transition-colors",
+                      "h-8 w-8 rounded-full text-xs font-medium transition-colors active:scale-95 disabled:opacity-60",
                       day.date === date
                         ? "bg-primary text-primary-foreground"
                         : day.hasSession

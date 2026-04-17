@@ -1,17 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { GlassCard } from "@/components/pro/glass-card";
+import { GradientMesh } from "@/components/pro/gradient-mesh";
+
+const GENERATION_TIMEOUT_MS = 90_000;
 
 export default function ParentSuggestionsPage() {
   const t = useTranslations();
   const { selectedStudentId, setSelectedStudentId } = useStudentStore();
   const [period, setPeriod] = useState<"7d" | "30d">("7d");
+  const [isPeriodPending, startPeriodTransition] = useTransition();
+
+  const [isGenerating, setIsGenerating] = useState(false);
+  const toastIdRef = useRef<string | number | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: students } = trpc.family.students.useQuery();
   const effectiveStudentId = selectedStudentId || students?.[0]?.id || null;
@@ -21,6 +32,8 @@ export default function ParentSuggestionsPage() {
       setSelectedStudentId(students[0].id);
     }
   }, [selectedStudentId, students, setSelectedStudentId]);
+
+  const utils = trpc.useUtils();
 
   const { data: suggestionsData, isLoading: suggestionsLoading } =
     trpc.parent.getLearningSuggestions.useQuery(
@@ -40,18 +53,86 @@ export default function ParentSuggestionsPage() {
       { enabled: !!effectiveStudentId }
     );
 
-  const utils = trpc.useUtils();
+  const clearGenerationWatchdog = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (toastIdRef.current !== null) {
+      toast.dismiss(toastIdRef.current);
+      toastIdRef.current = null;
+    }
+  };
+
   const requestMutation = trpc.parent.requestLearningSuggestions.useMutation({
     onSuccess: () => {
-      setTimeout(() => {
-        utils.parent.getLearningSuggestions.invalidate();
-      }, 5000);
+      clearGenerationWatchdog();
+      toastIdRef.current = toast.loading(t("parent.suggestions.generating"));
+      setIsGenerating(true);
+      // Fallback: if SSE never fires (worker crashed before publish), tell
+      // the user we'll retry later rather than spinning forever.
+      timeoutRef.current = setTimeout(() => {
+        if (toastIdRef.current !== null) {
+          toast.dismiss(toastIdRef.current);
+          toastIdRef.current = null;
+        }
+        toast.warning(t("parent.suggestions.generateTimeout"));
+        setIsGenerating(false);
+        timeoutRef.current = null;
+      }, GENERATION_TIMEOUT_MS);
+    },
+    onError: (err) => {
+      if (err.message.includes("cooldown")) {
+        toast.error(t("parent.suggestions.cooldownHint", { time: "1h" }));
+      } else {
+        toast.error(err.message);
+      }
     },
   });
 
+  trpc.subscription.onLearningSuggestionGenerated.useSubscription(
+    { studentId: effectiveStudentId ?? "" },
+    {
+      enabled: !!effectiveStudentId && isGenerating,
+      onData: (event) => {
+        if (event.type !== "learning-suggestion") return;
+        clearGenerationWatchdog();
+        setIsGenerating(false);
+        if (event.status === "completed") {
+          toast.success(t("parent.suggestions.generated"));
+          utils.parent.getLearningSuggestions.invalidate();
+        } else {
+          toast.error(event.error ?? t("error.serverError"));
+        }
+      },
+    }
+  );
+
+  // Clean up timers/toasts if the component unmounts mid-generation
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (toastIdRef.current !== null) toast.dismiss(toastIdRef.current);
+    };
+  }, []);
+
+  // Switching students mid-generation: the subscription re-binds to the new
+  // student's channel, so the in-flight job's "completed" event would never
+  // dismiss our loading toast. Cancel the watchdog so the user isn't left
+  // staring at a toast that never ends.
+  useEffect(() => {
+    if (isGenerating) {
+      clearGenerationWatchdog();
+      setIsGenerating(false);
+    }
+    // Only react to student-id changes, not isGenerating flips.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveStudentId]);
+
   if (!effectiveStudentId) {
     return (
-      <div className="max-w-4xl">
+      <div className="relative max-w-4xl p-6">
+        <GradientMesh className="absolute inset-0 -z-10 rounded-xl" />
         <h1 className="text-2xl font-bold">{t("parent.suggestions.title")}</h1>
         <p className="mt-4 text-muted-foreground">
           {t("homework.selectStudent")}
@@ -93,171 +174,193 @@ export default function ParentSuggestionsPage() {
     overload_warning: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   };
 
+  const refreshBusy = requestMutation.isPending || isGenerating;
+
   return (
-    <div className="max-w-5xl space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t("parent.suggestions.title")}</h1>
-        <div className="flex items-center gap-2">
-          {latestSuggestion && (
-            <Badge variant="outline">
-              {latestSuggestion.type === "WEEKLY_AUTO"
-                ? t("parent.suggestions.weeklyAuto")
-                : t("parent.suggestions.onDemand")}
-              {" · "}
-              {new Date(latestSuggestion.createdAt).toLocaleDateString()}
-            </Badge>
-          )}
-          <Button
-            size="sm"
-            onClick={() =>
-              requestMutation.mutate({ studentId: effectiveStudentId })
-            }
-            disabled={requestMutation.isPending}
-          >
-            {requestMutation.isPending
-              ? t("parent.suggestions.refreshing")
-              : t("parent.suggestions.refreshBtn")}
-          </Button>
+    <div className="relative">
+      <GradientMesh className="absolute inset-0 -z-10 rounded-xl" />
+      <div className="relative max-w-5xl space-y-6 p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">{t("parent.suggestions.title")}</h1>
+          <div className="flex items-center gap-2">
+            {latestSuggestion && (
+              <Badge variant="outline">
+                {latestSuggestion.type === "WEEKLY_AUTO"
+                  ? t("parent.suggestions.weeklyAuto")
+                  : t("parent.suggestions.onDemand")}
+                {" · "}
+                {new Date(latestSuggestion.createdAt).toLocaleDateString()}
+              </Badge>
+            )}
+            <Button
+              size="sm"
+              onClick={() =>
+                requestMutation.mutate({ studentId: effectiveStudentId })
+              }
+              disabled={refreshBusy}
+            >
+              {refreshBusy && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {isGenerating
+                ? t("parent.suggestions.generating")
+                : requestMutation.isPending
+                  ? t("parent.suggestions.refreshing")
+                  : t("parent.suggestions.refreshBtn")}
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {requestMutation.error && (
-        <p className="text-sm text-destructive">
-          {requestMutation.error.message.includes("cooldown")
-            ? t("parent.suggestions.cooldownHint", { time: "1h" })
-            : requestMutation.error.message}
-        </p>
-      )}
+        {/* Empty State */}
+        {!suggestionsLoading && !suggestionContent && (
+          <GlassCard intensity="subtle" glow="none" className="p-12">
+            <div className="flex flex-col items-center justify-center text-center">
+              <h3 className="text-lg font-medium">
+                {t("parent.suggestions.emptyTitle")}
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {t("parent.suggestions.emptyDesc")}
+              </p>
+            </div>
+          </GlassCard>
+        )}
 
-      {/* Empty State */}
-      {!suggestionsLoading && !suggestionContent && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <h3 className="text-lg font-medium">
-              {t("parent.suggestions.emptyTitle")}
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {t("parent.suggestions.emptyDesc")}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Suggestions Section */}
-      {suggestionContent?.suggestions && suggestionContent.suggestions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("parent.suggestions.suggestionsSection")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {suggestionContent.suggestions.map((s, i) => (
-              <div key={i} className="rounded-lg border p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge className={priorityColors[s.priority] ?? ""}>
-                        {t(`parent.suggestions.priority.${s.priority}` as any)}
-                      </Badge>
-                      <Badge variant="outline">
-                        {t(`parent.suggestions.category.${s.category}` as any)}
-                      </Badge>
-                    </div>
-                    <h4 className="font-medium">{s.title}</h4>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {s.description}
-                    </p>
-                    {s.relatedKnowledgePoints.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {s.relatedKnowledgePoints.map((kp, j) => (
-                          <Badge key={j} variant="secondary" className="text-xs">
-                            {kp}
-                          </Badge>
-                        ))}
+        {/* Suggestions Section */}
+        {suggestionContent?.suggestions && suggestionContent.suggestions.length > 0 && (
+          <GlassCard intensity="subtle" className="p-6">
+            <h2 className="mb-4 text-lg font-semibold">
+              {t("parent.suggestions.suggestionsSection")}
+            </h2>
+            <div className="space-y-3">
+              {suggestionContent.suggestions.map((s, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.25 }}
+                  className="rounded-lg border p-4"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="mb-1 flex items-center gap-2">
+                        <Badge className={priorityColors[s.priority] ?? ""}>
+                          {t(`parent.suggestions.priority.${s.priority}` as any)}
+                        </Badge>
+                        <Badge variant="outline">
+                          {t(`parent.suggestions.category.${s.category}` as any)}
+                        </Badge>
                       </div>
+                      <h4 className="font-medium">{s.title}</h4>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {s.description}
+                      </p>
+                      {s.relatedKnowledgePoints.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {s.relatedKnowledgePoints.map((kp, j) => (
+                            <Badge key={j} variant="secondary" className="text-xs">
+                              {kp}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </GlassCard>
+        )}
+
+        {/* Attention Items */}
+        {suggestionContent?.attentionItems && suggestionContent.attentionItems.length > 0 && (
+          <GlassCard intensity="subtle" className="p-6">
+            <h2 className="mb-4 text-lg font-semibold">
+              {t("parent.suggestions.attentionSection")}
+            </h2>
+            <div className="space-y-3">
+              {suggestionContent.attentionItems.map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.25 }}
+                  className="rounded-lg border p-4"
+                >
+                  <div className="mb-1 flex items-center gap-2">
+                    <Badge className={attentionColors[item.type] ?? ""}>
+                      {t(`parent.suggestions.attentionType.${item.type}` as any)}
+                    </Badge>
+                    {item.actionRequired && (
+                      <Badge variant="destructive" className="text-xs">
+                        {t("parent.suggestions.actionRequired")}
+                      </Badge>
                     )}
                   </div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+                  <p className="text-sm text-muted-foreground">
+                    {item.description}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </GlassCard>
+        )}
 
-      {/* Attention Items */}
-      {suggestionContent?.attentionItems && suggestionContent.attentionItems.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("parent.suggestions.attentionSection")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {suggestionContent.attentionItems.map((item, i) => (
-              <div key={i} className="rounded-lg border p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge className={attentionColors[item.type] ?? ""}>
-                    {t(`parent.suggestions.attentionType.${item.type}` as any)}
-                  </Badge>
-                  {item.actionRequired && (
-                    <Badge variant="destructive" className="text-xs">
-                      {t("parent.suggestions.actionRequired")}
+        {/* Parent Actions */}
+        {suggestionContent?.parentActions && suggestionContent.parentActions.length > 0 && (
+          <GlassCard intensity="subtle" className="p-6">
+            <h2 className="mb-4 text-lg font-semibold">
+              {t("parent.suggestions.parentActionsSection")}
+            </h2>
+            <div className="space-y-3">
+              {suggestionContent.parentActions.map((action, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.25 }}
+                  className="rounded-lg border p-4"
+                >
+                  <div className="mb-1 flex items-center justify-between">
+                    <h4 className="font-medium">{action.action}</h4>
+                    <Badge variant="outline">
+                      {t(`parent.suggestions.frequency.${action.frequency}` as any)}
                     </Badge>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {item.description}
-                </p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">{action.reason}</p>
+                </motion.div>
+              ))}
+            </div>
+          </GlassCard>
+        )}
 
-      {/* Parent Actions */}
-      {suggestionContent?.parentActions && suggestionContent.parentActions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("parent.suggestions.parentActionsSection")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {suggestionContent.parentActions.map((action, i) => (
-              <div key={i} className="rounded-lg border p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <h4 className="font-medium">{action.action}</h4>
-                  <Badge variant="outline">
-                    {t(`parent.suggestions.frequency.${action.frequency}` as any)}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">{action.reason}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Intervention Effect */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>{t("parent.intervention.effectTitle")}</CardTitle>
+        {/* Intervention Effect */}
+        <GlassCard intensity="subtle" className="p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">
+              {t("parent.intervention.effectTitle")}
+            </h2>
             <div className="flex gap-1">
               {(["7d", "30d"] as const).map((p) => (
                 <Button
                   key={p}
                   size="sm"
                   variant={period === p ? "default" : "outline"}
-                  onClick={() => setPeriod(p)}
+                  onClick={() => startPeriodTransition(() => setPeriod(p))}
+                  disabled={isPeriodPending && period !== p}
                 >
                   {t(`parent.stats.period.${p}` as any)}
                 </Button>
               ))}
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
           {effectLoading ? (
-            <p className="text-sm text-muted-foreground">...</p>
+            <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t("common.loading")}
+            </div>
           ) : !effectData?.effects?.length ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="py-6 text-sm text-muted-foreground">
               {t("parent.intervention.emptyEffect")}
             </p>
           ) : (
@@ -320,23 +423,24 @@ export default function ParentSuggestionsPage() {
               </table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </GlassCard>
 
-      {/* Intervention Timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("parent.intervention.timelineTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent>
+        {/* Intervention Timeline */}
+        <GlassCard intensity="subtle" className="p-6">
+          <h2 className="mb-4 text-lg font-semibold">
+            {t("parent.intervention.timelineTitle")}
+          </h2>
           {timelineLoading ? (
-            <p className="text-sm text-muted-foreground">...</p>
+            <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t("common.loading")}
+            </div>
           ) : !timelineData?.events?.length ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="py-6 text-sm text-muted-foreground">
               {t("parent.intervention.emptyTimeline")}
             </p>
           ) : (
-            <div className="relative ml-3 border-l pl-6 space-y-4">
+            <div className="relative ml-3 space-y-4 border-l pl-6">
               {timelineData.events.map((event) => (
                 <div key={event.id} className="relative">
                   <div className="absolute -left-[31px] top-1.5 h-3 w-3 rounded-full border-2 border-background bg-primary" />
@@ -371,8 +475,8 @@ export default function ParentSuggestionsPage() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </GlassCard>
+      </div>
     </div>
   );
 }

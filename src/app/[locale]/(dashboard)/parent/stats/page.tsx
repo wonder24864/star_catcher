@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
@@ -17,7 +17,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { AlertCircle, CheckSquare } from "lucide-react";
+import { AlertCircle, CheckSquare, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { useStudentStore } from "@/lib/stores/student-store";
 import { SUBJECT_HEX_COLORS } from "@/lib/constants/subject-colors";
@@ -76,9 +76,14 @@ export default function ParentStatsPage() {
   }
 
   // D59 drill-down: click on errorTrend Bar → navigate to overview for that day
+  const [isDrillPending, startDrillTransition] = useTransition();
+  const [isPeriodPending, startPeriodTransition] = useTransition();
+
   const handleErrorDayClick = (point: ErrorTrendPoint) => {
     if (!point?.date) return;
-    router.push(`/${locale}/parent/overview?date=${point.date}`);
+    startDrillTransition(() => {
+      router.push(`/${locale}/parent/overview?date=${point.date}`);
+    });
   };
 
   return (
@@ -95,7 +100,8 @@ export default function ParentStatsPage() {
                 key={p}
                 size="sm"
                 variant={period === p ? "default" : "outline"}
-                onClick={() => setPeriod(p)}
+                onClick={() => startPeriodTransition(() => setPeriod(p))}
+                disabled={isPeriodPending && period !== p}
               >
                 {t(`parent.stats.period.${p}`)}
               </Button>
@@ -122,6 +128,12 @@ export default function ParentStatsPage() {
         {/* Charts grid */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Error trend by day — drill-down enabled */}
+          <div className="relative">
+            {isDrillPending && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/50 backdrop-blur-sm">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
           <InteractiveChart
             title={t("parent.stats.errorTrend")}
             description={t("parent.stats.clickToView")}
@@ -156,6 +168,7 @@ export default function ParentStatsPage() {
               </BarChart>
             </ResponsiveContainer>
           </InteractiveChart>
+          </div>
 
           {/* Subject distribution pie */}
           <InteractiveChart

@@ -72,7 +72,11 @@
     "member": "成员",
     "remove": "移除",
     "leave": "退出",
-    "switchStudent": "切换学生"
+    "switchStudent": "切换学生",
+    "confirmRemoveTitle": "移除家庭成员",
+    "confirmRemoveDesc": "确定将 {member} 从家庭中移除？移除后 TA 将无法再访问该家庭数据。",
+    "confirmLeaveTitle": "离开家庭",
+    "confirmLeaveDesc": "确定离开「{family}」？离开后需要邀请码才能重新加入。"
   },
   "profile": {
     "title": "个人信息",
@@ -280,6 +284,10 @@
       "title": "答案揭示策略",
       "desc": "为每个孩子单独设置求助上限，限制孩子能获取到的提示级别。",
       "maxLevel": "最高求助级别",
+      "unsavedCount": "有 {count} 处未保存修改",
+      "discard": "放弃修改",
+      "confirmDiscardTitle": "确定放弃修改吗？",
+      "confirmDiscardDesc": "未保存的 {count} 处修改将丢失。",
       "learning": {
         "title": "学习强度控制",
         "subtitle": "为每个子女设置每日任务上限与学习时段，保护专注与作息",
@@ -342,12 +350,17 @@
       "noStudents": "暂无绑定学生",
       "singleStudent": "绑定 2 个及以上学生后可对比",
       "ratesChart": "学习成效对比",
-      "countsChart": "学习量对比"
+      "countsChart": "学习量对比",
+      "problems": "题",
+      "empty": "暂无对比数据"
     },
     "suggestions": {
       "title": "学习建议",
       "refreshBtn": "立即生成",
-      "refreshing": "生成中...",
+      "refreshing": "提交中…",
+      "generating": "正在生成学习建议…",
+      "generated": "学习建议已更新",
+      "generateTimeout": "仍在处理中，请稍后刷新",
       "cooldownHint": "冷却中，{time} 后可再次生成",
       "emptyTitle": "暂无学习建议",
       "emptyDesc": "AI 建议将在每周自动生成，或点击上方按钮立即生成",

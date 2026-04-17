@@ -12,6 +12,7 @@ import {
   subscribeToMastery,
   sessionChannel,
   helpChannel,
+  learningSuggestionChannel,
   type JobResultEvent,
   type MasteryUpdateEvent,
 } from "@/lib/infra/events";
@@ -75,6 +76,28 @@ export const subscriptionRouter = router({
         signal,
       )) {
         yield event satisfies AgentTraceEvent;
+      }
+    }),
+
+  /**
+   * Listen for learning-suggestion generation completion (ON_DEMAND refresh
+   * or WEEKLY_AUTO job). Parent subscribes when clicking "Refresh Suggestions"
+   * and waits for the BullMQ worker to finish generating. Access gated through
+   * resolveStudentId so parent A can never subscribe to parent B's student.
+   */
+  onLearningSuggestionGenerated: protectedProcedure
+    .input(z.object({ studentId: z.string() }))
+    .subscription(async function* (opts) {
+      const studentId = await resolveStudentId(
+        opts.ctx.db,
+        opts.ctx.session.userId,
+        opts.ctx.session.role,
+        opts.input.studentId,
+      );
+      const channel = learningSuggestionChannel(studentId);
+      const signal = opts.signal ?? AbortSignal.timeout(300_000);
+      for await (const event of subscribeToChannel(channel, signal)) {
+        yield event satisfies JobResultEvent;
       }
     }),
 

@@ -23,6 +23,10 @@ import { callAIOperation } from "@/lib/domain/ai/operations/registry";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { createLogger } from "@/lib/infra/logger";
 import { withAgentSpan } from "@/lib/infra/telemetry/capture";
+import {
+  publishJobResult,
+  learningSuggestionChannel,
+} from "@/lib/infra/events";
 import { getActiveStudentIds } from "./shared-active-students";
 
 const log = createLogger("worker:learning-suggestion");
@@ -72,27 +76,38 @@ export async function handleLearningSuggestion(
   const startTime = Date.now();
   const memory = new StudentMemoryImpl(db as unknown as PrismaClient);
   const weekStart = getWeekStart();
+  const channel = learningSuggestionChannel(studentId);
 
-  // Idempotency: for WEEKLY_AUTO, skip if already exists this week.
-  // ON_DEMAND always regenerates (upsert will overwrite).
-  if (resolvedType === "WEEKLY_AUTO") {
-    const existing = await db.learningSuggestion.findUnique({
-      where: {
-        studentId_weekStart_type: { studentId, weekStart, type: resolvedType },
-      },
-    });
-    if (existing) {
-      jobLog.info("Skipping, WEEKLY_AUTO already exists for this week");
+  try {
+    // Idempotency: for WEEKLY_AUTO, skip if already exists this week.
+    // ON_DEMAND always regenerates (upsert will overwrite).
+    if (resolvedType === "WEEKLY_AUTO") {
+      const existing = await db.learningSuggestion.findUnique({
+        where: {
+          studentId_weekStart_type: { studentId, weekStart, type: resolvedType },
+        },
+      });
+      if (existing) {
+        jobLog.info("Skipping, WEEKLY_AUTO already exists for this week");
+        // Still publish so any subscribed client sees "done"
+        await publishJobResult(channel, {
+          type: "learning-suggestion",
+          status: "completed",
+        });
+        return;
+      }
+    }
+
+    // 1. Load weak points
+    const weakPoints = await memory.getWeakPoints(studentId);
+    if (weakPoints.length === 0) {
+      jobLog.info("No weak points, skipping suggestion generation");
+      await publishJobResult(channel, {
+        type: "learning-suggestion",
+        status: "completed",
+      });
       return;
     }
-  }
-
-  // 1. Load weak points
-  const weakPoints = await memory.getWeakPoints(studentId);
-  if (weakPoints.length === 0) {
-    jobLog.info("No weak points, skipping suggestion generation");
-    return;
-  }
 
   // 2. Load KP details (names)
   const kpIds = weakPoints.map((wp) => wp.knowledgePointId);
@@ -225,4 +240,22 @@ export async function handleLearningSuggestion(
       );
     },
   );
+
+    // Notify any subscribed clients that a fresh suggestion is ready
+    await publishJobResult(channel, {
+      type: "learning-suggestion",
+      status: "completed",
+    });
+  } catch (err) {
+    // Publish failure so the front-end can dismiss the loading toast and show
+    // an error instead of waiting for the 90s UI timeout.
+    await publishJobResult(channel, {
+      type: "learning-suggestion",
+      status: "failed",
+      error: err instanceof Error ? err.message : String(err),
+    }).catch((pubErr) =>
+      jobLog.warn({ pubErr }, "Failed to publish learning-suggestion failure event"),
+    );
+    throw err;
+  }
 }

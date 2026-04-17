@@ -6,6 +6,7 @@ import { TRPCProvider } from "@/lib/trpc/provider";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { GradeTierProvider } from "@/components/providers/grade-tier-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { RouteProgressBar } from "@/components/providers/route-progress-bar";
 
 export default async function LocaleLayout({
   children,
@@ -24,6 +25,7 @@ export default async function LocaleLayout({
       <SessionProvider>
         <GradeTierProvider>
           <TRPCProvider>
+            <RouteProgressBar />
             {children}
             <Toaster />
           </TRPCProvider>

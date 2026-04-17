@@ -72,7 +72,11 @@
     "member": "Member",
     "remove": "Remove",
     "leave": "Leave",
-    "switchStudent": "Switch Student"
+    "switchStudent": "Switch Student",
+    "confirmRemoveTitle": "Remove member",
+    "confirmRemoveDesc": "Remove {member} from this family? They will lose access to family data.",
+    "confirmLeaveTitle": "Leave family",
+    "confirmLeaveDesc": "Leave \"{family}\"? You'll need an invite code to rejoin."
   },
   "profile": {
     "title": "Profile",
@@ -280,6 +284,10 @@
       "title": "Answer Reveal Strategy",
       "desc": "Set the maximum help level individually for each child.",
       "maxLevel": "Max help level",
+      "unsavedCount": "{count} unsaved change(s)",
+      "discard": "Discard",
+      "confirmDiscardTitle": "Discard changes?",
+      "confirmDiscardDesc": "{count} unsaved change(s) will be lost.",
       "learning": {
         "title": "Learning Controls",
         "subtitle": "Set per-child daily task cap and quiet hours to protect focus and schedule",
@@ -342,12 +350,17 @@
       "noStudents": "No linked students",
       "singleStudent": "Link 2+ students to compare",
       "ratesChart": "Learning Effectiveness",
-      "countsChart": "Learning Volume"
+      "countsChart": "Learning Volume",
+      "problems": "problems",
+      "empty": "No comparison data yet"
     },
     "suggestions": {
       "title": "Learning Suggestions",
       "refreshBtn": "Generate Now",
-      "refreshing": "Generating...",
+      "refreshing": "Submitting…",
+      "generating": "Generating learning suggestions…",
+      "generated": "Suggestions updated",
+      "generateTimeout": "Still processing, please refresh later",
       "cooldownHint": "Cooling down, available in {time}",
       "emptyTitle": "No suggestions yet",
       "emptyDesc": "AI suggestions are generated weekly, or click above to generate now",

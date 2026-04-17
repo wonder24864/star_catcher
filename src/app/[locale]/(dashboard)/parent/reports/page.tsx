@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import {
   LineChart,
@@ -60,6 +60,7 @@ export default function ParentReportsPage() {
   const t = useTranslations();
   const { selectedStudentId, setSelectedStudentId } = useStudentStore();
   const [period, setPeriod] = useState<"7d" | "30d">("7d");
+  const [isPeriodPending, startPeriodTransition] = useTransition();
   const [selectedKpId, setSelectedKpId] = useState<string | null>(null);
 
   const { data: students } = trpc.family.students.useQuery();
@@ -123,7 +124,8 @@ export default function ParentReportsPage() {
                 key={p}
                 size="sm"
                 variant={period === p ? "default" : "outline"}
-                onClick={() => setPeriod(p)}
+                onClick={() => startPeriodTransition(() => setPeriod(p))}
+                disabled={isPeriodPending && period !== p}
               >
                 {t(`report.period.${p}`)}
               </Button>
