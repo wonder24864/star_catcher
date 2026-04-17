@@ -17,3 +17,5 @@ export { GradientMesh } from "./gradient-mesh";
 export { InteractiveChart } from "./interactive-chart";
 export type { InteractiveChartProps } from "./interactive-chart";
 export { CommandPalette } from "./command-palette";
+export { StatCard } from "./stat-card";
+export type { StatCardProps } from "./stat-card";

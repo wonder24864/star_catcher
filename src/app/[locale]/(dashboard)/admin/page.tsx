@@ -13,44 +13,12 @@ import { Users, UserCheck, AlertCircle, Activity } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import {
   GlassCard,
-  CountUp,
   GaugeChart,
   StatusPulse,
   GradientMesh,
+  StatCard,
 } from "@/components/pro";
 import { Skeleton } from "@/components/ui/skeleton";
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  loading,
-  children,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value?: number;
-  loading?: boolean;
-  children?: React.ReactNode;
-}) {
-  return (
-    <GlassCard intensity="medium" glow="subtle" className="flex flex-col gap-3 p-5">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{label}</span>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </div>
-      {loading ? (
-        <Skeleton className="h-8 w-24" />
-      ) : children ? (
-        children
-      ) : (
-        <span className="text-2xl font-bold">
-          <CountUp end={value ?? 0} />
-        </span>
-      )}
-    </GlassCard>
-  );
-}
 
 function LogItem({
   action,

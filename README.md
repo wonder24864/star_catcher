@@ -190,7 +190,7 @@ star_catcher/
     │   ├── homework/              # 拍照 / 照片网格
     │   ├── dashboard/             # 首页组件（今日复习 Widget）
     │   ├── mastery/               # 掌握地图组件（复习对话框）
-    │   ├── pro/                   # Pro 组件库（GlassCard/CountUp/GaugeChart/StatusPulse/GradientMesh/InteractiveChart/CommandPalette）
+    │   ├── pro/                   # Pro 组件库（GlassCard/CountUp/GaugeChart/StatusPulse/GradientMesh/InteractiveChart/CommandPalette/StatCard — admin+parent 共用）
     │   ├── profile/               # 学生画像组件（HistoricalProgressChart — tier 自适应进度图）
     │   ├── tasks/                 # 今日任务组件（TaskCard + PracticeDialog + ExplanationDialog + ExplanationCard 三格式）
     │   ├── nav/                   # 侧边栏（TierSidebar tier 门控）/ 底部导航（年级自适应）/ 学生切换

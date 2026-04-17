@@ -319,7 +319,11 @@
         "L1": "思路方向 (L1)",
         "L2": "关键步骤 (L2)",
         "L3": "完整解析 (L3)"
-      }
+      },
+      "clickToView": "点击柱状图可查看当日作业"
+    },
+    "reports": {
+      "interventionEffectHint": "每个知识点从干预前到当前的掌握度对比"
     },
     "comparison": {
       "title": "多孩学习对比",

@@ -319,7 +319,11 @@
         "L1": "Hint (L1)",
         "L2": "Key Steps (L2)",
         "L3": "Full Solution (L3)"
-      }
+      },
+      "clickToView": "Click a bar to view that day's sessions"
+    },
+    "reports": {
+      "interventionEffectHint": "Mastery comparison per KP: pre-intervention vs. current"
     },
     "comparison": {
       "title": "Multi-Child Comparison",
