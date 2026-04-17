@@ -16,7 +16,7 @@ import { GlassCard } from "./glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export interface InteractiveChartProps {
-  /** recharts chart as children */
+  /** recharts chart as children. Attach onClick handlers to individual series (Line/Bar/Pie) for drill-down. */
   children: ReactNode;
   /** Card header title */
   title: string;
@@ -30,8 +30,6 @@ export interface InteractiveChartProps {
   emptyText?: string;
   /** Empty state icon (defaults to BarChart3) */
   emptyIcon?: ReactNode;
-  /** Callback when a chart element is clicked */
-  onDrillDown?: (data: unknown) => void;
   className?: string;
 }
 
@@ -49,7 +47,6 @@ export function InteractiveChart({
   empty,
   emptyText = "No data available",
   emptyIcon,
-  onDrillDown,
   className,
 }: InteractiveChartProps) {
   return (
@@ -97,19 +94,6 @@ export function InteractiveChart({
               key="content"
               {...fadeVariants}
               transition={{ duration: 0.15 }}
-              onClick={(e) => {
-                // recharts attaches data on the native event via activePayload
-                const target = e.target as HTMLElement;
-                const payload = target?.dataset?.payload;
-                if (payload && onDrillDown) {
-                  try {
-                    onDrillDown(JSON.parse(payload));
-                  } catch {
-                    // non-parseable payload, ignore
-                  }
-                }
-              }}
-              className={onDrillDown ? "cursor-pointer" : undefined}
             >
               {children}
             </motion.div>

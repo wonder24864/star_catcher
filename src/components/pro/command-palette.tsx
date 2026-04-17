@@ -33,7 +33,6 @@ interface CommandItem {
   label: string;
   icon: React.ReactNode;
   href: string;
-  shortcut?: string;
 }
 
 const ADMIN_ITEMS: CommandItem[] = [
@@ -53,24 +52,33 @@ const PARENT_ITEMS: CommandItem[] = [
   { id: "parent-suggestions", label: "commandPalette.items.suggestions", icon: <Lightbulb className="h-4 w-4" />, href: "/parent/suggestions" },
 ];
 
+function getItemsForRole(role: string | undefined): CommandItem[] | null {
+  if (role === "ADMIN") return ADMIN_ITEMS;
+  if (role === "PARENT") return PARENT_ITEMS;
+  return null; // students: palette disabled
+}
+
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { data: session } = useSession();
   const t = useTranslations();
-  const role = session?.user?.role;
+  const items = getItemsForRole(session?.user?.role);
 
-  // Cmd+K / Ctrl+K toggle
+  // Cmd+K / Ctrl+K toggle + ESC to close
   useEffect(() => {
+    if (!items) return; // no palette for this role
     const handler = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((prev) => !prev);
+      } else if (e.key === "Escape") {
+        setOpen(false);
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, []);
+  }, [items]);
 
   const onSelect = useCallback(
     (href: string) => {
@@ -80,9 +88,7 @@ export function CommandPalette() {
     [router],
   );
 
-  const items = role === "ADMIN" ? ADMIN_ITEMS : PARENT_ITEMS;
-
-  if (!open) return null;
+  if (!items || !open) return null;
 
   return (
     <div className="fixed inset-0 z-50">
@@ -141,11 +147,6 @@ export function CommandPalette() {
                 >
                   <span className="text-muted-foreground">{item.icon}</span>
                   <span>{t(item.label)}</span>
-                  {item.shortcut && (
-                    <kbd className="ml-auto text-xs text-muted-foreground">
-                      {item.shortcut}
-                    </kbd>
-                  )}
                 </Command.Item>
               ))}
             </Command.Group>

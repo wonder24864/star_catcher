@@ -3,7 +3,7 @@
 /**
  * GradientMesh — Animated gradient mesh background for Pro dashboards.
  *
- * Multiple radial-gradient color blobs that slowly drift.
+ * Multiple radial-gradient color blobs that slowly drift via transform.
  * Uses CSS variables for automatic dark mode adaptation.
  * Respects prefers-reduced-motion (static gradient).
  */
@@ -12,6 +12,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
+/** Light mode mesh: 4 layered radial gradients keyed off CSS variables. */
 const MESH_STYLE: React.CSSProperties = {
   background: [
     "radial-gradient(ellipse 80% 60% at 20% 30%, oklch(from var(--primary) l c h / 0.12) 0%, transparent 70%)",
@@ -21,6 +22,7 @@ const MESH_STYLE: React.CSSProperties = {
   ].join(", "),
 };
 
+/** Dark mode mesh: lower opacity for better text contrast over dark bg. */
 const DARK_MESH_STYLE: React.CSSProperties = {
   background: [
     "radial-gradient(ellipse 80% 60% at 20% 30%, oklch(from var(--primary) l c h / 0.06) 0%, transparent 70%)",
@@ -30,83 +32,56 @@ const DARK_MESH_STYLE: React.CSSProperties = {
   ].join(", "),
 };
 
+const DRIFT_ANIMATION = {
+  // Slow translate + rotate to create organic drift. Works reliably with
+  // composited transforms (unlike backgroundPosition on the shorthand).
+  x: ["0%", "2%", "-1%", "0%"],
+  y: ["0%", "-1%", "2%", "0%"],
+  rotate: [0, 0.4, -0.3, 0],
+};
+
+const DRIFT_TRANSITION = {
+  duration: 30,
+  ease: "easeInOut" as const,
+  repeat: Infinity,
+  repeatType: "loop" as const,
+};
+
 export function GradientMesh({ className }: { className?: string }) {
   const reduced = useReducedMotion();
 
+  const baseClasses = cn(
+    "pointer-events-none absolute inset-0 overflow-hidden",
+    className,
+  );
+
   if (reduced) {
+    // Static: single node switches background via Tailwind's dark: — we emit
+    // two nodes keyed off dark: toggle because the style object itself cannot
+    // change per theme without extra runtime plumbing.
     return (
       <>
-        <div
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute inset-0 overflow-hidden",
-            "dark:hidden",
-            className,
-          )}
-          style={MESH_STYLE}
-        />
-        <div
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute inset-0 overflow-hidden",
-            "hidden dark:block",
-            className,
-          )}
-          style={DARK_MESH_STYLE}
-        />
+        <div aria-hidden="true" className={cn(baseClasses, "dark:hidden")} style={MESH_STYLE} />
+        <div aria-hidden="true" className={cn(baseClasses, "hidden dark:block")} style={DARK_MESH_STYLE} />
       </>
     );
   }
 
   return (
     <>
-      {/* Light mode mesh */}
       <motion.div
         aria-hidden="true"
-        className={cn(
-          "pointer-events-none absolute inset-0 overflow-hidden",
-          "dark:hidden",
-          className,
-        )}
+        className={cn(baseClasses, "dark:hidden")}
         style={MESH_STYLE}
-        animate={{
-          backgroundPosition: [
-            "20% 30%, 75% 20%, 50% 80%, 85% 70%",
-            "30% 40%, 65% 30%, 40% 70%, 75% 60%",
-            "25% 25%, 70% 25%, 55% 85%, 80% 75%",
-            "20% 30%, 75% 20%, 50% 80%, 85% 70%",
-          ],
-        }}
-        transition={{
-          duration: 30,
-          ease: "easeInOut",
-          repeat: Infinity,
-          repeatType: "loop",
-        }}
+        animate={DRIFT_ANIMATION}
+        transition={DRIFT_TRANSITION}
       />
-      {/* Dark mode mesh (dimmer) */}
       <motion.div
         aria-hidden="true"
-        className={cn(
-          "pointer-events-none absolute inset-0 overflow-hidden",
-          "hidden dark:block",
-          className,
-        )}
+        className={cn(baseClasses, "hidden dark:block")}
         style={DARK_MESH_STYLE}
-        animate={{
-          backgroundPosition: [
-            "20% 30%, 75% 20%, 50% 80%, 85% 70%",
-            "30% 40%, 65% 30%, 40% 70%, 75% 60%",
-            "25% 25%, 70% 25%, 55% 85%, 80% 75%",
-            "20% 30%, 75% 20%, 50% 80%, 85% 70%",
-          ],
-        }}
-        transition={{
-          duration: 30,
-          ease: "easeInOut",
-          repeat: Infinity,
-          repeatType: "loop",
-        }}
+        animate={DRIFT_ANIMATION}
+        transition={DRIFT_TRANSITION}
       />
     </>
   );

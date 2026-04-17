@@ -188,6 +188,27 @@ describe("CommandPalette", () => {
     expect(source).toContain("metaKey");
     expect(source).toContain("ctrlKey");
   });
+
+  test("supports Cmd+K + Escape key handling", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve("src/components/pro/command-palette.tsx"),
+      "utf-8",
+    );
+    expect(source).toContain('e.key === "Escape"');
+  });
+
+  test("gates palette by role — students see no palette", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve("src/components/pro/command-palette.tsx"),
+      "utf-8",
+    );
+    expect(source).toContain("getItemsForRole");
+    expect(source).toContain("return null"); // no palette for students
+  });
 });
 
 describe("Skeleton", () => {

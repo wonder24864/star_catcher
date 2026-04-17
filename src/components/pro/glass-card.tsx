@@ -30,11 +30,8 @@ const glassCardVariants = cva(
         none: "",
         subtle:
           "border border-white/20 dark:border-white/10 shadow-[0_0_15px_-3px] shadow-primary/10",
-        shimmer: [
-          "border border-transparent",
-          "bg-clip-padding",
-          "shadow-[0_0_20px_-5px] shadow-primary/20",
-        ].join(" "),
+        strong:
+          "border border-primary/20 dark:border-primary/15 shadow-[0_0_25px_-5px] shadow-primary/25",
       },
     },
     defaultVariants: {

@@ -424,7 +424,9 @@
       "totalErrors": "错题总数",
       "avgMastery": "平均掌握率",
       "recentActivity": "最近活动",
-      "systemStatus": "系统状态"
+      "noActivity": "暂无活动记录",
+      "systemStatus": "系统状态",
+      "online": "在线"
     },
     "users": {
       "title": "用户管理",

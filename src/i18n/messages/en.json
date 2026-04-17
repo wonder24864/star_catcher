@@ -424,7 +424,9 @@
       "totalErrors": "Total Errors",
       "avgMastery": "Avg Mastery",
       "recentActivity": "Recent Activity",
-      "systemStatus": "System Status"
+      "noActivity": "No recent activity",
+      "systemStatus": "System Status",
+      "online": "Online"
     },
     "users": {
       "title": "User Management",

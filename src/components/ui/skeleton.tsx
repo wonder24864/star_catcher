@@ -9,10 +9,10 @@ function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="skeleton"
       className={cn(
-        "rounded-md bg-muted",
+        "rounded-md",
+        "bg-gradient-to-r from-muted via-muted-foreground/10 to-muted",
         "bg-[length:200%_100%] bg-[position:-200%_0]",
         "animate-[shimmer_1.5s_ease-in-out_infinite]",
-        "bg-gradient-to-r from-muted via-muted-foreground/5 to-muted",
         className,
       )}
       {...props}

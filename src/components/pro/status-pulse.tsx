@@ -8,7 +8,6 @@
  * Respects prefers-reduced-motion.
  */
 
-import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
@@ -26,26 +25,14 @@ const PING_COLORS = {
   error: "bg-destructive/60",
 } as const;
 
-const statusPulseVariants = cva("relative inline-flex items-center gap-2", {
-  variants: {
-    size: {
-      sm: "",
-      md: "",
-    },
-  },
-  defaultVariants: {
-    size: "md",
-  },
-});
-
 const DOT_SIZE = { sm: "h-2 w-2", md: "h-2.5 w-2.5" } as const;
-const PING_SIZE = { sm: "h-2 w-2", md: "h-2.5 w-2.5" } as const;
 
 export type PulseStatus = "online" | "processing" | "idle" | "error";
+export type PulseSize = "sm" | "md";
 
-export interface StatusPulseProps
-  extends VariantProps<typeof statusPulseVariants> {
+export interface StatusPulseProps {
   status: PulseStatus;
+  size?: PulseSize;
   label?: string;
   className?: string;
 }
@@ -57,19 +44,25 @@ export function StatusPulse({
   className,
 }: StatusPulseProps) {
   const reduced = useReducedMotion();
-  const sz = size ?? "md";
 
   return (
-    <span className={cn(statusPulseVariants({ size }), className)}>
+    <span
+      className={cn(
+        "relative inline-flex items-center gap-2",
+        className,
+      )}
+    >
       <span className="relative flex">
         {/* Ping ring (animated) */}
         {!reduced && status !== "idle" && (
           <span
             className={cn(
               "absolute inline-flex rounded-full opacity-75",
-              PING_SIZE[sz],
+              DOT_SIZE[size],
               PING_COLORS[status],
-              status === "processing" ? "animate-spin border-2 border-transparent border-t-primary" : "animate-ping",
+              status === "processing"
+                ? "animate-spin border-2 border-transparent border-t-primary"
+                : "animate-ping",
             )}
           />
         )}
@@ -78,7 +71,7 @@ export function StatusPulse({
         <span
           className={cn(
             "relative inline-flex rounded-full",
-            DOT_SIZE[sz],
+            DOT_SIZE[size],
             STATUS_COLORS[status],
           )}
         />

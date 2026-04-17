@@ -103,7 +103,7 @@ export default function AdminDashboardPage() {
             <h1 className="text-2xl font-bold">{t("title")}</h1>
             <p className="text-sm text-muted-foreground">{t("systemStatus")}</p>
           </div>
-          <StatusPulse status="online" label="Online" />
+          <StatusPulse status="online" label={t("online")} />
         </div>
 
         {/* Stat cards grid */}
@@ -166,7 +166,7 @@ export default function AdminDashboardPage() {
             </div>
           ) : (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              {t("recentActivity")} — empty
+              {t("noActivity")}
             </p>
           )}
         </GlassCard>
