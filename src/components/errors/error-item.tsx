@@ -76,15 +76,22 @@ export function ErrorItem({ eq }: ErrorItemProps) {
         </div>
         <p
           className={cn(
-            "line-clamp-2 text-foreground",
+            // `text-foreground` alone relies on CSS-var contrast which looked
+            // washed out when this card was nested inside the SessionGroup
+            // wrapper + tier translucency. Explicit font-medium + full opacity
+            // foreground fixes readability without overriding tier colors.
+            "line-clamp-2 text-foreground font-medium",
             tier === "wonder" ? "text-base" : "text-sm"
           )}
         >
           <MathText text={eq.content} />
         </p>
         {eq.aiKnowledgePoint && (
-          <p className="text-xs text-muted-foreground mt-1">
-            {t("homework.knowledgePoint")}: {eq.aiKnowledgePoint}
+          <p className="text-xs text-foreground/70 mt-1">
+            <span className="text-muted-foreground">
+              {t("homework.knowledgePoint")}:
+            </span>{" "}
+            {eq.aiKnowledgePoint}
           </p>
         )}
       </div>

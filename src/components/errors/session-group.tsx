@@ -13,9 +13,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ClipboardList } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
-import { CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
 import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
 import { ErrorItem } from "./error-item";
 import { cn } from "@/lib/utils";
@@ -58,8 +56,12 @@ export function SessionGroup({ session, items, defaultOpen = false }: SessionGro
     ? new Date(session.createdAt).toLocaleDateString(dateLocale)
     : null;
 
+  // We use a plain border+bg-card wrapper instead of <AdaptiveCard> to avoid
+  // double-translucency when a tier's card style uses `bg-card/80` (flow) or
+  // `bg-card/90` (cosmic): nesting two translucent cards blended with the
+  // WonderField background made error text wash out (user feedback: "字基本看不清了").
   return (
-    <AdaptiveCard className="overflow-hidden">
+    <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -69,16 +71,16 @@ export function SessionGroup({ session, items, defaultOpen = false }: SessionGro
         )}
         aria-expanded={open}
       >
-        <CardHeader className="py-3">
+        <div className="px-4 py-3 sm:px-5">
           <div className="flex items-center gap-3">
             <div
               className={cn(
                 "flex h-9 w-9 items-center justify-center rounded-lg shrink-0",
                 tier === "wonder"
-                  ? "bg-gradient-to-br from-fuchsia-100 to-violet-100 text-fuchsia-700"
+                  ? "bg-gradient-to-br from-fuchsia-200 to-violet-200 text-fuchsia-800"
                   : tier === "cosmic"
-                    ? "bg-cyan-500/15 border border-cyan-400/40 text-cyan-200"
-                    : "bg-muted text-muted-foreground",
+                    ? "bg-cyan-500/20 border border-cyan-400/50 text-cyan-100"
+                    : "bg-muted text-foreground",
               )}
             >
               <ClipboardList className="h-4 w-4" />
@@ -86,7 +88,9 @@ export function SessionGroup({ session, items, defaultOpen = false }: SessionGro
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold truncate">{title}</span>
+                <span className="font-semibold text-foreground truncate">
+                  {title}
+                </span>
                 {session?.subject && (
                   <AdaptiveSubjectBadge subject={session.subject}>
                     {t(`homework.subjects.${session.subject}`)}
@@ -104,7 +108,10 @@ export function SessionGroup({ session, items, defaultOpen = false }: SessionGro
                   </>
                 )}
                 <span>·</span>
-                <Badge variant="outline" className="text-xs font-normal">
+                <Badge
+                  variant="outline"
+                  className="text-xs font-medium text-foreground border-foreground/20"
+                >
                   {t("errors.group.errorCount", { count: items.length })}
                 </Badge>
               </div>
@@ -118,7 +125,7 @@ export function SessionGroup({ session, items, defaultOpen = false }: SessionGro
               <ChevronDown className="h-4 w-4" />
             </motion.div>
           </div>
-        </CardHeader>
+        </div>
       </button>
 
       <AnimatePresence initial={false}>
@@ -129,21 +136,23 @@ export function SessionGroup({ session, items, defaultOpen = false }: SessionGro
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
           >
-            <CardContent className="pt-0 pb-3 space-y-2">
-              {items.map((eq, index) => (
-                <motion.div
-                  key={eq.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(index, 10) * 0.03, duration: 0.18 }}
-                >
-                  <ErrorItem eq={eq} />
-                </motion.div>
-              ))}
-            </CardContent>
+            <div className="px-3 pb-3 space-y-2 border-t bg-muted/30">
+              <div className="pt-3 space-y-2">
+                {items.map((eq, index) => (
+                  <motion.div
+                    key={eq.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(index, 10) * 0.03, duration: 0.18 }}
+                  >
+                    <ErrorItem eq={eq} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </AdaptiveCard>
+    </div>
   );
 }
