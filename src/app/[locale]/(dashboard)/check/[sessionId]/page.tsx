@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -12,6 +13,7 @@ import {
   Plus,
   Trash2,
   ChevronRight,
+  Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -40,6 +42,11 @@ export default function RecognitionResultsPage() {
   const router = useRouter();
   const params = useParams();
   const sessionId = params.sessionId as string;
+  const { data: authSession } = useSession();
+  // Students should NOT see the AI-extracted correct answer on the review
+  // page — they should fix their own answer and then ask for help on the
+  // /results page. Parents/admins see it so they can verify OCR accuracy.
+  const canSeeCorrectAnswer = authSession?.user?.role !== "STUDENT";
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newQuestion, setNewQuestion] = useState({
@@ -175,6 +182,16 @@ export default function RecognitionResultsPage() {
         </Badge>
       </div>
 
+      {/* Student-facing tip: help is available on the next page after
+          confirming the OCR result. Keeps the review page focused on
+          verifying AI accuracy while signposting where hints live. */}
+      {!canSeeCorrectAnswer && questions.length > 0 && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+          <Lightbulb className="h-4 w-4 mt-0.5 shrink-0" />
+          <p>{t("homework.reviewStudentTip")}</p>
+        </div>
+      )}
+
       {/* Questions list */}
       {questions.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
@@ -219,39 +236,66 @@ export default function RecognitionResultsPage() {
                       <p className="mt-1 text-sm"><MathText text={q.content} /></p>
                     </div>
 
-                    {/* Correct/Incorrect toggle */}
+                    {/* Correct/Incorrect toggle.
+                        When inactive the shadcn `outline` variant defaults to
+                        `bg-background` — that's DARK indigo in cosmic, which
+                        rendered as a black hole inside the white `bg-card`
+                        wrapper and swallowed the icon. Override with
+                        `bg-card text-card-foreground border-card-foreground/30`
+                        so the inactive state matches the card color scope
+                        across every tier (user feedback 2026-04-17). */}
                     <div className="flex items-center gap-1 ml-3">
                       <Button
                         variant={q.isCorrect === false ? "destructive" : "outline"}
                         size="icon"
-                        className="h-9 w-9"
+                        className={cn(
+                          "h-9 w-9",
+                          q.isCorrect !== false &&
+                            "bg-card text-card-foreground border-card-foreground/30 hover:bg-muted dark:bg-card dark:hover:bg-muted",
+                        )}
                         onClick={() => handleToggleCorrect(q.id, q.isCorrect)}
+                        aria-label={t("homework.markIncorrect")}
                       >
                         <X className="h-4 w-4" />
                       </Button>
                       <Button
                         variant={q.isCorrect === true ? "default" : "outline"}
                         size="icon"
-                        className={cn("h-9 w-9", q.isCorrect === true && "bg-green-600 hover:bg-green-700")}
+                        className={cn(
+                          "h-9 w-9",
+                          q.isCorrect === true && "bg-green-600 text-white hover:bg-green-700",
+                          q.isCorrect !== true &&
+                            "bg-card text-card-foreground border-card-foreground/30 hover:bg-muted dark:bg-card dark:hover:bg-muted",
+                        )}
                         onClick={() => handleToggleCorrect(q.id, q.isCorrect)}
+                        aria-label={t("homework.markCorrect")}
                       >
                         <Check className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
 
-                  {/* Answer display */}
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                  {/* Answer display. Students only see their own answer —
+                      the AI-extracted "correct answer" is hidden so they can
+                      self-reflect before requesting help on /results. */}
+                  <div
+                    className={cn(
+                      "grid gap-2 text-sm",
+                      canSeeCorrectAnswer ? "grid-cols-2" : "grid-cols-1",
+                    )}
+                  >
                     <div>
                       <span className="text-muted-foreground">{t("homework.studentAnswer")}:</span>{" "}
                       <span className={cn(q.isCorrect === false && "text-red-600 font-medium")}>
                         {q.studentAnswer ? <MathText text={q.studentAnswer} /> : "—"}
                       </span>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">{t("homework.correctAnswer")}:</span>{" "}
-                      <span>{q.correctAnswer ? <MathText text={q.correctAnswer} /> : "—"}</span>
-                    </div>
+                    {canSeeCorrectAnswer && (
+                      <div>
+                        <span className="text-muted-foreground">{t("homework.correctAnswer")}:</span>{" "}
+                        <span>{q.correctAnswer ? <MathText text={q.correctAnswer} /> : "—"}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}
