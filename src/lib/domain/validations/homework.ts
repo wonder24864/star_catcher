@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { gradeEnum } from "./grade";
 
 export const createSessionSchema = z.object({
   studentId: z.string().min(1),
@@ -62,11 +63,7 @@ export const confirmResultsSchema = z.object({
     "MATH", "CHINESE", "ENGLISH", "PHYSICS", "CHEMISTRY",
     "BIOLOGY", "POLITICS", "HISTORY", "GEOGRAPHY", "OTHER",
   ]).optional(),
-  grade: z.enum([
-    "PRIMARY_1", "PRIMARY_2", "PRIMARY_3", "PRIMARY_4", "PRIMARY_5", "PRIMARY_6",
-    "JUNIOR_1", "JUNIOR_2", "JUNIOR_3",
-    "SENIOR_1", "SENIOR_2", "SENIOR_3",
-  ]).optional(),
+  grade: gradeEnum.optional(),
 });
 
 export const getCheckStatusSchema = z.object({

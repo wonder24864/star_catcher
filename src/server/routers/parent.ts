@@ -5,12 +5,7 @@ import { router, protectedProcedure } from "../trpc";
 import type { Context } from "../trpc";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { enqueueLearningSuggestion } from "@/lib/infra/queue";
-
-const gradeEnum = z.enum([
-  "PRIMARY_1", "PRIMARY_2", "PRIMARY_3", "PRIMARY_4", "PRIMARY_5", "PRIMARY_6",
-  "JUNIOR_1", "JUNIOR_2", "JUNIOR_3",
-  "SENIOR_1", "SENIOR_2", "SENIOR_3",
-]);
+import { gradeEnum } from "@/lib/domain/validations/grade";
 
 async function verifyParentStudentAccess(
   db: Context["db"],

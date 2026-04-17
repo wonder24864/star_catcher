@@ -30,17 +30,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
+import { GRADES, type Grade } from "@/lib/domain/validations/grade";
 
-export type Grade =
-  | "PRIMARY_1" | "PRIMARY_2" | "PRIMARY_3" | "PRIMARY_4" | "PRIMARY_5" | "PRIMARY_6"
-  | "JUNIOR_1"  | "JUNIOR_2"  | "JUNIOR_3"
-  | "SENIOR_1"  | "SENIOR_2"  | "SENIOR_3";
-
-const GRADES: Grade[] = [
-  "PRIMARY_1", "PRIMARY_2", "PRIMARY_3", "PRIMARY_4", "PRIMARY_5", "PRIMARY_6",
-  "JUNIOR_1",  "JUNIOR_2",  "JUNIOR_3",
-  "SENIOR_1",  "SENIOR_2",  "SENIOR_3",
-];
+// Re-export so consumers (e.g. UserTopBar) can grab the Grade type from this
+// component without a second import path.
+export type { Grade };
 
 export type GradeTarget =
   | { kind: "self" }
@@ -108,10 +102,13 @@ export function GradeSwitcherDialog({
     }
   }
 
-  const groups: Array<{ label: string; grades: Grade[] }> = [
-    { label: t("user.gradeGroup.primary"), grades: GRADES.slice(0, 6) },
-    { label: t("user.gradeGroup.junior"),  grades: GRADES.slice(6, 9) },
-    { label: t("user.gradeGroup.senior"),  grades: GRADES.slice(9, 12) },
+  // Derived from GRADES by prefix rather than by slice index — if the shared
+  // grade list ever gains e.g. a KINDER_1, the primary section won't silently
+  // absorb it.
+  const groups: Array<{ label: string; grades: readonly Grade[] }> = [
+    { label: t("user.gradeGroup.primary"), grades: GRADES.filter((g) => g.startsWith("PRIMARY_")) },
+    { label: t("user.gradeGroup.junior"),  grades: GRADES.filter((g) => g.startsWith("JUNIOR_"))  },
+    { label: t("user.gradeGroup.senior"),  grades: GRADES.filter((g) => g.startsWith("SENIOR_"))  },
   ];
 
   return (

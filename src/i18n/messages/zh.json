@@ -194,6 +194,8 @@
       "uploadCorrectionPhotos": "请在原题上改正后，拍照上传改正后的作业",
       "correctionPhotosUploaded": "已上传 {count} 张改正照片",
       "uploadingPhoto": "正在上传照片...",
+      "compressingPhoto": "正在压缩照片...",
+      "confirmingPhoto": "正在确认上传...",
       "submittingCorrections": "正在识别改正...",
       "gradingInProgress": "AI 正在批改改正，请稍候…",
       "gradingSubtitle": "识别新答案 → 对比原答案 → 重新评分，通常需要 3-10 秒",

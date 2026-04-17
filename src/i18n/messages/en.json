@@ -194,6 +194,8 @@
       "uploadCorrectionPhotos": "Correct the answers on your homework, then take a photo and upload",
       "correctionPhotosUploaded": "{count} correction photo(s) uploaded",
       "uploadingPhoto": "Uploading photo...",
+      "compressingPhoto": "Compressing photo...",
+      "confirmingPhoto": "Confirming upload...",
       "submittingCorrections": "Recognizing corrections...",
       "gradingInProgress": "AI is grading your corrections, please wait…",
       "gradingSubtitle": "Recognize new answers → compare with originals → regrade. Usually 3-10 seconds.",

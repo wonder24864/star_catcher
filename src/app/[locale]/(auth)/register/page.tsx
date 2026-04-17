@@ -24,12 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
-
-const GRADES = [
-  "PRIMARY_1", "PRIMARY_2", "PRIMARY_3", "PRIMARY_4", "PRIMARY_5", "PRIMARY_6",
-  "JUNIOR_1", "JUNIOR_2", "JUNIOR_3",
-  "SENIOR_1", "SENIOR_2", "SENIOR_3",
-] as const;
+import { GRADES } from "@/lib/domain/validations/grade";
 
 export default function RegisterPage() {
   const t = useTranslations();

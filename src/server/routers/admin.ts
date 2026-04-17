@@ -5,6 +5,7 @@ import type { PrismaClient } from "@prisma/client";
 import { router, adminProcedure } from "../trpc";
 import { enqueueWeaknessProfile } from "@/lib/infra/queue";
 import { ScheduleManager } from "@/lib/infra/schedule/schedule-manager";
+import { gradeEnum, type Grade } from "@/lib/domain/validations/grade";
 
 /** Generate a random temp password: 8 chars, letters + digits */
 function genTempPassword(): string {
@@ -173,14 +174,7 @@ export const adminRouter = router({
     .input(
       z.object({
         userId: z.string(),
-        grade: z
-          .enum([
-            "PRIMARY_1", "PRIMARY_2", "PRIMARY_3", "PRIMARY_4", "PRIMARY_5", "PRIMARY_6",
-            "JUNIOR_1", "JUNIOR_2", "JUNIOR_3",
-            "SENIOR_1", "SENIOR_2", "SENIOR_3",
-          ])
-          .nullable()
-          .optional(),
+        grade: gradeEnum.nullable().optional(),
         nickname: z.string().min(1).max(32).optional(),
       }),
     )
@@ -191,11 +185,7 @@ export const adminRouter = router({
       });
       if (!user) throw new TRPCError({ code: "NOT_FOUND" });
 
-      type GradeEnum =
-        | "PRIMARY_1" | "PRIMARY_2" | "PRIMARY_3" | "PRIMARY_4" | "PRIMARY_5" | "PRIMARY_6"
-        | "JUNIOR_1"  | "JUNIOR_2"  | "JUNIOR_3"
-        | "SENIOR_1"  | "SENIOR_2"  | "SENIOR_3";
-      const patch: { grade?: GradeEnum | null; nickname?: string } = {};
+      const patch: { grade?: Grade | null; nickname?: string } = {};
       if (input.grade !== undefined) {
         // Only STUDENT role should carry a grade. Guard against accidental
         // assignment to PARENT/ADMIN.

@@ -180,7 +180,8 @@ export function UserTopBar() {
               </div>
             </DropdownMenuLabel>
 
-            {/* Student: family + parents + change-own-grade entry */}
+            {/* Student: family block is optional (a student without a family
+                can still change their own grade), so split the two sections. */}
             {role === "STUDENT" && family && (
               <>
                 <DropdownMenuSeparator />
@@ -199,7 +200,12 @@ export function UserTopBar() {
                     </>
                   )}
                 </DropdownMenuLabel>
+              </>
+            )}
 
+            {role === "STUDENT" && (
+              <>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="cursor-pointer"
                   onClick={() => openGradeDialog({ kind: "self" }, nickname, grade)}

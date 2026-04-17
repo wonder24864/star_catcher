@@ -603,11 +603,36 @@ export default function CheckResultsPage() {
               </div>
             )}
 
-            {/* Upload progress */}
+            {/* Upload progress — wires correctionUploadProgress.status/progress
+                from useUpload so users see the real state (compress → upload %
+                → confirm) instead of a generic spinner that hides multi-second
+                waits on large images. */}
             {isUploadingCorrection && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t("homework.check.uploadingPhoto")}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {correctionUploadProgress.status === "compressing"
+                      ? t("homework.check.compressingPhoto")
+                      : correctionUploadProgress.status === "confirming"
+                        ? t("homework.check.confirmingPhoto")
+                        : t("homework.check.uploadingPhoto")}
+                  </span>
+                  {correctionUploadProgress.status === "uploading" && (
+                    <span className="tabular-nums text-xs">
+                      {correctionUploadProgress.progress}%
+                    </span>
+                  )}
+                </div>
+                {/* Thin determinate bar while bytes are streaming to MinIO. */}
+                {correctionUploadProgress.status === "uploading" && (
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full bg-primary transition-[width] duration-200"
+                      style={{ width: `${correctionUploadProgress.progress}%` }}
+                    />
+                  </div>
+                )}
               </div>
             )}
 

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { compare, hash } from "bcryptjs";
 import { router, protectedProcedure } from "../trpc";
+import { gradeEnum } from "@/lib/domain/validations/grade";
 
 export const userRouter = router({
   me: protectedProcedure.query(async ({ ctx }) => {
@@ -25,13 +26,7 @@ export const userRouter = router({
     .input(
       z.object({
         nickname: z.string().min(1).max(32).optional(),
-        grade: z
-          .enum([
-            "PRIMARY_1", "PRIMARY_2", "PRIMARY_3", "PRIMARY_4", "PRIMARY_5", "PRIMARY_6",
-            "JUNIOR_1", "JUNIOR_2", "JUNIOR_3",
-            "SENIOR_1", "SENIOR_2", "SENIOR_3",
-          ])
-          .optional(),
+        grade: gradeEnum.optional(),
         locale: z.enum(["zh", "en"]).optional(),
       })
     )

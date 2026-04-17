@@ -19,18 +19,13 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { Prisma } from "@prisma/client";
 import { router, adminProcedure } from "../trpc";
+import { gradeEnum } from "@/lib/domain/validations/grade";
 
 // ─── Shared Zod enums matching Prisma ───
 
 const subjectEnum = z.enum([
   "MATH", "CHINESE", "ENGLISH", "PHYSICS", "CHEMISTRY",
   "BIOLOGY", "POLITICS", "HISTORY", "GEOGRAPHY", "OTHER",
-]);
-
-const gradeEnum = z.enum([
-  "PRIMARY_1", "PRIMARY_2", "PRIMARY_3", "PRIMARY_4", "PRIMARY_5", "PRIMARY_6",
-  "JUNIOR_1", "JUNIOR_2", "JUNIOR_3",
-  "SENIOR_1", "SENIOR_2", "SENIOR_3",
 ]);
 
 const schoolLevelEnum = z.enum(["PRIMARY", "JUNIOR", "SENIOR"]);
