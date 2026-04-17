@@ -14,10 +14,22 @@ interface TodayReviewsProps {
 export function TodayReviews({ studentId }: TodayReviewsProps) {
   const t = useTranslations("dashboard");
   const router = useRouter();
+  const utils = trpc.useUtils();
 
-  const { data, isLoading } = trpc.mastery.todayReviews.useQuery(
+  const { data, isLoading } = trpc.mastery.todayReviews.useQuery({ studentId });
+
+  // Event-driven refresh — replaces the old 60s refetchInterval.
+  // Publishers: mastery.submitReview (self-triggered) and mastery-evaluation
+  // worker (Brain-dispatched). Window-focus refetch (React Query default)
+  // covers the time-flow edge case where a KP's dueDate crosses 'today'
+  // without any DB write.
+  trpc.subscription.onMasteryUpdate.useSubscription(
     { studentId },
-    { refetchInterval: 60_000 },
+    {
+      onData: () => {
+        void utils.mastery.todayReviews.invalidate({ studentId });
+      },
+    },
   );
 
   if (isLoading) return null;

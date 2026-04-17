@@ -57,7 +57,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: ${APP_MEM:-1G}
     logging:
       driver: json-file
       options:
@@ -96,6 +96,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_PRETTY=false
       - WORKER_MODE=true
+      - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-3}
     depends_on:
       star-catcher-db:
         condition: service_healthy
@@ -104,7 +105,9 @@ services:
       star-catcher-minio:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'node worker.js' || exit 1"]
+      # Check that worker is writing /tmp/worker-alive within 60s. Catches
+      # frozen event loops that pgrep would miss. See src/worker/index.ts.
+      test: ["CMD-SHELL", "node -e \"const m=require('fs').statSync('/tmp/worker-alive').mtimeMs;if(Date.now()-m>60000)process.exit(1)\""]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -112,7 +115,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: ${WORKER_MEM:-1G}
     logging:
       driver: json-file
       options:
@@ -128,7 +131,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=star_catcher
     volumes:
-      - /volume1/docker/star-catcher/data/pgdata:/var/lib/postgresql/data
+      - ${DATA_PATH_PREFIX:-/volume1/docker/star-catcher/data}/pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U star_catcher -d star_catcher"]
       interval: 10s
@@ -138,7 +141,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: ${DB_MEM:-1G}
     logging:
       driver: json-file
       options:
@@ -149,9 +152,9 @@ services:
   star-catcher-redis:
     image: redis:7-alpine
     container_name: star-catcher-redis
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory ${REDIS_MAXMEMORY:-256mb} --maxmemory-policy allkeys-lru
     volumes:
-      - /volume1/docker/star-catcher/data/redisdata:/data
+      - ${DATA_PATH_PREFIX:-/volume1/docker/star-catcher/data}/redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -161,7 +164,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: ${REDIS_MEM:-512M}
     logging:
       driver: json-file
       options:
@@ -177,7 +180,7 @@ services:
       - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
       - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
     volumes:
-      - /volume1/docker/star-catcher/data/miniodata:/data
+      - ${DATA_PATH_PREFIX:-/volume1/docker/star-catcher/data}/miniodata:/data
     ports:
       - "9000:9000"
       - "127.0.0.1:9001:9001"
@@ -190,7 +193,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: ${MINIO_MEM:-512M}
     logging:
       driver: json-file
       options:

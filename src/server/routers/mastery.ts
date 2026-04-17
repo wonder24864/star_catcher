@@ -13,6 +13,7 @@ import { router, protectedProcedure, studentProcedure } from "../trpc";
 import type { PrismaClient } from "@prisma/client";
 import { StudentMemoryImpl } from "@/lib/domain/memory";
 import { mapQuality } from "@/lib/domain/spaced-repetition";
+import { publishMasteryUpdate } from "@/lib/infra/events";
 import { resolveStudentId } from "./shared/resolve-student-id";
 
 // ─── Router ─────────────────────────────────────
@@ -391,6 +392,15 @@ export const masteryRouter = router({
         input.knowledgePointId,
         quality,
       );
+
+      try {
+        await publishMasteryUpdate(studentId, {
+          kind: "review-submitted",
+          knowledgePointId: input.knowledgePointId,
+        });
+      } catch (err) {
+        ctx.log.warn({ err, studentId }, "Failed to publish mastery update");
+      }
 
       return {
         mastery: {

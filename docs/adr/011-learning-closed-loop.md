@@ -84,7 +84,8 @@ Phase 2 实现闭环的前半段 + 状态追踪：
 Phase 3 启动计划已确认，关键设计决策：
 
 - **D11**: Learning Brain = BullMQ RepeatableJob + 确定性代码（不调 AI）
-- **D12**: Brain 每日 1 次 cron `0 6 * * *`
+- **D12**: Brain 每日 1 次 cron `0 22 * * *` UTC (= 北京 06:00)。周期**可在 `/admin/settings` 运行时调整**，无需重启 Worker：解析优先级 `SystemConfig(schedule.brain.cron)` → `BRAIN_CRON_PATTERN` env → 代码默认。同样机制覆盖 `weakness-profile-weekly` 与 `learning-suggestion-weekly`。见 `src/lib/infra/schedule/schedule-manager.ts`（运行时门面，调用 BullMQ/Redis，属 infra 层）+ `src/lib/domain/config/schedule-config.ts`（纯常量 + `cron-parser` 校验函数，属 domain 层）。
+  > **路径迁移（2026-04-17）**：早期 `schedule-manager.ts` 放在 `src/lib/domain/config/`，但它依赖 BullMQ Queue / Redis 属基础设施能力，已搬到 `src/lib/infra/schedule/` 以符合分层原则。`schedule-config.ts` 保持在 domain（只导出常量和纯函数）。
 - **D13**: 并发控制 = Redis SETNX per-student, TTL 5min
 - **D17**: Mastery Eval Agent 输出建议，handler 验证后写 Memory（保持 Memory 层唯一写入点）
 - **D18**: SM-2 保留 + AI 调整因子增强

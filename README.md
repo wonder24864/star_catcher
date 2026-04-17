@@ -216,6 +216,7 @@ star_catcher/
     │   │   ├── redis.ts           # Redis 客户端
     │   │   ├── storage/           # MinIO 文件存储
     │   │   ├── queue/             # BullMQ 异步队列（连接/类型/入队）
+    │   │   ├── schedule/          # Schedule 运行时门面（ScheduleManager：list/update/enable/trigger）
     │   │   ├── telemetry/         # OpenTelemetry 观测（initTelemetry + withSpan + captureOtelTraceId + buildJaegerUrl）
     │   │   └── events.ts          # Redis Pub/Sub 事件桥
     │   │
@@ -266,6 +267,8 @@ star_catcher/
     │   │   ├── spaced-repetition/ # SM-2 + 混合调度（Phase 2 + Sprint 14 hybrid 调整因子）
     │   │   │   ├── sm2.ts             # SM-2 纯函数（calculateSM2 + mapQuality）
     │   │   │   └── index.ts           # 公共导出
+    │   │   ├── config/            # 调度配置（Schedule Registry 业务键）
+    │   │   │   └── schedule-config.ts # SystemConfig key 常量 + cron-parser 校验/nextRunAt 纯函数
     │   │   ├── admin-log.ts        # AdminLog 领域工具函数（审计日志）
     │   │   ├── auth.ts            # NextAuth 认证配置
     │   │   ├── scoring.ts         # 得分计算
@@ -282,14 +285,14 @@ star_catcher/
     ├── server/                # ── tRPC 服务端 ──
     │   ├── trpc.ts                # 初始化 + 角色中间件 + SSE 配置
     │   ├── context.ts             # 上下文工厂
-    │   └── routers/               # 路由器（15 个业务 + 1 个订阅，含 Sprint 23 brain triggerBrain/overrideCooldown）
+    │   └── routers/               # 路由器（18 个业务 + 1 个订阅 + _app 汇总 = 20 个文件；大型 router：homework/knowledge-graph/brain）
     │       └── shared/                # 共享工具（resolveStudentId 权限校验）
     │
     ├── worker/                # ── BullMQ Worker（独立 Docker 服务）──
-    │   ├── index.ts               # 入口（Handler Registry + Schedule Registry）
-    │   ├── handler-registry.ts    # AIJobName → Handler 注册表（Rule 9）
-    │   ├── schedule-registry.ts   # 声明式定时任务注册（Rule 9）
-    │   └── handlers/              # OCR 识别 / 改正照片 / 求助生成 / 题目理解 / 诊断 / Learning Brain / 干预规划 / 掌握评估 / Embedding 生成 / Eval 运行（Sprint 16）
+    │   ├── index.ts               # 入口（Handler Registry + Schedule Registry + 心跳写盘探针）
+    │   ├── handler-registry.ts    # AIJobName → Handler 注册表（Rule 10）
+    │   ├── schedule-registry.ts   # 声明式定时任务注册（Rule 10）
+    │   └── handlers/              # 15 个：OCR 识别 / 改正照片 / 求助生成 / 题目理解 / 诊断 / KG 导入 / Learning Brain / Learning Suggestion / 干预规划 / 掌握评估 / 薄弱画像 / Embedding 生成 / Eval 运行 + 2 个 shared 工具（active-students / query-whitelist）
     │
     ├── cli/                   # ── CLI 工具 ──
     │   ├── skill-scaffold.ts      # Skill 脚手架（交互式 / 参数模式）
@@ -302,7 +305,7 @@ star_catcher/
     │   ├── harness/               # Harness 管道 + SemanticCache 测试
     │   ├── worker/                # Handler Registry + Schedule Registry + eval-run handler
     │   ├── perf/                  # 性能测试（Knowledge Graph CTE 等）
-    │   ├── architecture/          # 架构守护（Harness 完整性 + i18n 覆盖）
+    │   ├── architecture/          # 架构守护（Harness 完整性 + i18n 覆盖 + 前端 refetchInterval 禁用）
     │   ├── fixtures/skills/       # 测试用 Skill 夹具（echo/error/security）
     │   └── helpers/               # 测试辅助（mock-db/storage/auth/ai）
     │

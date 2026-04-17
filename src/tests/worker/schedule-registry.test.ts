@@ -38,9 +38,9 @@ describe("Schedule Registry", () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  test("all entries have valid cron patterns", () => {
+  test("all entries have valid default cron patterns", () => {
     for (const entry of SCHEDULE_REGISTRY) {
-      expect(isValidCron(entry.pattern), `Invalid cron for ${entry.key}: ${entry.pattern}`).toBe(true);
+      expect(isValidCron(entry.defaults.cron), `Invalid cron for ${entry.key}: ${entry.defaults.cron}`).toBe(true);
     }
   });
 
@@ -62,14 +62,14 @@ describe("Schedule Registry", () => {
   test("learning-brain is scheduled daily", () => {
     const brain = SCHEDULE_REGISTRY.find((e) => e.key === "learning-brain-daily");
     expect(brain).toBeDefined();
-    expect(brain!.pattern).toBe("0 22 * * *"); // UTC 22:00 = Beijing 06:00
+    expect(brain!.defaults.cron).toBe("0 22 * * *"); // UTC 22:00 = Beijing 06:00
     expect(brain!.jobName).toBe("learning-brain");
   });
 
   test("weakness-profile is scheduled weekly", () => {
     const wp = SCHEDULE_REGISTRY.find((e) => e.key === "weakness-profile-weekly");
     expect(wp).toBeDefined();
-    expect(wp!.pattern).toBe("0 3 * * 0");
+    expect(wp!.defaults.cron).toBe("0 3 * * 0");
     expect(wp!.jobName).toBe("weakness-profile");
   });
 });

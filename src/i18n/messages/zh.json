@@ -481,7 +481,35 @@
       "maxFileSizeMb": "最大上传文件大小（MB）",
       "defaultMaxHelpLevel": "默认最高求助级别（1-3）",
       "saveConfig": "保存配置",
-      "saved": "配置已保存"
+      "saved": "配置已保存",
+      "schedule": {
+        "title": "定时任务",
+        "subtitle": "以 UTC 时间解析 cron 表达式；修改后立即生效，无需重启 Worker",
+        "timezoneHint": "⚠️ Cron 按 UTC 解析（北京时间 -8h，例如 0 22 * * * = 北京次日 06:00）",
+        "cronLabel": "Cron 表达式（UTC）",
+        "enabled": "启用",
+        "disabled": "已禁用",
+        "nextRun": "下次执行",
+        "nextRunLocal": "本地时间",
+        "nextRunUtc": "UTC 时间",
+        "humanReadable": "可读描述",
+        "default": "默认值",
+        "resetToDefault": "恢复默认",
+        "save": "保存 cron",
+        "saving": "保存中...",
+        "toggleOn": "启用任务",
+        "toggleOff": "禁用任务",
+        "triggerNow": "立即执行一次",
+        "triggerConfirm": "确认立即入队一个 {name} 任务？此操作会绕过 cron 节奏。",
+        "triggerQueued": "任务已入队（jobId: {jobId}）",
+        "triggerCooldown": "冷却中，请稍后再试",
+        "source": {
+          "db": "数据库",
+          "env": "环境变量",
+          "default": "代码默认"
+        },
+        "invalidCron": "非法 cron 表达式"
+      }
     },
     "mappings": {
       "title": "低置信度映射审核",

@@ -78,10 +78,17 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-debug}
       - LOG_PRETTY=${LOG_PRETTY:-true}
       - WORKER_MODE=true
+      - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-3}
     depends_on:
       - star-catcher-db
       - star-catcher-redis
       - star-catcher-minio
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const m=require('fs').statSync('/tmp/worker-alive').mtimeMs;if(Date.now()-m>60000)process.exit(1)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     restart: unless-stopped
 
   star-catcher-db:

@@ -18,7 +18,7 @@ import { TRPCError } from "@trpc/server";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { router, adminProcedure } from "../trpc";
 import { redis } from "@/lib/infra/redis";
-import { SCHEDULE_REGISTRY } from "@/worker/schedule-registry";
+import { SCHEDULE_REGISTRY, resolveEntry } from "@/worker/schedule-registry";
 import { cooldownKey, parseCooldownValue, getCooldownTTL } from "@/lib/domain/brain";
 import { enqueueLearningBrain } from "@/lib/infra/queue";
 import { logAdminAction } from "@/lib/domain/admin-log";
@@ -183,8 +183,9 @@ export const brainRouter = router({
       const cooldownValue = parseCooldownValue(cooldownRaw);
       const cooldownSeconds = cooldownTtl >= 0 ? cooldownTtl : null;
 
-      // 4. Brain 每日 cron 配置（静态读）
-      const brainSchedule = SCHEDULE_REGISTRY.find((s) => s.jobName === "learning-brain");
+      // 4. Brain 每日 cron 配置（动态读 — SystemConfig 优先，env 次之，代码默认兜底）
+      const brainEntry = SCHEDULE_REGISTRY.find((s) => s.jobName === "learning-brain");
+      const brainSchedule = brainEntry ? await resolveEntry(brainEntry, ctx.db) : null;
 
       return {
         student,
@@ -197,7 +198,7 @@ export const brainRouter = router({
         brainSchedule: brainSchedule
           ? {
               pattern: brainSchedule.pattern,
-              description: brainSchedule.description,
+              description: brainSchedule.entry.description,
               timezone: "UTC",
             }
           : null,

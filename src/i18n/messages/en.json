@@ -481,7 +481,35 @@
       "maxFileSizeMb": "Max Upload File Size (MB)",
       "defaultMaxHelpLevel": "Default Max Help Level (1-3)",
       "saveConfig": "Save Config",
-      "saved": "Config saved"
+      "saved": "Config saved",
+      "schedule": {
+        "title": "Scheduled Jobs",
+        "subtitle": "Cron expressions are interpreted in UTC; edits take effect immediately without restarting the worker",
+        "timezoneHint": "⚠️ Cron is parsed in UTC (Beijing -8h; e.g. 0 22 * * * = 06:00 next day Beijing time)",
+        "cronLabel": "Cron expression (UTC)",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "nextRun": "Next run",
+        "nextRunLocal": "Local time",
+        "nextRunUtc": "UTC time",
+        "humanReadable": "Description",
+        "default": "Default",
+        "resetToDefault": "Reset to default",
+        "save": "Save cron",
+        "saving": "Saving...",
+        "toggleOn": "Enable job",
+        "toggleOff": "Disable job",
+        "triggerNow": "Run once now",
+        "triggerConfirm": "Enqueue a one-off {name} run now? This bypasses the cron schedule.",
+        "triggerQueued": "Job enqueued (jobId: {jobId})",
+        "triggerCooldown": "Cooldown active, please retry shortly",
+        "source": {
+          "db": "Database",
+          "env": "Env var",
+          "default": "Code default"
+        },
+        "invalidCron": "Invalid cron expression"
+      }
     },
     "mappings": {
       "title": "Low-Confidence Mapping Review",

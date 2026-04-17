@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import cronstrue from "cronstrue/i18n";
 import { trpc } from "@/lib/trpc/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 const CONFIG_KEYS = [
   "ai.model",
@@ -142,6 +144,267 @@ export default function AdminSettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Scheduled jobs */}
+      <SchedulesPanel />
+    </div>
+  );
+}
+
+function SchedulesPanel() {
+  const t = useTranslations();
+  const utils = trpc.useUtils();
+  const { data: schedules, isLoading } = trpc.admin.listSchedules.useQuery();
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {t("admin.settings.schedule.title")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">{t("common.loading")}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {t("admin.settings.schedule.title")}
+        </CardTitle>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("admin.settings.schedule.subtitle")}
+        </p>
+        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+          {t("admin.settings.schedule.timezoneHint")}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {schedules?.map((s) => (
+          <ScheduleCard
+            key={s.entryKey}
+            status={s}
+            onChanged={() => utils.admin.listSchedules.invalidate()}
+          />
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+interface ScheduleStatus {
+  entryKey: string;
+  jobName: string;
+  description: string;
+  pattern: string;
+  enabled: boolean;
+  source: "db" | "env" | "default";
+  defaultPattern: string;
+  nextRunAt: string | null;
+}
+
+function ScheduleCard({
+  status,
+  onChanged,
+}: {
+  status: ScheduleStatus;
+  onChanged: () => void;
+}) {
+  const t = useTranslations();
+  const [cron, setCron] = useState(status.pattern);
+  const [lastSeenPattern, setLastSeenPattern] = useState(status.pattern);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const updateMutation = trpc.admin.updateScheduleCron.useMutation();
+  const toggleMutation = trpc.admin.toggleSchedule.useMutation();
+  const triggerMutation = trpc.admin.triggerSchedule.useMutation();
+
+  // Derive-during-render pattern: when the server's pattern changes (after a
+  // successful save + invalidate round-trip), resync the local editor without
+  // using useEffect. See: https://react.dev/learn/you-might-not-need-an-effect
+  if (status.pattern !== lastSeenPattern) {
+    setLastSeenPattern(status.pattern);
+    setCron(status.pattern);
+  }
+
+  const humanReadable = useMemo(() => {
+    try {
+      return cronstrue.toString(cron, { locale: "zh_CN" });
+    } catch {
+      return null;
+    }
+  }, [cron]);
+
+  const nextRunLocal = status.nextRunAt
+    ? new Date(status.nextRunAt).toLocaleString()
+    : null;
+  const nextRunUtc = status.nextRunAt
+    ? new Date(status.nextRunAt).toISOString().replace("T", " ").slice(0, 19) + " UTC"
+    : null;
+
+  async function handleSaveCron() {
+    setError(null);
+    setNotice(null);
+    try {
+      await updateMutation.mutateAsync({
+        entryKey: status.entryKey,
+        pattern: cron,
+      });
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "error");
+    }
+  }
+
+  async function handleToggle() {
+    setError(null);
+    setNotice(null);
+    await toggleMutation.mutateAsync({
+      entryKey: status.entryKey,
+      enabled: !status.enabled,
+    });
+    onChanged();
+  }
+
+  async function handleTrigger() {
+    setError(null);
+    setNotice(null);
+    if (!window.confirm(
+      t("admin.settings.schedule.triggerConfirm", { name: status.jobName })
+    )) return;
+    try {
+      const { jobId } = await triggerMutation.mutateAsync({
+        entryKey: status.entryKey,
+      });
+      setNotice(t("admin.settings.schedule.triggerQueued", { jobId }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "error");
+    }
+  }
+
+  function handleReset() {
+    setCron(status.defaultPattern);
+  }
+
+  return (
+    <div className="rounded-md border p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium">{status.jobName}</h3>
+            <Badge variant={status.enabled ? "default" : "secondary"}>
+              {status.enabled
+                ? t("admin.settings.schedule.enabled")
+                : t("admin.settings.schedule.disabled")}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {t(`admin.settings.schedule.source.${status.source}` as never)}
+            </Badge>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {status.description}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={status.enabled ? "outline" : "default"}
+            onClick={handleToggle}
+            disabled={toggleMutation.isPending}
+          >
+            {status.enabled
+              ? t("admin.settings.schedule.toggleOff")
+              : t("admin.settings.schedule.toggleOn")}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleTrigger}
+            disabled={triggerMutation.isPending}
+          >
+            {t("admin.settings.schedule.triggerNow")}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-medium text-muted-foreground">
+          {t("admin.settings.schedule.cronLabel")}
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={cron}
+            onChange={(e) => setCron(e.target.value)}
+            className="flex-1 rounded-md border px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+            spellCheck={false}
+          />
+          <Button
+            size="sm"
+            onClick={handleSaveCron}
+            disabled={
+              updateMutation.isPending || cron.trim() === status.pattern
+            }
+          >
+            {updateMutation.isPending
+              ? t("admin.settings.schedule.saving")
+              : t("admin.settings.schedule.save")}
+          </Button>
+        </div>
+        {humanReadable && (
+          <p className="text-xs text-muted-foreground">
+            {t("admin.settings.schedule.humanReadable")}: {humanReadable}
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          {t("admin.settings.schedule.default")}:{" "}
+          <code className="rounded bg-muted px-1 py-0.5 font-mono">
+            {status.defaultPattern}
+          </code>
+          {cron !== status.defaultPattern && (
+            <>
+              {" · "}
+              <button
+                type="button"
+                onClick={handleReset}
+                className="underline hover:text-foreground"
+              >
+                {t("admin.settings.schedule.resetToDefault")}
+              </button>
+            </>
+          )}
+        </p>
+      </div>
+
+      {status.nextRunAt && (
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <p className="text-muted-foreground">
+              {t("admin.settings.schedule.nextRunLocal")}
+            </p>
+            <p className="font-mono">{nextRunLocal}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">
+              {t("admin.settings.schedule.nextRunUtc")}
+            </p>
+            <p className="font-mono">{nextRunUtc}</p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p className="text-sm text-red-600">{error}</p>
+      )}
+      {notice && (
+        <p className="text-sm text-green-600">{notice}</p>
+      )}
     </div>
   );
 }

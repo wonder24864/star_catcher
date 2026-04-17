@@ -43,6 +43,7 @@ import { createMemoryWriteInterceptor } from "@/lib/domain/agent/memory-write-in
 import { calculateHybridReview, type ErrorType } from "@/lib/domain/spaced-repetition";
 import { QUERY_WHITELIST } from "./shared-query-whitelist";
 import { logAdminAction } from "@/lib/domain/admin-log";
+import { publishMasteryUpdate } from "@/lib/infra/events";
 import { createLogger } from "@/lib/infra/logger";
 import { withAgentSpan } from "@/lib/infra/telemetry/capture";
 import type { SkillIPCHandlers } from "@/lib/domain/skill/types";
@@ -635,6 +636,37 @@ Call evaluate_mastery with the context above, then produce your final JSON.`;
         durationMs: runResult.totalDurationMs,
       },
     ).catch((err) => log.warn({ err }, "Failed to log admin action"));
+
+    // Publish mastery-update event so dashboard cards invalidate without polling.
+    // Non-fatal: log warnings on failure, do not break the agent run.
+    if (scheduleUpdated || transitionApplied) {
+      try {
+        if (transitionApplied) {
+          await publishMasteryUpdate(studentId, {
+            kind: "mastery-transitioned",
+            knowledgePointId,
+            from: transitionApplied.from,
+            to: transitionApplied.to,
+          });
+        } else if (scheduleUpdated) {
+          const nextSchedule = await db.reviewSchedule.findUnique({
+            where: {
+              studentId_knowledgePointId: { studentId, knowledgePointId },
+            },
+            select: { nextReviewAt: true },
+          });
+          if (nextSchedule) {
+            await publishMasteryUpdate(studentId, {
+              kind: "review-scheduled",
+              knowledgePointId,
+              nextReviewAt: nextSchedule.nextReviewAt.toISOString(),
+            });
+          }
+        }
+      } catch (err) {
+        log.warn({ err, studentId }, "Failed to publish mastery update");
+      }
+    }
 
     log.info(
       {

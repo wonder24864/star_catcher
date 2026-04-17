@@ -50,6 +50,11 @@ ssh user@你的NAS地址
 mkdir -p /volume1/docker/star-catcher/{data/{pgdata,redisdata,miniodata},images,backups}
 ```
 
+> **非 Synology NAS**：compose 默认使用 `/volume1/docker/star-catcher/data`。
+> 如果你的 NAS 挂载点不一样（例如 `/srv/` 或 `/mnt/data`），在 `.env` 里设置
+> `DATA_PATH_PREFIX=/你的路径`；目录仍然需要预先创建好 `pgdata/`、`redisdata/`、
+> `miniodata/` 三个子目录。
+
 创建后的结构：
 ```
 /volume1/docker/star-catcher/
@@ -379,16 +384,41 @@ docker exec -it star-catcher-db psql -U star_catcher -d star_catcher -c "SELECT 
 # 查看各容器内存占用
 docker stats --no-stream
 
-# 资源限制（已配置）：
-# - App:    1GB
-# - Worker: 1GB
-# - DB:     1GB
-# - Redis:  512MB
-# - MinIO:  512MB
-# - 合计约 4GB，NAS 需要 8GB 内存
+# 资源限制（默认值，可在 .env 调整）：
+# - App:    $APP_MEM     (默认 1G)
+# - Worker: $WORKER_MEM  (默认 1G)
+# - DB:     $DB_MEM      (默认 1G，pgvector 索引大时放到 2G)
+# - Redis:  $REDIS_MEM   (默认 512M；内部阈值 $REDIS_MAXMEMORY 默认 256mb)
+# - MinIO:  $MINIO_MEM   (默认 512M)
+# - 合计约 4GB，NAS 建议 8GB 以上内存
 ```
 
+> **调优建议**：Brain + embedding 批处理在学生数增长后易 OOM。
+> 如果 Worker 容器频繁 restart，先在 `.env` 里把 `WORKER_MEM` 提到 2G；
+> DB 如果 pgvector 索引命中率低，把 `DB_MEM` 提到 2G 并同步调整
+> `REDIS_MAXMEMORY`（应为 `REDIS_MEM` 的 50-75%）。
+
 ---
+
+## Dev vs Prod compose 差异速查
+
+| 项 | dev (`docker-compose.dev.yml`) | prod (`docker-compose.prod.yml`) |
+|---|---|---|
+| 构建来源 | `build: ..`（每次 up 都会重新 build） | `image: star-catcher:${IMAGE_TAG}` |
+| DB/Redis/MinIO 数据卷 | named volume（容器生命周期绑定） | 宿主机 bind mount（`${DATA_PATH_PREFIX}/...`） |
+| DB 5432 端口 | 暴露到宿主 | 不暴露（仅内部网络） |
+| Redis 6379 端口 | 暴露到宿主 | 不暴露 |
+| MinIO Console 9001 | 暴露到 `0.0.0.0` | 仅 `127.0.0.1`（需 SSH 隧道） |
+| Jaeger | 含 `star-catcher-jaeger`（16686/4318） | 无（如需 OTEL 自行对接外部 Collector） |
+| RUN_MIGRATE | 不自动（手动 `npx prisma migrate`） | `RUN_MIGRATE=1` 默认开启 |
+| Worker healthcheck | 有（Node 心跳自检） | 有（Node 心跳自检） |
+| 资源 memory limit | 无 | 通过 `APP_MEM` / `WORKER_MEM` / `DB_MEM` / `REDIS_MEM` 控制 |
+
+### Worker 心跳探针（K1）
+
+Worker 每 15 秒往 `/tmp/worker-alive` 写时间戳。Docker healthcheck 每 15 秒用
+`node` 读一次 mtime，超过 60 秒未更新即判定 unhealthy 并触发重启。
+这样既避免 `pgrep` 方案无法检测 Node 事件循环冻死的问题，又避免 long-running job 阻塞心跳（心跳在独立 `setInterval` 里跑，不与 job 处理耦合）。
 
 ## 安全注意事项
 

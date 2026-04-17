@@ -30,6 +30,20 @@ export function helpChannel(sessionId: string, questionId: string): string {
   return `job:result:help:${sessionId}:${questionId}`;
 }
 
+export function masteryChannel(studentId: string): string {
+  return `mastery:student:${studentId}`;
+}
+
+/**
+ * MasteryUpdateEvent — broadcast when a student's review schedule / mastery
+ * state changes. Consumed by today-reviews card (and any future dashboard
+ * widgets) to invalidate cached queries without polling.
+ */
+export type MasteryUpdateEvent =
+  | { kind: "review-submitted"; knowledgePointId: string }
+  | { kind: "review-scheduled"; knowledgePointId: string; nextReviewAt: string }
+  | { kind: "mastery-transitioned"; knowledgePointId: string; from: string; to: string };
+
 // ---------------------------------------------------------------------------
 // Publisher (used by Worker)
 // ---------------------------------------------------------------------------
@@ -51,6 +65,13 @@ export async function publishJobResult(
   event: JobResultEvent,
 ): Promise<void> {
   await getPublisher().publish(channel, JSON.stringify(event));
+}
+
+export async function publishMasteryUpdate(
+  studentId: string,
+  event: MasteryUpdateEvent,
+): Promise<void> {
+  await getPublisher().publish(masteryChannel(studentId), JSON.stringify(event));
 }
 
 // ---------------------------------------------------------------------------
@@ -105,6 +126,58 @@ export async function* subscribeToChannel(
       await new Promise<void>((r) => {
         resolve = r;
         // Also resolve on abort so we can exit the loop
+        if (signal.aborted) { r(); return; }
+        signal.addEventListener("abort", () => r(), { once: true });
+      });
+    }
+  } finally {
+    sub.off("message", onMessage);
+    await sub.unsubscribe(channel).catch(() => {});
+    await sub.quit().catch(() => {});
+  }
+}
+
+/**
+ * Typed subscriber for mastery channel. Mirrors subscribeToChannel but yields
+ * MasteryUpdateEvent (parallel to JobResultEvent / BrainRunEvent pattern).
+ */
+export async function* subscribeToMastery(
+  studentId: string,
+  signal: AbortSignal,
+): AsyncGenerator<MasteryUpdateEvent> {
+  const channel = masteryChannel(studentId);
+  const sub = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+  });
+
+  const buffer: MasteryUpdateEvent[] = [];
+  let resolve: (() => void) | null = null;
+
+  const onMessage = (ch: string, message: string) => {
+    if (ch !== channel) return;
+    try {
+      buffer.push(JSON.parse(message) as MasteryUpdateEvent);
+    } catch {
+      return;
+    }
+    if (resolve) {
+      resolve();
+      resolve = null;
+    }
+  };
+
+  sub.on("message", onMessage);
+  await sub.subscribe(channel);
+
+  try {
+    while (!signal.aborted) {
+      while (buffer.length > 0) {
+        yield buffer.shift()!;
+      }
+      if (signal.aborted) break;
+      await new Promise<void>((r) => {
+        resolve = r;
         if (signal.aborted) { r(); return; }
         signal.addEventListener("abort", () => r(), { once: true });
       });

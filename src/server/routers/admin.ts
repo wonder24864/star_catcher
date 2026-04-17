@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { hash } from "bcryptjs";
+import type { PrismaClient } from "@prisma/client";
 import { router, adminProcedure } from "../trpc";
 import { enqueueWeaknessProfile } from "@/lib/infra/queue";
+import { ScheduleManager } from "@/lib/infra/schedule/schedule-manager";
 
 /** Generate a random temp password: 8 chars, letters + digits */
 function genTempPassword(): string {
@@ -313,5 +315,88 @@ export const adminRouter = router({
         tier: input.tier,
       });
       return { jobId };
+    }),
+
+  // ─── Scheduled job management ─────────────────────────
+
+  /** List all scheduled jobs with resolved cron + enabled + next run time. */
+  listSchedules: adminProcedure.query(async ({ ctx }) => {
+    const mgr = new ScheduleManager(ctx.db as unknown as PrismaClient);
+    return mgr.list();
+  }),
+
+  /** Update the cron pattern for a scheduled job. Immediately re-registers. */
+  updateScheduleCron: adminProcedure
+    .input(
+      z.object({
+        entryKey: z.string().min(1),
+        pattern: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const mgr = new ScheduleManager(ctx.db as unknown as PrismaClient);
+      try {
+        const status = await mgr.updateCron(input.entryKey, input.pattern);
+        await ctx.db.adminLog.create({
+          data: {
+            adminId: ctx.session.userId,
+            action: "SET_SCHEDULE_CRON",
+            target: input.entryKey,
+            details: { pattern: input.pattern },
+          },
+        });
+        return status;
+      } catch (err) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: err instanceof Error ? err.message : "updateCron failed",
+        });
+      }
+    }),
+
+  /** Enable or disable a scheduled job without changing its cron pattern. */
+  toggleSchedule: adminProcedure
+    .input(
+      z.object({
+        entryKey: z.string().min(1),
+        enabled: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const mgr = new ScheduleManager(ctx.db as unknown as PrismaClient);
+      const status = await mgr.setEnabled(input.entryKey, input.enabled);
+      await ctx.db.adminLog.create({
+        data: {
+          adminId: ctx.session.userId,
+          action: "TOGGLE_SCHEDULE",
+          target: input.entryKey,
+          details: { enabled: input.enabled },
+        },
+      });
+      return status;
+    }),
+
+  /** Manually trigger a one-off run of a scheduled job (bypasses cron). */
+  triggerSchedule: adminProcedure
+    .input(z.object({ entryKey: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const mgr = new ScheduleManager(ctx.db as unknown as PrismaClient);
+      try {
+        const jobId = await mgr.triggerNow(input.entryKey);
+        await ctx.db.adminLog.create({
+          data: {
+            adminId: ctx.session.userId,
+            action: "TRIGGER_SCHEDULE",
+            target: input.entryKey,
+            details: { jobId },
+          },
+        });
+        return { jobId };
+      } catch (err) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: err instanceof Error ? err.message : "triggerNow failed",
+        });
+      }
     }),
 });

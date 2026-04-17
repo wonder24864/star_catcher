@@ -121,6 +121,11 @@ function buildDb() {
         return users.find((u) => u.id === w.id) ?? null;
       }),
     },
+    // studentStatus now resolves the brain cron dynamically via resolveEntry,
+    // which reads SystemConfig. Empty result = fall back to code default.
+    systemConfig: {
+      findMany: vi.fn(async () => []),
+    },
   };
 }
 

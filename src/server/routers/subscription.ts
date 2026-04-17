@@ -9,14 +9,17 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 import {
   subscribeToChannel,
+  subscribeToMastery,
   sessionChannel,
   helpChannel,
   type JobResultEvent,
+  type MasteryUpdateEvent,
 } from "@/lib/infra/events";
 import {
   subscribeToAgentTrace,
   type AgentTraceEvent,
 } from "@/lib/domain/agent/trace-publisher";
+import { resolveStudentId } from "./shared/resolve-student-id";
 
 const jobResultSchema = z.object({
   type: z.enum(["ocr-recognize", "correction-photos", "help-generate"]),
@@ -72,6 +75,28 @@ export const subscriptionRouter = router({
         signal,
       )) {
         yield event satisfies AgentTraceEvent;
+      }
+    }),
+
+  /**
+   * Listen for per-student mastery/review updates — replaces the old
+   * refetchInterval-based polling in today-reviews. Publishes happen from
+   * (a) mastery.submitReview mutation and (b) mastery-evaluation worker
+   * after ReviewSchedule changes. Access is gated through resolveStudentId
+   * so student A can never subscribe to student B's channel.
+   */
+  onMasteryUpdate: protectedProcedure
+    .input(z.object({ studentId: z.string().optional() }))
+    .subscription(async function* (opts) {
+      const studentId = await resolveStudentId(
+        opts.ctx.db,
+        opts.ctx.session.userId,
+        opts.ctx.session.role,
+        opts.input.studentId,
+      );
+      const signal = opts.signal ?? AbortSignal.timeout(300_000);
+      for await (const event of subscribeToMastery(studentId, signal)) {
+        yield event satisfies MasteryUpdateEvent;
       }
     }),
 });
