@@ -15,7 +15,12 @@ const badgeVariants = cva(
         destructive:
           "bg-destructive text-white focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40 [a&]:hover:bg-destructive/90",
         outline:
-          "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+          // `text-foreground` flipped invisible on white `bg-card` in cosmic
+          // tier (--foreground is LIGHT there to match the dark page bg). Use
+          // `currentColor`-style behavior by picking up whichever foreground
+          // the nearest wrapper sets, but fall back to card-foreground so
+          // badges on cards stay readable.
+          "border-border text-card-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         link: "text-primary underline-offset-4 [a&]:hover:underline",
       },

@@ -13,7 +13,12 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          // Originally `bg-background` → broke in cosmic tier (dark --background
+          // vs light --card) where outline buttons sitting inside a card became
+          // a black hole that swallowed their icon. Use `bg-card text-card-foreground`
+          // so the button always matches the card surface; it also reads fine
+          // standalone on the page bg (card colors are designed to be readable).
+          "border bg-card text-card-foreground shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-card dark:hover:bg-accent/50",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost:

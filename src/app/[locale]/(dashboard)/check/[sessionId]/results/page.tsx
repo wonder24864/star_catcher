@@ -200,7 +200,10 @@ function QuestionHelpPanel({
                   </span>
                 </div>
                 <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                  {help.aiResponse}
+                  {/* AI hints often contain inline LaTeX ($80\%$, $\frac{1}{2}$ 等)
+                      because the prompt asks for math notation. Render via
+                      MathText so students see the formatted math, not raw $...$. */}
+                  <MathText text={help.aiResponse} />
                 </div>
               </div>
             );
