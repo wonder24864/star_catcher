@@ -9,15 +9,19 @@
  * - cosmic: neon glow border, subtle scale-up on hover, mastered items show a
  *   glowing ring.
  * - flow / studio: stock clean card, hover raise.
+ *
+ * We deliberately use an opaque `bg-card` wrapper (not <AdaptiveCard>) because
+ * in flow/cosmic the adaptive card applies `bg-card/80` / `bg-card/90` and
+ * when these items render inside SessionGroup's own muted wrapper the
+ * translucency compounds and the content text becomes unreadable. User report
+ * 2026-04-17 "卡片和字都是浅色看不清".
  */
 
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Star } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
-import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
 import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
 import { MathText } from "@/components/ui/math-text";
 import { SUBJECT_HEX_COLORS } from "@/lib/constants/subject-colors";
@@ -43,10 +47,10 @@ export function ErrorItem({ eq }: ErrorItemProps) {
   const subjectHex = SUBJECT_HEX_COLORS[eq.subject] ?? "#6b7280";
   const dateLocale = locale === "zh" ? "zh-CN" : "en-US";
 
-  // Shared body. For wonder we add extra left padding so text doesn't collide
-  // with the 8px subject-color rail; other tiers use stock horizontal padding.
+  // Shared body content. For wonder we add extra left padding so text doesn't
+  // collide with the 8px subject-color rail; other tiers use stock padding.
   const body = (
-    <CardContent
+    <div
       className={cn(
         "py-3 px-4 flex items-start gap-3",
         tier === "wonder" && "pl-5",
@@ -76,22 +80,22 @@ export function ErrorItem({ eq }: ErrorItemProps) {
         </div>
         <p
           className={cn(
-            // `text-foreground` alone relies on CSS-var contrast which looked
-            // washed out when this card was nested inside the SessionGroup
-            // wrapper + tier translucency. Explicit font-medium + full opacity
-            // foreground fixes readability without overriding tier colors.
-            "line-clamp-2 text-foreground font-medium",
+            // Explicit `text-card-foreground` (not text-foreground) — the card
+            // wrapper sets the color scope via `bg-card text-card-foreground`
+            // and children should inherit it; being explicit protects against
+            // CSS-var inheritance surprises.
+            "line-clamp-2 font-medium text-card-foreground",
             tier === "wonder" ? "text-base" : "text-sm"
           )}
         >
           <MathText text={eq.content} />
         </p>
         {eq.aiKnowledgePoint && (
-          <p className="text-xs text-foreground/70 mt-1">
+          <p className="text-xs mt-1">
             <span className="text-muted-foreground">
               {t("homework.knowledgePoint")}:
             </span>{" "}
-            {eq.aiKnowledgePoint}
+            <span className="text-card-foreground">{eq.aiKnowledgePoint}</span>
           </p>
         )}
       </div>
@@ -101,54 +105,56 @@ export function ErrorItem({ eq }: ErrorItemProps) {
           {t("homework.attemptCount", { count: eq.totalAttempts })}
         </p>
       </div>
-    </CardContent>
+    </div>
   );
 
-  // Wonder: chunky gradient rail + bouncy
+  // Tier-specific outer shell (all fully opaque `bg-card` for readability).
+  const wrapperBase = "block cursor-pointer rounded-xl border bg-card text-card-foreground shadow-sm transition-all overflow-hidden";
+
   if (tier === "wonder") {
     return (
       <motion.div whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
-        <Link href={`/errors/${eq.id}`}>
-          <AdaptiveCard
-            className="cursor-pointer relative overflow-hidden"
-            style={{
-              boxShadow: `0 10px 30px -10px ${subjectHex}66`,
-            }}
-          >
-            <div
-              aria-hidden
-              className="absolute left-0 top-0 bottom-0 w-2"
-              style={{ backgroundColor: subjectHex }}
-            />
-            {body}
-          </AdaptiveCard>
+        <Link
+          href={`/errors/${eq.id}`}
+          className={cn(wrapperBase, "relative")}
+          style={{
+            boxShadow: `0 10px 30px -10px ${subjectHex}66`,
+          }}
+        >
+          <div
+            aria-hidden
+            className="absolute left-0 top-0 bottom-0 w-2"
+            style={{ backgroundColor: subjectHex }}
+          />
+          {body}
         </Link>
       </motion.div>
     );
   }
 
-  // Cosmic: neon border pulse
   if (tier === "cosmic") {
     return (
       <motion.div whileHover={{ scale: 1.01 }}>
-        <Link href={`/errors/${eq.id}`}>
-          <AdaptiveCard
-            className="cursor-pointer relative"
-            style={{
-              boxShadow: `inset 0 0 0 1px ${subjectHex}55, 0 0 16px -4px ${subjectHex}40`,
-            }}
-          >
-            {body}
-          </AdaptiveCard>
+        <Link
+          href={`/errors/${eq.id}`}
+          className={cn(wrapperBase, "relative")}
+          style={{
+            boxShadow: `inset 0 0 0 1px ${subjectHex}55, 0 0 16px -4px ${subjectHex}40`,
+          }}
+        >
+          {body}
         </Link>
       </motion.div>
     );
   }
 
-  // flow / studio: stock
+  // flow / studio: stock opaque card with subtle hover
   return (
-    <Link href={`/errors/${eq.id}`}>
-      <AdaptiveCard className="cursor-pointer">{body}</AdaptiveCard>
+    <Link
+      href={`/errors/${eq.id}`}
+      className={cn(wrapperBase, "hover:-translate-y-0.5 hover:shadow-md")}
+    >
+      {body}
     </Link>
   );
 }

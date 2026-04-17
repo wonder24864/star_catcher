@@ -227,6 +227,26 @@ body {
   font-size: inherit;
 }
 
+/* ==================== Native date picker calendar icon ==================== */
+/* Chromium ships a black calendar glyph for <input type="date">. Against our
+   tinted tier backgrounds (esp. wonder's pastel gradient + WonderField
+   overlay) the icon was effectively invisible — user reported the filter's
+   date inputs looked empty. Force a reliably-contrasting rendering. */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="date"]:focus::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+/* Dark themes: invert the black glyph so it's visible on dark input bg. */
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="cosmic"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
 /* ==================== Bottom nav clearance for no-sidebar tiers ==================== */
 /* wonder/cosmic: no sidebar → bottom nav visible on desktop → need bottom padding */
 @media (min-width: 768px) {
