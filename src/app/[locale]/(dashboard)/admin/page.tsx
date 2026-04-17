@@ -3,9 +3,10 @@
 /**
  * Admin Dashboard — flagship Pro component showcase.
  *
- * Displays system-wide stats using all Pro components:
- * GradientMesh background, GlassCard stat cards, CountUp numbers,
- * GaugeChart mastery ring, StatusPulse system indicator, Skeleton loading.
+ * Displays system-wide stats using Pro components:
+ * GradientMesh background, StatCard summary cards (shared with parent
+ * dashboards), GaugeChart mastery ring, StatusPulse system indicator,
+ * GlassCard activity feed, Skeleton loading.
  */
 
 import { useTranslations } from "next-intl";

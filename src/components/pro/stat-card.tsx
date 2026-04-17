@@ -5,11 +5,9 @@
  *
  * Extracted from admin/page.tsx (Sprint 24) to be reused across admin + parent
  * dashboards (Sprint 25). Displays an icon + label + numeric value (CountUp) or
- * custom children (e.g. embedded GaugeChart), with optional Skeleton loading
- * state and optional `href` for click-through drill-down.
+ * custom children (e.g. embedded GaugeChart), with Skeleton loading state.
  */
 
-import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
 import { GlassCard } from "./glass-card";
 import { CountUp } from "./count-up";
@@ -22,7 +20,6 @@ export interface StatCardProps {
   value?: number;
   loading?: boolean;
   children?: ReactNode;
-  href?: string;
   className?: string;
 }
 
@@ -32,11 +29,14 @@ export function StatCard({
   value,
   loading,
   children,
-  href,
   className,
 }: StatCardProps) {
-  const inner = (
-    <>
+  return (
+    <GlassCard
+      intensity="medium"
+      glow="subtle"
+      className={cn("flex flex-col gap-3 p-5", className)}
+    >
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{label}</span>
         <Icon className="h-4 w-4 text-muted-foreground" />
@@ -50,26 +50,6 @@ export function StatCard({
           <CountUp end={value ?? 0} />
         </span>
       )}
-    </>
-  );
-
-  const card = (
-    <GlassCard
-      intensity="medium"
-      glow="subtle"
-      className={cn("flex flex-col gap-3 p-5", className)}
-    >
-      {inner}
     </GlassCard>
   );
-
-  if (href) {
-    return (
-      <Link href={href} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
-        {card}
-      </Link>
-    );
-  }
-
-  return card;
 }

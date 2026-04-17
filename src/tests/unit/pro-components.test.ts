@@ -64,17 +64,6 @@ describe("StatCard (Sprint 25)", () => {
     expect(typeof mod.StatCard).toBe("function");
   });
 
-  test("source wraps card in Link when href provided", async () => {
-    const fs = await import("fs");
-    const path = await import("path");
-    const source = fs.readFileSync(
-      path.resolve("src/components/pro/stat-card.tsx"),
-      "utf-8",
-    );
-    expect(source).toContain("if (href)");
-    expect(source).toContain("<Link href={href}");
-  });
-
   test("source uses GlassCard + CountUp + Skeleton for unified Pro UX", async () => {
     const fs = await import("fs");
     const path = await import("path");
