@@ -76,7 +76,10 @@
     "confirmRemoveTitle": "移除家庭成员",
     "confirmRemoveDesc": "确定将 {member} 从家庭中移除？移除后 TA 将无法再访问该家庭数据。",
     "confirmLeaveTitle": "离开家庭",
-    "confirmLeaveDesc": "确定离开「{family}」？离开后需要邀请码才能重新加入。"
+    "confirmLeaveDesc": "确定离开「{family}」？离开后需要邀请码才能重新加入。",
+    "renameAction": "修改家庭名",
+    "renameTitle": "修改家庭名",
+    "renameDesc": "仅创建者可改名。成员会看到新名字。"
   },
   "profile": {
     "title": "个人信息",
@@ -974,6 +977,22 @@
       "subtitleCosmic": "AI 探测器正在扫描你的作业...",
       "subtitleFlow": "AI 正在识别作业内容，请稍候",
       "subtitleStudio": "正在处理..."
+    },
+    "joinFamily": {
+      "emptyTitle": "你还没加入家庭",
+      "emptySubtitle": "找家长要一个 6 位邀请码",
+      "action": "输入邀请码",
+      "dialogTitle": "加入家庭",
+      "dialogDesc": "输入家长给你的 6 位邀请码",
+      "success": "已加入「{family}」",
+      "errFormat": "邀请码应为 6 位",
+      "errInvalid": "邀请码不存在，请检查是否输错",
+      "errExpired": "邀请码已过期，请让家长重新生成",
+      "errAlready": "你已经在这个家庭里了"
+    },
+    "familyInfo": {
+      "label": "我的家庭",
+      "parents": "家长：{list}"
     }
   },
   "tasks": {

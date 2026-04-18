@@ -81,6 +81,28 @@ export const familyRouter = router({
       return { inviteCode };
     }),
 
+  rename: protectedProcedure
+    .input(z.object({ familyId: z.string(), name: z.string().min(1).max(32) }))
+    .mutation(async ({ ctx, input }) => {
+      const membership = await ctx.db.familyMember.findUnique({
+        where: {
+          userId_familyId: {
+            userId: ctx.session.userId,
+            familyId: input.familyId,
+          },
+        },
+      });
+      if (!membership || membership.role !== "OWNER") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      await ctx.db.family.update({
+        where: { id: input.familyId },
+        data: { name: input.name.trim() },
+      });
+      return { success: true };
+    }),
+
   join: protectedProcedure
     .input(z.object({ inviteCode: z.string().length(6) }))
     .mutation(async ({ ctx, input }) => {

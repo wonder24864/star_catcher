@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Sparkles, Star, Flag, Trophy } from "lucide-react";
 import { StudentHeader } from "@/components/dashboard/student-header";
 import { TodayReviews } from "@/components/dashboard/today-reviews";
+import { JoinFamilyCard, FamilyInfoCard } from "@/components/dashboard/join-family-card";
 import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
 import { useTier } from "@/components/providers/grade-tier-provider";
@@ -121,6 +122,9 @@ export function StudentHome() {
     { staleTime: 30_000 }
   );
 
+  const { data: families } = trpc.family.list.useQuery();
+  const hasFamily = (families?.length ?? 0) > 0;
+
   const byStatus: Record<string, number> = {};
   for (const s of stats?.byStatus ?? []) byStatus[s.status] = s.count;
   const mastered = byStatus["MASTERED"] ?? 0;
@@ -131,6 +135,12 @@ export function StudentHome() {
   return (
     <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto pt-12 md:pt-0">
       <StudentHeader />
+
+      {families === undefined ? null : hasFamily ? (
+        <FamilyInfoCard family={families[0]} />
+      ) : (
+        <JoinFamilyCard />
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         <StatCard k="mastered" count={mastered} label={t("student.stats.mastered")} />

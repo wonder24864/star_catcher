@@ -34,3 +34,13 @@ declare module "@auth/core/jwt" {
     locale: string;
   }
 }
+
+// NextAuth v5 re-exports JWT from next-auth/jwt; augment that path too
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    role: string;
+    grade: string | null;
+    locale: string;
+  }
+}

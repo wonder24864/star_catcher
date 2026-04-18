@@ -76,7 +76,10 @@
     "confirmRemoveTitle": "Remove member",
     "confirmRemoveDesc": "Remove {member} from this family? They will lose access to family data.",
     "confirmLeaveTitle": "Leave family",
-    "confirmLeaveDesc": "Leave \"{family}\"? You'll need an invite code to rejoin."
+    "confirmLeaveDesc": "Leave \"{family}\"? You'll need an invite code to rejoin.",
+    "renameAction": "Rename family",
+    "renameTitle": "Rename family",
+    "renameDesc": "Only the owner can rename. All members will see the new name."
   },
   "profile": {
     "title": "Profile",
@@ -974,6 +977,22 @@
       "subtitleCosmic": "AI scanner is analyzing your homework...",
       "subtitleFlow": "AI is recognizing your homework, please wait",
       "subtitleStudio": "Processing..."
+    },
+    "joinFamily": {
+      "emptyTitle": "You haven't joined a family yet",
+      "emptySubtitle": "Ask your parent for a 6-character invite code",
+      "action": "Enter invite code",
+      "dialogTitle": "Join a family",
+      "dialogDesc": "Enter the 6-character code from your parent",
+      "success": "Joined {family}",
+      "errFormat": "Code must be 6 characters",
+      "errInvalid": "Invite code not found — please double-check",
+      "errExpired": "Invite code expired — ask your parent to regenerate",
+      "errAlready": "You're already in this family"
+    },
+    "familyInfo": {
+      "label": "My family",
+      "parents": "Parents: {list}"
     }
   },
   "tasks": {

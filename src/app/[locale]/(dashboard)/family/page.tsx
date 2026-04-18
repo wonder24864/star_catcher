@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,8 @@ type ConfirmAction =
       familyId: string;
       familyName: string;
     };
+
+type RenameState = { familyId: string; current: string } | null;
 
 export default function FamilyPage() {
   const t = useTranslations();
@@ -85,6 +87,19 @@ export default function FamilyPage() {
   const refreshCode = trpc.family.refreshInviteCode.useMutation({
     onSuccess: () => {
       toast.success(t("common.success"));
+      utils.family.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Rename family (OWNER only)
+  const [renameState, setRenameState] = useState<RenameState>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const renameFamily = trpc.family.rename.useMutation({
+    onSuccess: () => {
+      toast.success(t("common.success"));
+      setRenameState(null);
+      setRenameDraft("");
       utils.family.list.invalidate();
     },
     onError: (err) => toast.error(err.message),
@@ -198,7 +213,23 @@ export default function FamilyPage() {
       {families?.map((family) => (
         <Card key={family.id}>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">{family.name}</CardTitle>
+            <div className="flex items-center gap-2 min-w-0">
+              <CardTitle className="text-lg truncate">{family.name}</CardTitle>
+              {family.myRole === "OWNER" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground shrink-0"
+                  aria-label={t("family.renameAction")}
+                  onClick={() => {
+                    setRenameState({ familyId: family.id, current: family.name });
+                    setRenameDraft(family.name);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
             <Badge variant={family.myRole === "OWNER" ? "default" : "secondary"}>
               {family.myRole === "OWNER" ? t("family.owner") : t("family.member")}
             </Badge>
@@ -323,6 +354,69 @@ export default function FamilyPage() {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               {confirmCta}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={renameState !== null}
+        onOpenChange={(open) => {
+          if (!open && !renameFamily.isPending) {
+            setRenameState(null);
+            setRenameDraft("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("family.renameTitle")}</DialogTitle>
+            <DialogDescription>{t("family.renameDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>{t("family.groupName")}</Label>
+            <Input
+              value={renameDraft}
+              onChange={(e) => setRenameDraft(e.target.value)}
+              maxLength={32}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRenameState(null);
+                setRenameDraft("");
+              }}
+              disabled={renameFamily.isPending}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={() => {
+                if (!renameState) return;
+                const trimmed = renameDraft.trim();
+                if (!trimmed || trimmed === renameState.current) {
+                  setRenameState(null);
+                  setRenameDraft("");
+                  return;
+                }
+                renameFamily.mutate({
+                  familyId: renameState.familyId,
+                  name: trimmed,
+                });
+              }}
+              disabled={
+                renameFamily.isPending ||
+                !renameDraft.trim() ||
+                renameDraft.trim() === renameState?.current
+              }
+            >
+              {renameFamily.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
