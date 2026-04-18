@@ -20,10 +20,65 @@ const t = initTRPC.context<Context>().create({
 
 export const router = t.router;
 export const createCallerFactory = t.createCallerFactory;
-export const publicProcedure = t.procedure;
+
+/**
+ * Logging middleware — emits one pino line per tRPC call with path / type /
+ * duration / userId. Runs once per HTTP call (queries/mutations) or once
+ * per subscription open (NOT per yielded event). Attached to the base
+ * procedure so every derived procedure inherits it automatically.
+ *
+ * Format example:
+ *   [12:34:56] INFO: tRPC OK
+ *     path: "homework.requestHelp"
+ *     type: "mutation"
+ *     durationMs: 42
+ *     userId: "cmo2..."
+ */
+const loggingMiddleware = t.middleware(async ({ ctx, path, type, next }) => {
+  const start = Date.now();
+  const reqLog = ctx.log.child({ path, type });
+  try {
+    const result = await next({ ctx });
+    reqLog.info(
+      {
+        durationMs: Date.now() - start,
+        userId: ctx.session?.userId,
+      },
+      "tRPC OK",
+    );
+    return result;
+  } catch (err) {
+    // Expected auth / validation errors log at WARN, unexpected ones at ERROR
+    const trpcCode =
+      err instanceof TRPCError ? err.code : "INTERNAL_SERVER_ERROR";
+    const isExpected =
+      err instanceof TRPCError &&
+      (err.code === "UNAUTHORIZED" ||
+        err.code === "FORBIDDEN" ||
+        err.code === "BAD_REQUEST" ||
+        err.code === "NOT_FOUND" ||
+        err.code === "CONFLICT" ||
+        err.code === "TOO_MANY_REQUESTS");
+    const logFn = isExpected ? reqLog.warn.bind(reqLog) : reqLog.error.bind(reqLog);
+    logFn(
+      {
+        durationMs: Date.now() - start,
+        userId: ctx.session?.userId,
+        code: trpcCode,
+        err: err instanceof Error ? err.message : String(err),
+      },
+      "tRPC FAIL",
+    );
+    throw err;
+  }
+});
+
+const baseProcedure = t.procedure.use(loggingMiddleware);
+
+export const publicProcedure = baseProcedure;
 
 // Protected procedure: requires authenticated session
-export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+export const protectedProcedure = baseProcedure.use(async ({ ctx, next }) => {
   if (!ctx.session) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
