@@ -15,7 +15,7 @@ import { TRPCError } from "@trpc/server";
 import { router, adminProcedure } from "../trpc";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { enqueueEvalRun } from "@/lib/infra/queue";
-import { createTaskRun } from "@/lib/task-runner";
+import { createTaskRun, attachBullJobId } from "@/lib/task-runner";
 import {
   DATASET_FILE_MAP,
   loadDataset,
@@ -134,6 +134,7 @@ export const evalRouter = router({
           locale: ctx.session.locale ?? "zh-CN",
           taskId: taskRun.id,
         });
+        await attachBullJobId(ctx.db, taskRun.id, jobId);
       }
 
       await logAdminAction(

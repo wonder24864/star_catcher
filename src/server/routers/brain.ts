@@ -21,7 +21,7 @@ import { redis } from "@/lib/infra/redis";
 import { SCHEDULE_REGISTRY, resolveEntry } from "@/worker/schedule-registry";
 import { cooldownKey, parseCooldownValue, getCooldownTTL } from "@/lib/domain/brain";
 import { enqueueLearningBrain } from "@/lib/infra/queue";
-import { createTaskRun } from "@/lib/task-runner";
+import { createTaskRun, attachBullJobId } from "@/lib/task-runner";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { subscribeToBrainRun, type BrainRunEvent } from "@/lib/infra/events";
 
@@ -294,6 +294,7 @@ export const brainRouter = router({
           locale: ctx.session.locale ?? "zh",
           taskId: taskRun.id,
         });
+        await attachBullJobId(ctx.db, taskRun.id, jobId);
       }
 
       await logAdminAction(

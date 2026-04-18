@@ -13,7 +13,7 @@ import {
   enqueueEmbeddingGenerate,
 } from "@/lib/infra/queue";
 import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
-import { createTaskRun } from "@/lib/task-runner";
+import { createTaskRun, attachBullJobId } from "@/lib/task-runner";
 import { gradeToSchoolLevel } from "@/lib/domain/school-level";
 import type { PrismaClient } from "@prisma/client";
 import {
@@ -254,6 +254,7 @@ export const homeworkRouter = router({
           grade: session.grade ?? undefined,
           taskId: taskRun.id,
         });
+        await attachBullJobId(ctx.db, taskRun.id, jobId);
       }
 
       return {
@@ -846,6 +847,7 @@ export const homeworkRouter = router({
           grade: session.grade ?? undefined,
           taskId: taskRun.id,
         });
+        await attachBullJobId(ctx.db, taskRun.id, jobId);
       }
 
       return { status: "processing" as const, jobId, taskId: taskRun.id, taskKey };
@@ -1102,6 +1104,7 @@ export const homeworkRouter = router({
           subject: session.subject ?? undefined,
           taskId: taskRun.id,
         });
+        await attachBullJobId(ctx.db, taskRun.id, jobId);
       }
 
       return { status: "processing" as const, jobId, taskId: taskRun.id, taskKey };

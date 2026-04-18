@@ -5,7 +5,7 @@ import { router, protectedProcedure } from "../trpc";
 import type { Context } from "../trpc";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { enqueueLearningSuggestion } from "@/lib/infra/queue";
-import { createTaskRun } from "@/lib/task-runner";
+import { createTaskRun, attachBullJobId } from "@/lib/task-runner";
 import { gradeEnum } from "@/lib/domain/validations/grade";
 
 async function verifyParentStudentAccess(
@@ -769,6 +769,7 @@ export const parentRouter = router({
           type: "ON_DEMAND",
           taskId: taskRun.id,
         });
+        await attachBullJobId(ctx.db, taskRun.id, jobId);
       }
 
       return { jobId, taskId: taskRun.id, taskKey };

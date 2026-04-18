@@ -99,6 +99,24 @@ export async function createTaskRun(
 }
 
 /**
+ * Back-fill the BullMQ job id onto an existing TaskRun. Called by the
+ * mutation layer AFTER enqueue, because createTaskRun → enqueue is a
+ * two-step sequence (the jobId isn't known until enqueue returns).
+ * Pure DB update, no event publish — this field is for forensic lookup,
+ * not for the UI stream.
+ */
+export async function attachBullJobId(
+  db: TaskRunDb,
+  taskId: string,
+  bullJobId: string,
+): Promise<void> {
+  await db.taskRun.update({
+    where: { id: taskId },
+    data: { bullJobId },
+  });
+}
+
+/**
  * Advance the task's step/progress. Transitions QUEUED → RUNNING on first call.
  * Safe to call many times per handler (one per logical phase).
  */

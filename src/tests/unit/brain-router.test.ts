@@ -146,6 +146,10 @@ function buildDb() {
         updatedAt: new Date(),
         completedAt: null,
       })),
+      update: vi.fn(async ({ data }: any) => ({
+        id: "noop",
+        ...data,
+      })),
     },
   };
 }
