@@ -8,6 +8,8 @@ export interface OcrRecognizeJobData {
   userId: string;
   locale: string;
   grade?: string;
+  /** TaskRun.id from the unified task system (ADR-012). Optional for legacy paths. */
+  taskId?: string;
 }
 
 export interface CorrectionPhotosJobData {
@@ -16,6 +18,7 @@ export interface CorrectionPhotosJobData {
   userId: string;
   locale: string;
   grade?: string;
+  taskId?: string;
 }
 
 export interface HelpGenerateJobData {
@@ -26,6 +29,7 @@ export interface HelpGenerateJobData {
   grade?: string;
   level: 1 | 2 | 3;
   subject?: string;
+  taskId?: string;
 }
 
 export interface KGImportJobData {
@@ -71,6 +75,7 @@ export interface LearningBrainJobData {
   studentId: string;
   userId: string;
   locale: string;
+  taskId?: string;
 }
 
 export interface WeaknessProfileJobData {
@@ -111,6 +116,7 @@ export interface EvalRunJobData {
   operations: string[]; // AIOperationType[] — strings to avoid circular import
   userId: string;       // triggering admin
   locale: string;
+  taskId?: string;
 }
 
 /**
@@ -122,6 +128,7 @@ export interface LearningSuggestionJobData {
   userId: string;
   locale: string;
   type?: "WEEKLY_AUTO" | "ON_DEMAND";
+  taskId?: string;
 }
 
 export type AIJobData =

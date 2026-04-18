@@ -13,6 +13,7 @@ import {
   enqueueEmbeddingGenerate,
 } from "@/lib/infra/queue";
 import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
+import { createTaskRun } from "@/lib/task-runner";
 import { gradeToSchoolLevel } from "@/lib/domain/school-level";
 import type { PrismaClient } from "@prisma/client";
 import {
@@ -232,17 +233,36 @@ export const homeworkRouter = router({
         data: { status: "RECOGNIZING" },
       });
 
-      // Enqueue async AI recognition job (BullMQ)
-      // Worker will: read images → call AI → create questions → update session status
-      // Frontend receives result via SSE subscription
-      const jobId = await enqueueRecognition({
-        sessionId: input.sessionId,
+      // Create TaskRun FIRST so the button lock is set before the worker
+      // starts, even if publish/enqueue is slow. Idempotent by (userId, key)
+      // so double-clicks collapse to a single row — and on collapse we must
+      // NOT re-enqueue, otherwise the second click pays full AI cost.
+      const taskKey = `ocr:${input.sessionId}`;
+      const { task: taskRun, isNew } = await createTaskRun(ctx.db, {
+        type: "OCR",
+        key: taskKey,
         userId: ctx.session.userId,
-        locale: ctx.session.locale,
-        grade: session.grade ?? undefined,
+        studentId: session.studentId,
       });
 
-      return { status: "processing" as const, sessionId: input.sessionId, jobId };
+      let jobId = taskRun.bullJobId ?? null;
+      if (isNew) {
+        jobId = await enqueueRecognition({
+          sessionId: input.sessionId,
+          userId: ctx.session.userId,
+          locale: ctx.session.locale,
+          grade: session.grade ?? undefined,
+          taskId: taskRun.id,
+        });
+      }
+
+      return {
+        status: "processing" as const,
+        sessionId: input.sessionId,
+        jobId,
+        taskId: taskRun.id,
+        taskKey,
+      };
     }),
 
   /**
@@ -808,18 +828,27 @@ export const homeworkRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "NO_IMAGES" });
       }
 
-      // Enqueue async correction photos job (BullMQ)
-      // Worker will: recognize → match → re-grade → create CheckRound
-      // Frontend receives result via SSE subscription
-      const jobId = await enqueueCorrectionPhotos({
-        sessionId: input.sessionId,
-        imageIds: input.imageIds,
+      const taskKey = `correction:${input.sessionId}`;
+      const { task: taskRun, isNew } = await createTaskRun(ctx.db, {
+        type: "CORRECTION",
+        key: taskKey,
         userId: ctx.session.userId,
-        locale: ctx.session.locale,
-        grade: session.grade ?? undefined,
+        studentId: session.studentId,
       });
 
-      return { status: "processing" as const, jobId };
+      let jobId = taskRun.bullJobId ?? null;
+      if (isNew) {
+        jobId = await enqueueCorrectionPhotos({
+          sessionId: input.sessionId,
+          imageIds: input.imageIds,
+          userId: ctx.session.userId,
+          locale: ctx.session.locale,
+          grade: session.grade ?? undefined,
+          taskId: taskRun.id,
+        });
+      }
+
+      return { status: "processing" as const, jobId, taskId: taskRun.id, taskKey };
     }),
 
   // --- Manual error input (Task 24, US-010) ---
@@ -1053,19 +1082,28 @@ export const homeworkRouter = router({
         }
       }
 
-      // --- Enqueue async help generation job (BullMQ) ---
-      // Worker will: call AI → create HelpRequest
-      // Frontend receives result via SSE subscription
-      const jobId = await enqueueHelpGeneration({
-        sessionId: input.sessionId,
-        questionId: input.questionId,
+      const taskKey = `help:${input.sessionId}:${input.questionId}:${input.level}`;
+      const { task: taskRun, isNew } = await createTaskRun(ctx.db, {
+        type: "HELP",
+        key: taskKey,
         userId: ctx.session.userId,
-        locale: ctx.session.locale,
-        grade: session.grade ?? undefined,
-        level: input.level as 1 | 2 | 3,
-        subject: session.subject ?? undefined,
+        studentId: session.studentId,
       });
 
-      return { status: "processing" as const, jobId };
+      let jobId = taskRun.bullJobId ?? null;
+      if (isNew) {
+        jobId = await enqueueHelpGeneration({
+          sessionId: input.sessionId,
+          questionId: input.questionId,
+          userId: ctx.session.userId,
+          locale: ctx.session.locale,
+          grade: session.grade ?? undefined,
+          level: input.level as 1 | 2 | 3,
+          subject: session.subject ?? undefined,
+          taskId: taskRun.id,
+        });
+      }
+
+      return { status: "processing" as const, jobId, taskId: taskRun.id, taskKey };
     }),
 });

@@ -888,3 +888,53 @@ model LearningSuggestion {
   @@unique([studentId, weekStart, type])
   @@index([studentId, createdAt])
 }
+
+// ==================== Global Task Progress (ADR-012) ====================
+// Unified, user-visible task lifecycle row. Created on enqueue, updated on
+// every worker step, terminal on complete/fail. Drives cross-route button
+// locking + floating progress dock. See: docs/adr/012-global-task-progress.md
+//
+// Not the business truth source — HomeworkSession.status / EvalRun.status
+// stay authoritative. TaskRun is the "presentation + session" layer metadata.
+// No soft delete: completed/failed rows are retained as audit log.
+
+enum TaskType {
+  OCR
+  CORRECTION
+  HELP
+  SUGGESTION
+  EVAL
+  BRAIN
+}
+
+enum TaskStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model TaskRun {
+  id           String     @id @default(cuid())
+  userId       String     // triggering user — powers user-wide SSE + RBAC
+  studentId    String?    // optional (parent tasks attach to a student)
+  type         TaskType
+  key          String     // idempotency key, e.g. "help:{sessionId}:{questionId}"
+  bullJobId    String?    // BullMQ job.id for forensic cross-reference
+  status       TaskStatus @default(QUEUED)
+  step         String?    // current step (i18n key, e.g. "task.step.ocr.uploading")
+  progress     Int?       // 0–100, optional
+  resultRef    Json?      // completion payload: { route: string, payload?: any }
+  errorCode    String?
+  errorMessage String?
+  createdAt    DateTime   @default(now()) @db.Timestamptz
+  updatedAt    DateTime   @updatedAt @db.Timestamptz
+  completedAt  DateTime?  @db.Timestamptz
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([key])
+  // No DB-level unique — QUEUED/RUNNING are distinct status values so a
+  // partial unique would be needed; idempotency is enforced at the mutation
+  // layer by first querying active rows for (userId, key).
+}

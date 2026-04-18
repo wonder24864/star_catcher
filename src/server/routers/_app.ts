@@ -17,6 +17,7 @@ import { dailyTaskRouter } from "./daily-task";
 import { brainRouter } from "./brain";
 import { evalRouter } from "./eval";
 import { profileRouter } from "./profile";
+import { taskRouter } from "./task";
 
 export const appRouter = router({
   auth: authRouter,
@@ -37,6 +38,7 @@ export const appRouter = router({
   brain: brainRouter,
   eval: evalRouter,
   profile: profileRouter,
+  task: taskRouter,
 });
 
 export type AppRouter = typeof appRouter;

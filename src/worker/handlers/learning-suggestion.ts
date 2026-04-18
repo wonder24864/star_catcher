@@ -27,6 +27,11 @@ import {
   publishJobResult,
   learningSuggestionChannel,
 } from "@/lib/infra/events";
+import {
+  updateTaskStep,
+  completeTask,
+  failTask,
+} from "@/lib/task-runner";
 import { getActiveStudentIds } from "./shared-active-students";
 
 const log = createLogger("worker:learning-suggestion");
@@ -48,7 +53,7 @@ function getWeekStart(date: Date = new Date()): Date {
 export async function handleLearningSuggestion(
   job: Job<LearningSuggestionJobData>,
 ): Promise<void> {
-  const { studentId, userId, locale, type: suggestionType } = job.data;
+  const { studentId, userId, locale, type: suggestionType, taskId } = job.data;
   const resolvedType = suggestionType ?? "WEEKLY_AUTO";
 
   const jobLog = log.child({ jobId: job.id, studentId, type: resolvedType });
@@ -79,6 +84,13 @@ export async function handleLearningSuggestion(
   const channel = learningSuggestionChannel(studentId);
 
   try {
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.suggestion.gathering",
+        progress: 15,
+      });
+    }
+
     // Idempotency: for WEEKLY_AUTO, skip if already exists this week.
     // ON_DEMAND always regenerates (upsert will overwrite).
     if (resolvedType === "WEEKLY_AUTO") {
@@ -94,6 +106,11 @@ export async function handleLearningSuggestion(
           type: "learning-suggestion",
           status: "completed",
         });
+        if (taskId) {
+          await completeTask(taskId, {
+            resultRef: { route: `/parent/suggestions`, payload: { skipped: true } },
+          });
+        }
         return;
       }
     }
@@ -106,7 +123,19 @@ export async function handleLearningSuggestion(
         type: "learning-suggestion",
         status: "completed",
       });
+      if (taskId) {
+        await completeTask(taskId, {
+          resultRef: { route: `/parent/suggestions`, payload: { empty: true } },
+        });
+      }
       return;
+    }
+
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.suggestion.analyzing",
+        progress: 50,
+      });
     }
 
   // 2. Load KP details (names)
@@ -246,6 +275,11 @@ export async function handleLearningSuggestion(
       type: "learning-suggestion",
       status: "completed",
     });
+    if (taskId) {
+      await completeTask(taskId, {
+        resultRef: { route: `/parent/suggestions` },
+      });
+    }
   } catch (err) {
     // Publish failure so the front-end can dismiss the loading toast and show
     // an error instead of waiting for the 90s UI timeout.
@@ -256,6 +290,12 @@ export async function handleLearningSuggestion(
     }).catch((pubErr) =>
       jobLog.warn({ pubErr }, "Failed to publish learning-suggestion failure event"),
     );
+    if (taskId) {
+      await failTask(taskId, {
+        errorCode: "SUGGESTION_FAILED",
+        errorMessage: err instanceof Error ? err.message : String(err),
+      }).catch(() => {});
+    }
     throw err;
   }
 }

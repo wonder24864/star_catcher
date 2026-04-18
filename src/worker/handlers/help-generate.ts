@@ -10,14 +10,25 @@ import type { HelpGenerateJobData } from "@/lib/infra/queue/types";
 import { db } from "@/lib/infra/db";
 import { generateHelp } from "@/lib/domain/ai/operations/help-generate";
 import { publishJobResult, helpChannel } from "@/lib/infra/events";
+import {
+  updateTaskStep,
+  completeTask,
+  failTask,
+} from "@/lib/task-runner";
 
 export async function handleHelpGenerate(
   job: Job<HelpGenerateJobData>,
 ): Promise<void> {
-  const { sessionId, questionId, userId, locale, grade, level, subject } =
+  const { sessionId, questionId, userId, locale, grade, level, subject, taskId } =
     job.data;
 
   try {
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.help.analyzing",
+        progress: 20,
+      });
+    }
     // Fetch question content for the AI prompt
     const question = await db.sessionQuestion.findUnique({
       where: { id: questionId },
@@ -31,6 +42,13 @@ export async function handleHelpGenerate(
     const session = await db.homeworkSession.findUnique({
       where: { id: sessionId },
     });
+
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.help.generating",
+        progress: 55,
+      });
+    }
 
     // Call AI Harness
     const result = await generateHelp({
@@ -69,6 +87,14 @@ export async function handleHelpGenerate(
           status: "completed",
           data: { level, fallback: true },
         });
+        if (taskId) {
+          await completeTask(taskId, {
+            resultRef: {
+              route: `/check/${sessionId}/results`,
+              payload: { questionId, level, fallback: true },
+            },
+          });
+        }
         return;
       }
 
@@ -82,6 +108,12 @@ export async function handleHelpGenerate(
         status: "failed",
         error: result.error?.message ?? "Help generation failed",
       });
+      if (taskId) {
+        await failTask(taskId, {
+          errorCode: "HELP_FAILED",
+          errorMessage: result.error?.message ?? "Help generation failed",
+        });
+      }
       return;
     }
 
@@ -101,6 +133,14 @@ export async function handleHelpGenerate(
       status: "completed",
       data: { level },
     });
+    if (taskId) {
+      await completeTask(taskId, {
+        resultRef: {
+          route: `/check/${sessionId}/results`,
+          payload: { questionId, level },
+        },
+      });
+    }
   } catch (error) {
     if (job.attemptsMade >= (job.opts.attempts ?? 1) - 1) {
       await publishJobResult(helpChannel(sessionId, questionId), {
@@ -108,6 +148,13 @@ export async function handleHelpGenerate(
         status: "failed",
         error: error instanceof Error ? error.message : "Unknown error",
       }).catch(() => {});
+      if (taskId) {
+        await failTask(taskId, {
+          errorCode: "HELP_EXCEPTION",
+          errorMessage:
+            error instanceof Error ? error.message : "Unknown error",
+        }).catch(() => {});
+      }
     }
     throw error;
   }

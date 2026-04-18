@@ -15,13 +15,24 @@ import { recognizeHomework } from "@/lib/domain/ai/operations/recognize-homework
 import { gradeAnswer } from "@/lib/domain/ai/operations/grade-answer";
 import { calculateScore } from "@/lib/domain/scoring";
 import { publishJobResult, sessionChannel } from "@/lib/infra/events";
+import {
+  updateTaskStep,
+  completeTask,
+  failTask,
+} from "@/lib/task-runner";
 
 export async function handleCorrectionPhotos(
   job: Job<CorrectionPhotosJobData>,
 ): Promise<void> {
-  const { sessionId, imageIds, userId, locale, grade } = job.data;
+  const { sessionId, imageIds, userId, locale, grade, taskId } = job.data;
 
   try {
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.correction.loadingImages",
+        progress: 10,
+      });
+    }
     // Fetch session for optimistic locking
     const session = await db.homeworkSession.findUnique({
       where: { id: sessionId },
@@ -46,6 +57,13 @@ export async function handleCorrectionPhotos(
       correctionImages.map((img) => getObjectAsBase64DataUrl(img.imageUrl)),
     );
 
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.correction.recognizing",
+        progress: 35,
+      });
+    }
+
     // Re-recognize homework from corrected photos
     const recognitionResult = await recognizeHomework({
       imageUrls: imageDataUrls,
@@ -67,10 +85,23 @@ export async function handleCorrectionPhotos(
         status: "failed",
         error: recognitionResult.error?.message ?? "Recognition failed",
       });
+      if (taskId) {
+        await failTask(taskId, {
+          errorCode: "CORRECTION_RECOGNITION_FAILED",
+          errorMessage: recognitionResult.error?.message ?? "Recognition failed",
+        });
+      }
       return;
     }
 
     const newRecognized = recognitionResult.data;
+
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.correction.grading",
+        progress: 65,
+      });
+    }
 
     // Build map of newly recognized answers by questionNumber
     const newAnswerMap = new Map(
@@ -181,6 +212,14 @@ export async function handleCorrectionPhotos(
       status: "completed",
       data: { newRoundNumber, score },
     });
+    if (taskId) {
+      await completeTask(taskId, {
+        resultRef: {
+          route: `/check/${sessionId}/results`,
+          payload: { newRoundNumber, score },
+        },
+      });
+    }
   } catch (error) {
     if (job.attemptsMade >= (job.opts.attempts ?? 1) - 1) {
       await publishJobResult(sessionChannel(sessionId), {
@@ -188,6 +227,13 @@ export async function handleCorrectionPhotos(
         status: "failed",
         error: error instanceof Error ? error.message : "Unknown error",
       }).catch(() => {});
+      if (taskId) {
+        await failTask(taskId, {
+          errorCode: "CORRECTION_EXCEPTION",
+          errorMessage:
+            error instanceof Error ? error.message : "Unknown error",
+        }).catch(() => {});
+      }
     }
     throw error;
   }

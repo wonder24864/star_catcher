@@ -7,6 +7,8 @@ import { SessionProvider } from "@/components/providers/session-provider";
 import { GradeTierProvider } from "@/components/providers/grade-tier-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { RouteProgressBar } from "@/components/providers/route-progress-bar";
+import { TaskProvider } from "@/components/providers/task-provider";
+import { ActiveTasksDock } from "@/components/task/active-tasks-dock";
 
 export default async function LocaleLayout({
   children,
@@ -25,9 +27,12 @@ export default async function LocaleLayout({
       <SessionProvider>
         <GradeTierProvider>
           <TRPCProvider>
-            <RouteProgressBar />
-            {children}
-            <Toaster />
+            <TaskProvider>
+              <RouteProgressBar />
+              {children}
+              <ActiveTasksDock />
+              <Toaster />
+            </TaskProvider>
           </TRPCProvider>
         </GradeTierProvider>
       </SessionProvider>

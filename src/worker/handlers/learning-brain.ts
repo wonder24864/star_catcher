@@ -28,6 +28,11 @@ import {
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { createLogger } from "@/lib/infra/logger";
 import { publishBrainRun } from "@/lib/infra/events";
+import {
+  updateTaskStep,
+  completeTask,
+  failTask,
+} from "@/lib/task-runner";
 import type { InterventionPlanningJobData, MasteryEvaluationJobData } from "@/lib/infra/queue/types";
 import { getActiveStudentIds } from "./shared-active-students";
 
@@ -79,7 +84,7 @@ async function enqueueDecision(
 export async function handleLearningBrain(
   job: Job<LearningBrainJobData>,
 ): Promise<void> {
-  const { studentId, userId, locale } = job.data;
+  const { studentId, userId, locale, taskId } = job.data;
 
   const jobLog = log.child({ jobId: job.id, studentId });
 
@@ -98,18 +103,40 @@ export async function handleLearningBrain(
   const locked = await acquireLock(studentId);
   if (!locked) {
     jobLog.info("Brain already running for student, skipping");
+    if (taskId) {
+      await completeTask(taskId, {
+        resultRef: {
+          route: `/admin/brain`,
+          payload: { skipped: true, reason: "already-running" },
+        },
+      });
+    }
     return;
   }
 
   const startTime = Date.now();
 
   try {
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.brain.collecting",
+        progress: 20,
+      });
+    }
+
     const memory = new StudentMemoryImpl(db as unknown as PrismaClient);
 
     const decision = await runLearningBrain(
       { studentId, userId, locale },
       { memory, redis },
     );
+
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.brain.launchingAgents",
+        progress: 65,
+      });
+    }
 
     const jobIds = await enqueueDecision(decision);
 
@@ -185,6 +212,27 @@ export async function handleLearningBrain(
       },
       "Brain run completed",
     );
+
+    if (taskId) {
+      await completeTask(taskId, {
+        resultRef: {
+          route: `/admin/brain`,
+          payload: {
+            agentsLaunched: decision.agentsToLaunch.length,
+            skipped: decision.skipped.length,
+            durationMs,
+          },
+        },
+      });
+    }
+  } catch (err) {
+    if (taskId) {
+      await failTask(taskId, {
+        errorCode: "BRAIN_CRASHED",
+        errorMessage: err instanceof Error ? err.message : String(err),
+      }).catch(() => {});
+    }
+    throw err;
   } finally {
     await releaseLock(studentId);
   }

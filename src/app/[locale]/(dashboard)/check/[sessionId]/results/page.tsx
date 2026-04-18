@@ -46,6 +46,7 @@ import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { MathText } from "@/components/ui/math-text";
+import { useStartTask, useTaskLock } from "@/hooks/use-task";
 
 type CheckRound = {
   id: string;
@@ -76,6 +77,49 @@ type HelpRequest = {
   aiResponse: string;
   createdAt: Date;
 };
+
+/**
+ * Help button that stays disabled across navigation while the task is
+ * running (reads the global task store by key).
+ */
+function HelpRequestButton({
+  sessionId,
+  questionId,
+  level,
+  isSubmitting,
+  onRequest,
+  label,
+  loadingLabel,
+}: {
+  sessionId: string;
+  questionId: string;
+  level: 1 | 2 | 3;
+  isSubmitting: boolean;
+  onRequest: () => void;
+  label: string;
+  loadingLabel: string;
+}) {
+  const lock = useTaskLock(`help:${sessionId}:${questionId}:${level}`);
+  const disabled = lock.locked || isSubmitting;
+  return (
+    <AdaptiveButton
+      variant="outline"
+      size="sm"
+      className="gap-1.5"
+      disabled={disabled}
+      onClick={onRequest}
+    >
+      {disabled ? (
+        loadingLabel
+      ) : (
+        <>
+          <Lightbulb className="h-3.5 w-3.5" />
+          {label}
+        </>
+      )}
+    </AdaptiveButton>
+  );
+}
 
 /** Inline help panel for a single question */
 function QuestionHelpPanel({
@@ -120,7 +164,7 @@ function QuestionHelpPanel({
     }
   );
 
-  const requestHelp = trpc.homework.requestHelp.useMutation({
+  const requestHelpMutation = trpc.homework.requestHelp.useMutation({
     onSuccess: (data) => {
       if ("status" in data && data.status === "processing") {
         // Job enqueued, wait for SSE notification
@@ -144,6 +188,13 @@ function QuestionHelpPanel({
     },
   });
 
+  const { start: startHelp } = useStartTask({
+    type: "HELP",
+    buildKey: (input: { sessionId: string; questionId: string; level: 1 | 2 | 3 }) =>
+      `help:${input.sessionId}:${input.questionId}:${input.level}`,
+    mutation: requestHelpMutation,
+  });
+
   if (isCorrect === true) return null;
 
   const helpMap = new Map(helpRequests.map((h: HelpRequest) => [h.level, h]));
@@ -159,7 +210,7 @@ function QuestionHelpPanel({
   };
 
   const handleRequestHelp = (level: 1 | 2 | 3) => {
-    requestHelp.mutate({ sessionId, questionId, level });
+    void startHelp({ sessionId, questionId, level });
   };
 
   // Wonder tier uses warmer background colors for hints
@@ -209,24 +260,17 @@ function QuestionHelpPanel({
             );
           })}
 
-          {/* Next level button or locked indicator */}
+          {/* Next level button or locked indicator — driven by global task lock */}
           {!isCompleted && nextLevel <= 3 && (
-            <AdaptiveButton
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={requestHelp.isPending}
-              onClick={() => handleRequestHelp(nextLevel)}
-            >
-              {requestHelp.isPending ? (
-                t("homework.help.loading")
-              ) : (
-                <>
-                  <Lightbulb className="h-3.5 w-3.5" />
-                  {t("homework.help.nextLevel", { level: nextLevel })}
-                </>
-              )}
-            </AdaptiveButton>
+            <HelpRequestButton
+              sessionId={sessionId}
+              questionId={questionId}
+              level={nextLevel}
+              isSubmitting={requestHelpMutation.isPending}
+              onRequest={() => handleRequestHelp(nextLevel)}
+              label={t("homework.help.nextLevel", { level: nextLevel })}
+              loadingLabel={t("homework.help.loading")}
+            />
           )}
 
           {maxRevealedLevel >= 3 && (
@@ -297,7 +341,7 @@ export default function CheckResultsPage() {
     onError: () => toast.error(t("error.serverError")),
   });
 
-  const submitCorrectionPhotos = trpc.homework.submitCorrectionPhotos.useMutation({
+  const submitCorrectionPhotosMutation = trpc.homework.submitCorrectionPhotos.useMutation({
     onSuccess: () => {
       setPendingCorrection(true);
     },
@@ -309,6 +353,16 @@ export default function CheckResultsPage() {
       }
     },
   });
+
+  const { start: startCorrection } = useStartTask({
+    type: "CORRECTION",
+    buildKey: (input: { sessionId: string; imageIds: string[] }) =>
+      `correction:${input.sessionId}`,
+    mutation: submitCorrectionPhotosMutation,
+  });
+  const correctionLock = useTaskLock(`correction:${sessionId}`);
+  const submittingCorrection =
+    submitCorrectionPhotosMutation.isPending || correctionLock.locked;
 
   // Upload hook for correction photos
   const { upload: uploadFile, uploadProgress: correctionUploadProgress, reset: resetUpload } = useUpload({
@@ -375,7 +429,7 @@ export default function CheckResultsPage() {
 
   const handleSubmitCorrectionPhotos = () => {
     if (correctionImageIds.length === 0) return;
-    submitCorrectionPhotos.mutate({ sessionId, imageIds: correctionImageIds });
+    void startCorrection({ sessionId, imageIds: correctionImageIds });
   };
 
   const handleCompleteClick = () => {
@@ -585,7 +639,7 @@ export default function CheckResultsPage() {
 
       {/* Correction photo upload dialog */}
       <Dialog open={correctionDialogOpen} onOpenChange={(open) => {
-        if (!submitCorrectionPhotos.isPending && !isUploadingCorrection && !pendingCorrection) {
+        if (!submittingCorrection && !isUploadingCorrection && !pendingCorrection) {
           setCorrectionDialogOpen(open);
         }
       }}>
@@ -658,7 +712,7 @@ export default function CheckResultsPage() {
             ) : (
               <PhotoCapture
                 onFilesSelected={handleCorrectionFilesSelected}
-                disabled={isUploadingCorrection || submitCorrectionPhotos.isPending}
+                disabled={isUploadingCorrection || submittingCorrection}
                 maxRemaining={MAX_IMAGES_PER_SESSION - correctionImageIds.length}
               />
             )}
@@ -668,7 +722,7 @@ export default function CheckResultsPage() {
             <AdaptiveButton
               variant="outline"
               onClick={() => setCorrectionDialogOpen(false)}
-              disabled={submitCorrectionPhotos.isPending || isUploadingCorrection || pendingCorrection}
+              disabled={submittingCorrection || isUploadingCorrection || pendingCorrection}
             >
               {t("common.cancel")}
             </AdaptiveButton>
@@ -677,11 +731,11 @@ export default function CheckResultsPage() {
               disabled={
                 correctionImageIds.length === 0 ||
                 isUploadingCorrection ||
-                submitCorrectionPhotos.isPending ||
+                submittingCorrection ||
                 pendingCorrection
               }
             >
-              {submitCorrectionPhotos.isPending || pendingCorrection ? (
+              {submittingCorrection || pendingCorrection ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   {t("homework.check.submittingCorrections")}

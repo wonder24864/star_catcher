@@ -194,12 +194,14 @@ star_catcher/
     │   ├── profile/               # 学生画像组件（HistoricalProgressChart — tier 自适应进度图）
     │   ├── tasks/                 # 今日任务组件（TaskCard + PracticeDialog + ExplanationDialog + ExplanationCard 三格式）
     │   ├── nav/                   # 侧边栏（TierSidebar tier 门控）/ 底部导航（年级自适应）/ 学生切换
-    │   ├── providers/             # Session / GradeTier Provider（4 级年级自适应）
+    │   ├── providers/             # Session / GradeTier / Task Provider（任务跨路由进度广播，ADR-013）
+    │   ├── task/                  # 全局任务悬浮条（ActiveTasksDock — 跨路由可见，ADR-013）
     │   └── ui/                    # shadcn/ui 基础组件（含 Skeleton）
     │
     ├── hooks/                 # ── React Hooks ──
     │   ├── use-reduced-motion.ts    # prefers-reduced-motion 检测（SSR 安全）
     │   ├── use-tier-translations.ts  # 年级自适应 i18n（useTierTranslations — useTranslations 同构替换）
+    │   ├── use-task.ts            # 全局任务钩子（useTaskLock / useStartTask — 按钮跨路由锁，ADR-013）
     │   └── use-upload.ts          # 上传编排（压缩→预签名→上传→确认）
     │
     ├── i18n/                  # ── 国际化 ──
@@ -210,6 +212,8 @@ star_catcher/
     │       └── en.json
     │
     ├── lib/                   # ── 共享库（分层组织）──
+    │   │
+    │   ├── task-runner/       # 全局任务生命周期（createTaskRun/updateTaskStep/complete/fail，ADR-013）
     │   │
     │   ├── infra/             # 基础设施（外部服务连接）
     │   │   ├── db/                # Prisma 客户端（含软删除扩展）
@@ -278,14 +282,14 @@ star_catcher/
     │   ├── constants/         # 共享常量
     │   │   └── subject-colors.ts  # 学科颜色（HEX + Tailwind Badge 类）
     │   ├── utils.ts           # cn() 工具函数
-    │   ├── stores/            # Zustand 客户端状态
+    │   ├── stores/            # Zustand 客户端状态（含 task-store 全局任务，ADR-013）
     │   ├── trpc/              # tRPC 客户端（含 SSE splitLink）
     │   └── upload/            # 图片压缩（EXIF 校正）
     │
     ├── server/                # ── tRPC 服务端 ──
     │   ├── trpc.ts                # 初始化 + 角色中间件 + SSE 配置
     │   ├── context.ts             # 上下文工厂
-    │   └── routers/               # 路由器（18 个业务 + 1 个订阅 + _app 汇总 = 20 个文件；大型 router：homework/knowledge-graph/brain）
+    │   └── routers/               # 路由器（19 个业务 + 1 个订阅 + _app 汇总 = 21 个文件；含 task.ts 全局任务，ADR-013；大型 router：homework/knowledge-graph/brain）
     │       └── shared/                # 共享工具（resolveStudentId 权限校验）
     │
     ├── worker/                # ── BullMQ Worker（独立 Docker 服务）──

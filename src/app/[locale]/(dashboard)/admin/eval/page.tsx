@@ -21,6 +21,7 @@ import { trpc } from "@/lib/trpc/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useStartTask, useTaskLock } from "@/hooks/use-task";
 
 type Tab = "datasets" | "runs";
 type EvalCaseStatus = "PASS" | "FAIL" | "ERROR" | "SKIPPED";
@@ -89,6 +90,30 @@ export default function EvalPage() {
 
 // ─── Datasets Tab ─────────────────────────────────────────────────────
 
+function RunOneButton({
+  operation,
+  isPending,
+  onClick,
+  label,
+}: {
+  operation: AIOperationType;
+  isPending: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  const lock = useTaskLock(`eval:op:${operation}`);
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={onClick}
+      disabled={isPending || lock.locked}
+    >
+      {label}
+    </Button>
+  );
+}
+
 function DatasetsTab({ tStatus }: { tStatus: (key: string) => string }) {
   const t = useTranslations("admin.eval");
   const tActions = useTranslations("admin.eval.actions");
@@ -97,7 +122,7 @@ function DatasetsTab({ tStatus }: { tStatus: (key: string) => string }) {
   const utils = trpc.useUtils();
 
   const { data: stats, isLoading } = trpc.eval.datasetStats.useQuery();
-  const trigger = trpc.eval.trigger.useMutation({
+  const triggerMutation = trpc.eval.trigger.useMutation({
     onSuccess: () => {
       utils.eval.datasetStats.invalidate();
       utils.eval.listRuns.invalidate();
@@ -106,14 +131,27 @@ function DatasetsTab({ tStatus }: { tStatus: (key: string) => string }) {
     onError: (e) => alert(t("triggerFailed", { message: e.message })),
   });
 
+  const { start: startTrigger } = useStartTask({
+    type: "EVAL",
+    buildKey: (input: { operations?: AIOperationType[] }) => {
+      const ops = input.operations ?? [];
+      if (ops.length === 0) return "eval:all";
+      if (ops.length === 1) return `eval:op:${ops[0]}`;
+      return `eval:multi:${[...ops].sort().join(",")}`;
+    },
+    mutation: triggerMutation,
+  });
+
+  const runAllLock = useTaskLock("eval:all");
+
   const handleRunAll = () => {
     if (!confirm(t("confirmRun"))) return;
-    trigger.mutate({});
+    void startTrigger({});
   };
 
   const handleRunOne = (operation: AIOperationType) => {
     if (!confirm(t("confirmRun"))) return;
-    trigger.mutate({ operations: [operation] });
+    void startTrigger({ operations: [operation] });
   };
 
   if (isLoading) {
@@ -148,7 +186,11 @@ function DatasetsTab({ tStatus }: { tStatus: (key: string) => string }) {
         </Card>
         <Card className="flex flex-col justify-center">
           <CardContent className="pt-6">
-            <Button onClick={handleRunAll} disabled={trigger.isPending} className="w-full">
+            <Button
+              onClick={handleRunAll}
+              disabled={triggerMutation.isPending || runAllLock.locked}
+              className="w-full"
+            >
               {tActions("runAll")}
             </Button>
           </CardContent>
@@ -202,14 +244,12 @@ function DatasetsTab({ tStatus }: { tStatus: (key: string) => string }) {
                           {tCols("reason")}
                         </span>
                       ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
+                        <RunOneButton
+                          operation={row.operation as AIOperationType}
+                          isPending={triggerMutation.isPending}
                           onClick={() => handleRunOne(row.operation as AIOperationType)}
-                          disabled={trigger.isPending}
-                        >
-                          {tActions("runOne")}
-                        </Button>
+                          label={tActions("runOne")}
+                        />
                       )}
                     </td>
                   </tr>

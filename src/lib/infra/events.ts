@@ -204,6 +204,90 @@ export async function* subscribeToMastery(
 // Sprint 26 D62/D64 — Brain run event pipeline (parallel to JobResultEvent)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// ADR-012 — User-wide task progress channel
+// ---------------------------------------------------------------------------
+
+export type TaskProgressEvent = {
+  taskId: string;
+  type: "OCR" | "CORRECTION" | "HELP" | "SUGGESTION" | "EVAL" | "BRAIN";
+  key: string;
+  status: "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED";
+  step?: string;
+  progress?: number;
+  resultRef?: { route: string; payload?: unknown };
+  errorCode?: string;
+  errorMessage?: string;
+  updatedAt: string; // ISO 8601
+};
+
+export function userTaskChannel(userId: string): string {
+  return `task:user:${userId}`;
+}
+
+export async function publishTaskEvent(
+  userId: string,
+  event: TaskProgressEvent,
+): Promise<void> {
+  await getPublisher().publish(userTaskChannel(userId), JSON.stringify(event));
+}
+
+/**
+ * Async generator yielding TaskProgressEvent from the per-user task channel.
+ * Mirrors subscribeToMastery / subscribeToBrainRun typing pattern.
+ */
+export async function* subscribeToUserTasks(
+  userId: string,
+  signal: AbortSignal,
+): AsyncGenerator<TaskProgressEvent> {
+  const channel = userTaskChannel(userId);
+  const sub = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+  });
+
+  const buffer: TaskProgressEvent[] = [];
+  let resolve: (() => void) | null = null;
+
+  const onMessage = (ch: string, message: string) => {
+    if (ch !== channel) return;
+    try {
+      buffer.push(JSON.parse(message) as TaskProgressEvent);
+    } catch {
+      return;
+    }
+    if (resolve) {
+      resolve();
+      resolve = null;
+    }
+  };
+
+  sub.on("message", onMessage);
+  await sub.subscribe(channel);
+
+  try {
+    while (!signal.aborted) {
+      while (buffer.length > 0) {
+        yield buffer.shift()!;
+      }
+      if (signal.aborted) break;
+      await new Promise<void>((r) => {
+        resolve = r;
+        if (signal.aborted) { r(); return; }
+        signal.addEventListener("abort", () => r(), { once: true });
+      });
+    }
+  } finally {
+    sub.off("message", onMessage);
+    await sub.unsubscribe(channel).catch(() => {});
+    await sub.quit().catch(() => {});
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sprint 26 D62/D64 — Brain run event pipeline (parallel to JobResultEvent)
+// ---------------------------------------------------------------------------
+
 /**
  * Brain run completion event — one per learning-brain handler run.
  * Payload mirrors the AdminLog `brain-run` details so the Brain monitor

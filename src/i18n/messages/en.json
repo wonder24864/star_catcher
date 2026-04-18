@@ -1312,5 +1312,69 @@
       "reports": "Learning Reports",
       "suggestions": "Learning Suggestions"
     }
+  },
+  "task": {
+    "dock": {
+      "running": "Working…",
+      "completed": "Done",
+      "failed": "Failed",
+      "more": "+{count} more"
+    },
+    "type": {
+      "ocr": "Question Recognition",
+      "correction": "Correction Grading",
+      "help": "Help Hints",
+      "suggestion": "Learning Suggestions",
+      "eval": "AI Eval",
+      "brain": "Learning Brain"
+    },
+    "step": {
+      "ocr": {
+        "loadingImages": "Loading images…",
+        "recognizing": "AI recognizing questions…",
+        "saving": "Saving results…"
+      },
+      "correction": {
+        "loadingImages": "Loading images…",
+        "recognizing": "AI recognizing corrections…",
+        "grading": "Re-grading…"
+      },
+      "help": {
+        "analyzing": "Analyzing question…",
+        "generating": "AI drafting hint…"
+      },
+      "suggestion": {
+        "gathering": "Gathering learning data…",
+        "analyzing": "AI analyzing weak points…"
+      },
+      "eval": {
+        "loadingCases": "Loading dataset…",
+        "running": "Running batch…"
+      },
+      "brain": {
+        "collecting": "Collecting signals…",
+        "launchingAgents": "Launching agents…"
+      }
+    },
+    "toast": {
+      "completed": {
+        "generic": "Task completed",
+        "ocr": "Question recognition done",
+        "correction": "Correction grading done",
+        "help": "Help hint ready",
+        "suggestion": "Learning suggestion ready",
+        "eval": "AI eval completed",
+        "brain": "Brain run completed"
+      },
+      "failed": {
+        "generic": "Task failed",
+        "ocr": "Question recognition failed",
+        "correction": "Correction grading failed",
+        "help": "Help generation failed",
+        "suggestion": "Suggestion generation failed",
+        "eval": "AI eval failed",
+        "brain": "Brain run failed"
+      }
+    }
   }
 }

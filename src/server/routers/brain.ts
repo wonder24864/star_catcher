@@ -21,6 +21,7 @@ import { redis } from "@/lib/infra/redis";
 import { SCHEDULE_REGISTRY, resolveEntry } from "@/worker/schedule-registry";
 import { cooldownKey, parseCooldownValue, getCooldownTTL } from "@/lib/domain/brain";
 import { enqueueLearningBrain } from "@/lib/infra/queue";
+import { createTaskRun } from "@/lib/task-runner";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { subscribeToBrainRun, type BrainRunEvent } from "@/lib/infra/events";
 
@@ -277,11 +278,23 @@ export const brainRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Student not found" });
       }
 
-      const jobId = await enqueueLearningBrain({
-        studentId: input.studentId,
+      const taskKey = `brain:${input.studentId}`;
+      const { task: taskRun, isNew } = await createTaskRun(ctx.db, {
+        type: "BRAIN",
+        key: taskKey,
         userId: ctx.session.userId,
-        locale: ctx.session.locale ?? "zh",
+        studentId: input.studentId,
       });
+
+      let jobId = taskRun.bullJobId ?? null;
+      if (isNew) {
+        jobId = await enqueueLearningBrain({
+          studentId: input.studentId,
+          userId: ctx.session.userId,
+          locale: ctx.session.locale ?? "zh",
+          taskId: taskRun.id,
+        });
+      }
 
       await logAdminAction(
         ctx.db as unknown as PrismaClient,
@@ -291,7 +304,7 @@ export const brainRouter = router({
         { studentId: input.studentId, jobId },
       );
 
-      return { jobId };
+      return { jobId, taskId: taskRun.id, taskKey };
     }),
 
   /**

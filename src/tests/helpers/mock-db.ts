@@ -184,6 +184,8 @@ export function createMockDb() {
   const learningSuggestions: any[] = [];
   const interventionHistories: any[] = [];
   const masteryStates: any[] = [];
+  const taskRuns: any[] = [];
+  let taskRunSeq = 0;
 
   return {
     user: {
@@ -1070,8 +1072,61 @@ export function createMockDb() {
       },
     },
 
+    // Minimal TaskRun stub for ADR-013 global-task-progress. Routers call
+    // findFirst → create → sometimes update; findMany for listActive.
+    taskRun: {
+      findFirst: async ({ where }: any) => {
+        return (
+          taskRuns.find(
+            (t: any) =>
+              (!where.userId || t.userId === where.userId) &&
+              (!where.key || t.key === where.key) &&
+              (!where.status ||
+                (where.status.in
+                  ? where.status.in.includes(t.status)
+                  : t.status === where.status)),
+          ) ?? null
+        );
+      },
+      findMany: async ({ where }: any = { where: {} }) => {
+        return taskRuns.filter(
+          (t: any) =>
+            (!where?.userId || t.userId === where.userId) &&
+            (!where?.status?.in || where.status.in.includes(t.status)),
+        );
+      },
+      create: async ({ data }: any) => {
+        const row = {
+          id: `task_mock_${++taskRunSeq}`,
+          userId: data.userId,
+          studentId: data.studentId ?? null,
+          type: data.type,
+          key: data.key,
+          bullJobId: data.bullJobId ?? null,
+          status: data.status ?? "QUEUED",
+          step: data.step ?? null,
+          progress: null,
+          resultRef: null,
+          errorCode: null,
+          errorMessage: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          completedAt: null,
+        };
+        taskRuns.push(row);
+        return row;
+      },
+      update: async ({ where, data }: any) => {
+        const r = taskRuns.find((t: any) => t.id === where.id);
+        if (!r) throw new Error("task not found");
+        Object.assign(r, data, { updatedAt: new Date() });
+        return r;
+      },
+    },
+
     // Expose internals for test assertions
     _learningSuggestions: learningSuggestions,
+    _taskRuns: taskRuns,
     _interventionHistories: interventionHistories,
     _masteryStates: masteryStates,
     _users: users,

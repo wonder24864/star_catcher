@@ -5,6 +5,7 @@ import { router, protectedProcedure } from "../trpc";
 import type { Context } from "../trpc";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { enqueueLearningSuggestion } from "@/lib/infra/queue";
+import { createTaskRun } from "@/lib/task-runner";
 import { gradeEnum } from "@/lib/domain/validations/grade";
 
 async function verifyParentStudentAccess(
@@ -751,14 +752,26 @@ export const parentRouter = router({
         });
       }
 
-      const jobId = await enqueueLearningSuggestion({
-        studentId: input.studentId,
+      const taskKey = `suggestion:${input.studentId}`;
+      const { task: taskRun, isNew } = await createTaskRun(ctx.db, {
+        type: "SUGGESTION",
+        key: taskKey,
         userId: ctx.session.userId,
-        locale: ctx.session.locale ?? "zh",
-        type: "ON_DEMAND",
+        studentId: input.studentId,
       });
 
-      return { jobId };
+      let jobId = taskRun.bullJobId ?? null;
+      if (isNew) {
+        jobId = await enqueueLearningSuggestion({
+          studentId: input.studentId,
+          userId: ctx.session.userId,
+          locale: ctx.session.locale ?? "zh",
+          type: "ON_DEMAND",
+          taskId: taskRun.id,
+        });
+      }
+
+      return { jobId, taskId: taskRun.id, taskKey };
     }),
 
   // ─── Sprint 18: Intervention Tracking (US-062) ──────────────

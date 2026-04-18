@@ -15,6 +15,7 @@ import { TRPCError } from "@trpc/server";
 import { router, adminProcedure } from "../trpc";
 import { logAdminAction } from "@/lib/domain/admin-log";
 import { enqueueEvalRun } from "@/lib/infra/queue";
+import { createTaskRun } from "@/lib/task-runner";
 import {
   DATASET_FILE_MAP,
   loadDataset,
@@ -108,12 +109,32 @@ export const evalRouter = router({
         select: { id: true },
       });
 
-      const jobId = await enqueueEvalRun({
-        runId: run.id,
-        operations: operations as string[],
+      // Key by trigger shape (all vs one op), not runId — so the client
+      // can compute the same key at click time (no round-trip needed) and
+      // lock the button optimistically.
+      const requested = input.operations ?? [];
+      const taskKey =
+        requested.length === 0
+          ? "eval:all"
+          : requested.length === 1
+            ? `eval:op:${requested[0]}`
+            : `eval:multi:${[...requested].sort().join(",")}`;
+      const { task: taskRun, isNew } = await createTaskRun(ctx.db, {
+        type: "EVAL",
+        key: taskKey,
         userId: ctx.session.userId,
-        locale: ctx.session.locale ?? "zh-CN",
       });
+
+      let jobId = taskRun.bullJobId ?? null;
+      if (isNew) {
+        jobId = await enqueueEvalRun({
+          runId: run.id,
+          operations: operations as string[],
+          userId: ctx.session.userId,
+          locale: ctx.session.locale ?? "zh-CN",
+          taskId: taskRun.id,
+        });
+      }
 
       await logAdminAction(
         ctx.db as unknown as PrismaClient,
@@ -123,7 +144,7 @@ export const evalRouter = router({
         { operations, jobId },
       );
 
-      return { runId: run.id, jobId };
+      return { runId: run.id, jobId, taskId: taskRun.id, taskKey };
     }),
 
   /**

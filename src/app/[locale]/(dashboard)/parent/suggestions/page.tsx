@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/pro/glass-card";
 import { GradientMesh } from "@/components/pro/gradient-mesh";
+import { useStartTask, useTaskLock } from "@/hooks/use-task";
 
 const GENERATION_TIMEOUT_MS = 90_000;
 
@@ -64,6 +65,10 @@ export default function ParentSuggestionsPage() {
     }
   };
 
+  const suggestionLock = useTaskLock(
+    effectiveStudentId ? `suggestion:${effectiveStudentId}` : null,
+  );
+
   const requestMutation = trpc.parent.requestLearningSuggestions.useMutation({
     onSuccess: () => {
       clearGenerationWatchdog();
@@ -88,6 +93,13 @@ export default function ParentSuggestionsPage() {
         toast.error(err.message);
       }
     },
+  });
+
+  const { start: startSuggestion } = useStartTask({
+    type: "SUGGESTION",
+    buildKey: (input: { studentId: string }) => `suggestion:${input.studentId}`,
+    mutation: requestMutation,
+    studentIdFor: (input) => input.studentId,
   });
 
   trpc.subscription.onLearningSuggestionGenerated.useSubscription(
@@ -174,7 +186,8 @@ export default function ParentSuggestionsPage() {
     overload_warning: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   };
 
-  const refreshBusy = requestMutation.isPending || isGenerating;
+  const refreshBusy =
+    requestMutation.isPending || isGenerating || suggestionLock.locked;
 
   return (
     <div className="relative">
@@ -196,7 +209,7 @@ export default function ParentSuggestionsPage() {
             <Button
               size="sm"
               onClick={() =>
-                requestMutation.mutate({ studentId: effectiveStudentId })
+                void startSuggestion({ studentId: effectiveStudentId })
               }
               disabled={refreshBusy}
             >

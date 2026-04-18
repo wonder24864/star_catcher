@@ -126,6 +126,27 @@ function buildDb() {
     systemConfig: {
       findMany: vi.fn(async () => []),
     },
+    // ADR-013 global-task-progress: triggerBrain writes a TaskRun row
+    taskRun: {
+      findFirst: vi.fn(async () => null),
+      create: vi.fn(async ({ data }: any) => ({
+        id: `task_${Math.random().toString(36).slice(2)}`,
+        userId: data.userId,
+        studentId: data.studentId ?? null,
+        type: data.type,
+        key: data.key,
+        bullJobId: data.bullJobId ?? null,
+        status: data.status ?? "QUEUED",
+        step: data.step ?? null,
+        progress: null,
+        resultRef: null,
+        errorCode: null,
+        errorMessage: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        completedAt: null,
+      })),
+    },
   };
 }
 

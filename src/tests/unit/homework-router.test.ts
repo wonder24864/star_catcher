@@ -1055,15 +1055,22 @@ describe("homework.requestHelp", () => {
       level: 1,
     });
 
-    expect(enqueueHelpGeneration).toHaveBeenCalledWith({
-      sessionId: "hw-session-1",
-      questionId: q.id,
-      userId: "student1",
-      locale: "zh",
-      grade: undefined, // session.grade is null in mock
-      level: 1,
-      subject: undefined,
-    });
+    expect(enqueueHelpGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "hw-session-1",
+        questionId: q.id,
+        userId: "student1",
+        locale: "zh",
+        grade: undefined, // session.grade is null in mock
+        level: 1,
+        subject: undefined,
+      }),
+    );
+    // ADR-013: mutation now attaches a TaskRun id so the worker can
+    // update the global task lifecycle.
+    expect(enqueueHelpGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({ taskId: expect.any(String) }),
+    );
   });
 });
 

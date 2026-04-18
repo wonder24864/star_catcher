@@ -12,13 +12,24 @@ import { db } from "@/lib/infra/db";
 import { getObjectAsBase64DataUrl } from "@/lib/infra/storage";
 import { recognizeHomework } from "@/lib/domain/ai/operations/recognize-homework";
 import { publishJobResult, sessionChannel } from "@/lib/infra/events";
+import {
+  updateTaskStep,
+  completeTask,
+  failTask,
+} from "@/lib/task-runner";
 
 export async function handleOcrRecognize(
   job: Job<OcrRecognizeJobData>,
 ): Promise<void> {
-  const { sessionId, userId, locale, grade } = job.data;
+  const { sessionId, userId, locale, grade, taskId } = job.data;
 
   try {
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.ocr.loadingImages",
+        progress: 10,
+      });
+    }
     // Fetch images ordered by sortOrder
     const images = await db.homeworkImage.findMany({
       where: { homeworkSessionId: sessionId },
@@ -33,6 +44,13 @@ export async function handleOcrRecognize(
     const imageDataUrls = await Promise.all(
       images.map((img) => getObjectAsBase64DataUrl(img.imageUrl)),
     );
+
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.ocr.recognizing",
+        progress: 40,
+      });
+    }
 
     // Call AI recognition through the Harness pipeline
     const result = await recognizeHomework({
@@ -61,10 +79,23 @@ export async function handleOcrRecognize(
         status: "failed",
         error: result.error?.message ?? "Recognition failed",
       });
+      if (taskId) {
+        await failTask(taskId, {
+          errorCode: "OCR_FAILED",
+          errorMessage: result.error?.message ?? "Recognition failed",
+        });
+      }
       return;
     }
 
     const data = result.data!;
+
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.ocr.saving",
+        progress: 80,
+      });
+    }
 
     // Create SessionQuestion records from AI output
     await db.sessionQuestion.createMany({
@@ -99,6 +130,11 @@ export async function handleOcrRecognize(
       type: "ocr-recognize",
       status: "completed",
     });
+    if (taskId) {
+      await completeTask(taskId, {
+        resultRef: { route: `/check/${sessionId}` },
+      });
+    }
   } catch (error) {
     // On final failure (after all retries), mark as failed
     if (job.attemptsMade >= (job.opts.attempts ?? 1) - 1) {
@@ -112,6 +148,14 @@ export async function handleOcrRecognize(
         status: "failed",
         error: error instanceof Error ? error.message : "Unknown error",
       }).catch(() => {});
+
+      if (taskId) {
+        await failTask(taskId, {
+          errorCode: "OCR_EXCEPTION",
+          errorMessage:
+            error instanceof Error ? error.message : "Unknown error",
+        }).catch(() => {});
+      }
     }
     throw error; // Re-throw so BullMQ can retry
   }

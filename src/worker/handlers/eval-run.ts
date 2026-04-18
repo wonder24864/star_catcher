@@ -17,11 +17,16 @@ import { db } from "@/lib/infra/db";
 import { createLogger } from "@/lib/infra/logger";
 import { runEval } from "@/lib/domain/ai/eval/eval-runner";
 import { callAIOperation } from "@/lib/domain/ai/operations/registry";
+import {
+  updateTaskStep,
+  completeTask,
+  failTask,
+} from "@/lib/task-runner";
 
 export async function handleEvalRun(
   job: Job<EvalRunJobData>,
 ): Promise<void> {
-  const { runId, operations, userId, locale } = job.data;
+  const { runId, operations, userId, locale, taskId } = job.data;
   const log = createLogger("worker:eval-run").child({
     jobId: job.id,
     runId,
@@ -48,7 +53,20 @@ export async function handleEvalRun(
 
   log.info({ operations }, "starting EvalRun");
 
+  if (taskId) {
+    await updateTaskStep(taskId, {
+      step: "task.step.eval.loadingCases",
+      progress: 10,
+    });
+  }
+
   try {
+    if (taskId) {
+      await updateTaskStep(taskId, {
+        step: "task.step.eval.running",
+        progress: 40,
+      });
+    }
     const result = await runEval(
       {
         runId,
@@ -72,6 +90,19 @@ export async function handleEvalRun(
       },
       "EvalRun completed",
     );
+    if (taskId) {
+      await completeTask(taskId, {
+        resultRef: {
+          route: `/admin/eval/${runId}`,
+          payload: {
+            totalCases: result.totalCases,
+            passed: result.passedCases,
+            failed: result.failedCases,
+            passRate: result.passRate,
+          },
+        },
+      });
+    }
   } catch (err) {
     log.error({ err }, "EvalRun crashed, marking FAILED");
     await db.evalRun.update({
@@ -82,6 +113,12 @@ export async function handleEvalRun(
         note: (err as Error).message.slice(0, 500),
       },
     });
+    if (taskId) {
+      await failTask(taskId, {
+        errorCode: "EVAL_CRASHED",
+        errorMessage: (err as Error).message,
+      }).catch(() => {});
+    }
     throw err;
   }
 }

@@ -1312,5 +1312,69 @@
       "reports": "学习报告",
       "suggestions": "学习建议"
     }
+  },
+  "task": {
+    "dock": {
+      "running": "处理中…",
+      "completed": "已完成",
+      "failed": "失败了",
+      "more": "还有 {count} 个任务"
+    },
+    "type": {
+      "ocr": "题目识别",
+      "correction": "改正评分",
+      "help": "求助提示",
+      "suggestion": "学习建议",
+      "eval": "AI 评估",
+      "brain": "学习大脑"
+    },
+    "step": {
+      "ocr": {
+        "loadingImages": "读取图片中…",
+        "recognizing": "AI 识别题目中…",
+        "saving": "保存结果中…"
+      },
+      "correction": {
+        "loadingImages": "读取图片中…",
+        "recognizing": "AI 识别改正后答案…",
+        "grading": "重新评分中…"
+      },
+      "help": {
+        "analyzing": "分析题目中…",
+        "generating": "AI 生成提示中…"
+      },
+      "suggestion": {
+        "gathering": "收集学习数据…",
+        "analyzing": "AI 分析薄弱点…"
+      },
+      "eval": {
+        "loadingCases": "加载测试集…",
+        "running": "批量运行中…"
+      },
+      "brain": {
+        "collecting": "收集学习信号…",
+        "launchingAgents": "下发 Agent…"
+      }
+    },
+    "toast": {
+      "completed": {
+        "generic": "任务已完成",
+        "ocr": "题目识别完成",
+        "correction": "改正评分完成",
+        "help": "求助提示已生成",
+        "suggestion": "学习建议已生成",
+        "eval": "AI 评估完成",
+        "brain": "大脑运行完成"
+      },
+      "failed": {
+        "generic": "任务失败",
+        "ocr": "题目识别失败",
+        "correction": "改正评分失败",
+        "help": "求助提示生成失败",
+        "suggestion": "学习建议生成失败",
+        "eval": "AI 评估失败",
+        "brain": "大脑运行失败"
+      }
+    }
   }
 }

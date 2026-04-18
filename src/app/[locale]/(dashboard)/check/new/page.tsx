@@ -13,6 +13,7 @@ import { PhotoGrid } from "@/components/homework/photo-grid";
 import { RecognitionOverlay } from "@/components/homework/recognition-overlay";
 import { MAX_IMAGES_PER_SESSION } from "@/lib/domain/validations/upload";
 import { toast } from "sonner";
+import { useStartTask, useTaskLock } from "@/hooks/use-task";
 
 interface QueueItem {
   id: string;
@@ -62,7 +63,7 @@ export default function NewCheckPage() {
 
   const [recognizingOverlay, setRecognizingOverlay] = useState(false);
 
-  const startRecognition = trpc.homework.startRecognition.useMutation({
+  const startRecognitionMutation = trpc.homework.startRecognition.useMutation({
     onMutate: () => {
       setRecognizingOverlay(true);
     },
@@ -84,6 +85,14 @@ export default function NewCheckPage() {
       toast.error(t("homework.recognitionFailed"));
     },
   });
+
+  const { start: startRecognition } = useStartTask({
+    type: "OCR",
+    buildKey: (input: { sessionId: string }) => `ocr:${input.sessionId}`,
+    mutation: startRecognitionMutation,
+  });
+  const ocrLock = useTaskLock(sessionId ? `ocr:${sessionId}` : null);
+  const recognizing = startRecognitionMutation.isPending || ocrLock.locked;
 
   const { upload, uploadProgress: hookProgress, reset } = useUpload({
     sessionId: sessionId!,
@@ -242,15 +251,15 @@ export default function NewCheckPage() {
             className="w-full"
             size="lg"
             variant="destructive"
-            disabled={startRecognition.isPending}
-            onClick={() => startRecognition.mutate({ sessionId: sessionId! })}
+            disabled={recognizing}
+            onClick={() => void startRecognition({ sessionId: sessionId! })}
           >
-            {startRecognition.isPending ? (
+            {recognizing ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            {startRecognition.isPending
+            {recognizing
               ? t("homework.recognizing")
               : t("homework.retryRecognition")}
           </AdaptiveButton>
@@ -258,15 +267,15 @@ export default function NewCheckPage() {
           <AdaptiveButton
             className="w-full"
             size="lg"
-            disabled={images.length === 0 || isUploading || startRecognition.isPending}
-            onClick={() => startRecognition.mutate({ sessionId: sessionId! })}
+            disabled={images.length === 0 || isUploading || recognizing}
+            onClick={() => void startRecognition({ sessionId: sessionId! })}
           >
-            {startRecognition.isPending ? (
+            {recognizing ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <Sparkles className="h-4 w-4 mr-2" />
             )}
-            {startRecognition.isPending
+            {recognizing
               ? t("homework.recognizing")
               : t("homework.startRecognition")}
           </AdaptiveButton>
