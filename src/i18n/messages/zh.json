@@ -838,6 +838,13 @@
     "group": {
       "manual": "手动添加",
       "errorCount": "{count} 题"
+    },
+    "explanation": {
+      "title": "AI 讲解",
+      "emptyHint": "还没有生成讲解，点击下方按钮让 AI 解释这道题",
+      "generate": "生成讲解",
+      "generating": "生成中…",
+      "backgroundHint": "可以切换页面，完成后自动出现"
     }
   },
   "mastery": {
@@ -1326,7 +1333,8 @@
       "help": "求助提示",
       "suggestion": "学习建议",
       "eval": "AI 评估",
-      "brain": "学习大脑"
+      "brain": "学习大脑",
+      "explanation": "讲解生成"
     },
     "step": {
       "ocr": {
@@ -1354,6 +1362,11 @@
       "brain": {
         "collecting": "收集学习信号…",
         "launchingAgents": "下发 Agent…"
+      },
+      "explanation": {
+        "loading": "加载题目…",
+        "generating": "AI 写讲解中…",
+        "saving": "缓存结果…"
       }
     },
     "toast": {
@@ -1364,7 +1377,8 @@
         "help": "求助提示已生成",
         "suggestion": "学习建议已生成",
         "eval": "AI 评估完成",
-        "brain": "大脑运行完成"
+        "brain": "大脑运行完成",
+        "explanation": "讲解已生成"
       },
       "failed": {
         "generic": "任务失败",
@@ -1373,7 +1387,8 @@
         "help": "求助提示生成失败",
         "suggestion": "学习建议生成失败",
         "eval": "AI 评估失败",
-        "brain": "大脑运行失败"
+        "brain": "大脑运行失败",
+        "explanation": "讲解生成失败"
       }
     }
   }

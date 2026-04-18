@@ -131,6 +131,19 @@ export interface LearningSuggestionJobData {
   taskId?: string;
 }
 
+/**
+ * Generate-explanation job — parent requests a structured solution card
+ * for a specific ErrorQuestion. Worker calls GENERATE_EXPLANATION and
+ * caches the result on ErrorQuestion.explanation (ADR-013).
+ */
+export interface GenerateExplanationJobData {
+  errorQuestionId: string;
+  userId: string;            // triggering parent
+  studentId: string;         // for RBAC in worker
+  locale: string;
+  taskId?: string;
+}
+
 export type AIJobData =
   | OcrRecognizeJobData
   | CorrectionPhotosJobData
@@ -144,7 +157,8 @@ export type AIJobData =
   | MasteryEvaluationJobData
   | EmbeddingGenerateJobData
   | EvalRunJobData
-  | LearningSuggestionJobData;
+  | LearningSuggestionJobData
+  | GenerateExplanationJobData;
 
 /** Job names matching ADR-003 timeout/retry configuration */
 export type AIJobName =
@@ -160,4 +174,5 @@ export type AIJobName =
   | "mastery-evaluation"
   | "embedding-generate"
   | "eval-run"
-  | "learning-suggestion";
+  | "learning-suggestion"
+  | "generate-explanation";

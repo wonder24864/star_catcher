@@ -21,6 +21,7 @@ vi.mock("@/worker/handlers/intervention-planning", () => ({ handleInterventionPl
 vi.mock("@/worker/handlers/embedding-generate", () => ({ handleEmbeddingGenerate: vi.fn() }));
 vi.mock("@/worker/handlers/eval-run", () => ({ handleEvalRun: vi.fn() }));
 vi.mock("@/worker/handlers/learning-suggestion", () => ({ handleLearningSuggestion: vi.fn() }));
+vi.mock("@/worker/handlers/generate-explanation", () => ({ handleGenerateExplanation: vi.fn() }));
 
 import { JOB_HANDLERS, routeJob } from "@/worker/handler-registry";
 import type { AIJobName } from "@/lib/infra/queue/types";
@@ -40,6 +41,7 @@ const ALL_JOB_NAMES: AIJobName[] = [
   "embedding-generate",
   "eval-run",
   "learning-suggestion",
+  "generate-explanation",
 ];
 
 describe("Handler Registry", () => {

@@ -838,6 +838,13 @@
     "group": {
       "manual": "Manual entries",
       "errorCount": "{count} errors"
+    },
+    "explanation": {
+      "title": "AI Explanation",
+      "emptyHint": "No explanation yet — click below to have AI walk you through this problem.",
+      "generate": "Generate explanation",
+      "generating": "Generating…",
+      "backgroundHint": "You can switch pages — it'll appear when ready."
     }
   },
   "mastery": {
@@ -1326,7 +1333,8 @@
       "help": "Help Hints",
       "suggestion": "Learning Suggestions",
       "eval": "AI Eval",
-      "brain": "Learning Brain"
+      "brain": "Learning Brain",
+      "explanation": "Explanation"
     },
     "step": {
       "ocr": {
@@ -1354,6 +1362,11 @@
       "brain": {
         "collecting": "Collecting signals…",
         "launchingAgents": "Launching agents…"
+      },
+      "explanation": {
+        "loading": "Loading question…",
+        "generating": "AI writing explanation…",
+        "saving": "Caching result…"
       }
     },
     "toast": {
@@ -1364,7 +1377,8 @@
         "help": "Help hint ready",
         "suggestion": "Learning suggestion ready",
         "eval": "AI eval completed",
-        "brain": "Brain run completed"
+        "brain": "Brain run completed",
+        "explanation": "Explanation ready"
       },
       "failed": {
         "generic": "Task failed",
@@ -1373,7 +1387,8 @@
         "help": "Help generation failed",
         "suggestion": "Suggestion generation failed",
         "eval": "AI eval failed",
-        "brain": "Brain run failed"
+        "brain": "Brain run failed",
+        "explanation": "Explanation generation failed"
       }
     }
   }

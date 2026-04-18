@@ -287,6 +287,7 @@ model ErrorQuestion {
   correctAnswer     String?      @db.Text
   errorAnalysis     String?      @db.Text // AI error analysis
   aiKnowledgePoint  String?      @db.VarChar(256)
+  explanation       Json?        // Cached GENERATE_EXPLANATION result (parent-only讲解), see ADR-013
   imageUrl          String?
   totalAttempts     Int          @default(1)
   correctAttempts   Int          @default(0)
@@ -905,6 +906,7 @@ enum TaskType {
   SUGGESTION
   EVAL
   BRAIN
+  EXPLANATION
 }
 
 enum TaskStatus {

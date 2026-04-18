@@ -8,6 +8,8 @@ import { z } from "zod";
 import { router, protectedProcedure } from "@/server/trpc";
 import { TRPCError } from "@trpc/server";
 import type { Context } from "@/server/trpc";
+import { enqueueGenerateExplanation } from "@/lib/infra/queue";
+import { createTaskRun, attachBullJobId } from "@/lib/task-runner";
 
 const PAGE_SIZE = 20;
 
@@ -163,7 +165,25 @@ export const errorRouter = router({
 
       const eq = await ctx.db.errorQuestion.findUnique({
         where: { id: input.id },
-        include: { parentNotes: { include: { parent: true }, orderBy: { createdAt: "asc" } } },
+        include: {
+          parentNotes: { include: { parent: true }, orderBy: { createdAt: "asc" } },
+          // For the image-crop view: we need the source HomeworkImage.id +
+          // the SessionQuestion.imageRegion percentages.
+          sessionQuestion: {
+            select: {
+              imageRegion: true,
+              homeworkSession: {
+                select: {
+                  images: {
+                    orderBy: { sortOrder: "asc" },
+                    take: 1,
+                    select: { id: true },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!eq) throw new TRPCError({ code: "NOT_FOUND" });
@@ -171,6 +191,52 @@ export const errorRouter = router({
       await verifyStudentAccess(ctx.db, userId, role, (eq as { studentId: string }).studentId);
 
       return eq;
+    }),
+
+  /**
+   * Request AI-generated explanation for an error question. PARENT only
+   * (student side intentionally can't trigger this — see ADR-013). Idempotent:
+   * if ErrorQuestion.explanation is already cached, the mutation still creates
+   * a TaskRun but the worker short-circuits via a cache hit and completes
+   * immediately. Returns { taskId, taskKey } so the client can lock its button
+   * via useStartTask.
+   */
+  requestExplanation: protectedProcedure
+    .input(z.object({ errorQuestionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session!.role !== "PARENT") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const { userId, locale } = ctx.session!;
+
+      const eq = await ctx.db.errorQuestion.findUnique({
+        where: { id: input.errorQuestionId },
+        select: { id: true, studentId: true, deletedAt: true },
+      });
+      if (!eq || eq.deletedAt) throw new TRPCError({ code: "NOT_FOUND" });
+      await verifyStudentAccess(ctx.db, userId, "PARENT", eq.studentId);
+
+      const taskKey = `explanation:${input.errorQuestionId}`;
+      const { task: taskRun, isNew } = await createTaskRun(ctx.db, {
+        type: "EXPLANATION",
+        key: taskKey,
+        userId,
+        studentId: eq.studentId,
+      });
+
+      let jobId = taskRun.bullJobId ?? null;
+      if (isNew) {
+        jobId = await enqueueGenerateExplanation({
+          errorQuestionId: input.errorQuestionId,
+          userId,
+          studentId: eq.studentId,
+          locale: locale ?? "zh",
+          taskId: taskRun.id,
+        });
+        await attachBullJobId(ctx.db, taskRun.id, jobId);
+      }
+
+      return { jobId, taskId: taskRun.id, taskKey };
     }),
 
   /**

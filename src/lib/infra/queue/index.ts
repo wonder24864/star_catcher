@@ -21,6 +21,7 @@ import type {
   EmbeddingGenerateJobData,
   EvalRunJobData,
   LearningSuggestionJobData,
+  GenerateExplanationJobData,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -248,6 +249,23 @@ export async function enqueueLearningSuggestion(
   const job = await getQueue().add("learning-suggestion", data, {
     attempts: 2,
     backoff: { type: "exponential", delay: 5000 },
+    removeOnComplete: 100,
+    removeOnFail: 200,
+  });
+  return job.id!;
+}
+
+/**
+ * Enqueue generate-explanation job — parent clicks "看讲解" on an error
+ * question. Timeout: 60s (single AI call), Retries: 2. Result is cached
+ * to ErrorQuestion.explanation so subsequent opens skip the AI call.
+ */
+export async function enqueueGenerateExplanation(
+  data: GenerateExplanationJobData,
+): Promise<string> {
+  const job = await getQueue().add("generate-explanation", data, {
+    attempts: 2,
+    backoff: { type: "exponential", delay: 3000 },
     removeOnComplete: 100,
     removeOnFail: 200,
   });

@@ -21,7 +21,8 @@ export type TaskStoreType =
   | "HELP"
   | "SUGGESTION"
   | "EVAL"
-  | "BRAIN";
+  | "BRAIN"
+  | "EXPLANATION";
 
 export type TaskStoreStatus = "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED";
 

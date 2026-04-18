@@ -210,7 +210,7 @@ export async function* subscribeToMastery(
 
 export type TaskProgressEvent = {
   taskId: string;
-  type: "OCR" | "CORRECTION" | "HELP" | "SUGGESTION" | "EVAL" | "BRAIN";
+  type: "OCR" | "CORRECTION" | "HELP" | "SUGGESTION" | "EVAL" | "BRAIN" | "EXPLANATION";
   key: string;
   status: "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED";
   step?: string;

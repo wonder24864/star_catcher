@@ -24,6 +24,7 @@ import type {
   EmbeddingGenerateJobData,
   EvalRunJobData,
   LearningSuggestionJobData,
+  GenerateExplanationJobData,
 } from "@/lib/infra/queue/types";
 import { handleOcrRecognize } from "./handlers/ocr-recognize";
 import { handleCorrectionPhotos } from "./handlers/correction-photos";
@@ -38,6 +39,7 @@ import { handleMasteryEvaluation } from "./handlers/mastery-evaluation";
 import { handleEmbeddingGenerate } from "./handlers/embedding-generate";
 import { handleEvalRun } from "./handlers/eval-run";
 import { handleLearningSuggestion } from "./handlers/learning-suggestion";
+import { handleGenerateExplanation } from "./handlers/generate-explanation";
 
 export type JobHandler = (job: Job<AIJobData, void, AIJobName>) => Promise<void>;
 
@@ -86,6 +88,9 @@ export const JOB_HANDLERS: Record<AIJobName, JobHandler> = {
 
   "learning-suggestion": (job) =>
     handleLearningSuggestion(job as Job<LearningSuggestionJobData>),
+
+  "generate-explanation": (job) =>
+    handleGenerateExplanation(job as Job<GenerateExplanationJobData>),
 };
 
 /**

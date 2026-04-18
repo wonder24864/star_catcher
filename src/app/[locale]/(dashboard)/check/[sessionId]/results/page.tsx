@@ -47,6 +47,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { MathText } from "@/components/ui/math-text";
 import { useStartTask, useTaskLock } from "@/hooks/use-task";
+import { QuestionImage } from "@/components/homework/question-image";
 
 type CheckRound = {
   id: string;
@@ -69,6 +70,7 @@ type Question = {
   isCorrect: boolean | null;
   needsReview: boolean;
   aiKnowledgePoint: string | null;
+  imageRegion: { x: number; y: number; w: number; h: number } | null;
 };
 
 type HelpRequest = {
@@ -412,6 +414,7 @@ export default function CheckResultsPage() {
     finalScore: number | null;
     checkRounds: CheckRound[];
     questions: Question[];
+    images: Array<{ id: string; sortOrder: number }>;
   };
 
   const rounds = sessionData.checkRounds ?? [];
@@ -569,6 +572,14 @@ export default function CheckResultsPage() {
                         </Badge>
                       )}
                     </div>
+                    {/* OCR-detected image region for this question (if any). */}
+                    {q.imageRegion && sessionData.images[0]?.id && (
+                      <QuestionImage
+                        imageId={sessionData.images[0].id}
+                        region={q.imageRegion}
+                        className="mt-1 max-w-xs"
+                      />
+                    )}
                     <p className="mt-1 text-sm"><MathText text={q.content} /></p>
                     {q.studentAnswer && (
                       <p

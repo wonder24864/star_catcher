@@ -18,6 +18,11 @@ import { AgentSummaryCard } from "@/components/agent-summary-card";
 import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
 import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
 import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
+import { QuestionImage } from "@/components/homework/question-image";
+import { ExplanationSection } from "@/components/errors/explanation-section";
+import type {
+  ExplanationCard as ExplanationCardData,
+} from "@/lib/domain/ai/harness/schemas/generate-explanation";
 import { SUBJECT_HEX_COLORS } from "@/lib/constants/subject-colors";
 import { cn } from "@/lib/utils";
 
@@ -76,6 +81,11 @@ export default function ErrorDetailPage() {
         isMastered: boolean;
         totalAttempts: number;
         createdAt: string | Date;
+        explanation: unknown;
+        sessionQuestion: {
+          imageRegion: { x: number; y: number; w: number; h: number } | null;
+          homeworkSession: { images: Array<{ id: string }> };
+        } | null;
         parentNotes: Array<{
           id: string;
           content: string;
@@ -169,6 +179,16 @@ export default function ErrorDetailPage() {
             </div>
           </CardHeader>
           <CardContent className={cn("space-y-3", tier === "wonder" && "pl-6")}>
+            {/* Question's original image region (if OCR detected one) */}
+            {question.sessionQuestion?.imageRegion &&
+              question.sessionQuestion.homeworkSession.images[0]?.id && (
+                <QuestionImage
+                  imageId={question.sessionQuestion.homeworkSession.images[0].id}
+                  region={question.sessionQuestion.imageRegion}
+                  className="max-w-sm"
+                />
+              )}
+
             <div>
               <p className="text-xs text-muted-foreground mb-1">{t("homework.questionContent")}</p>
               <p className={cn("whitespace-pre-wrap", questionContentClass)}>
@@ -227,6 +247,14 @@ export default function ErrorDetailPage() {
           </CardContent>
         </AdaptiveCard>
       </motion.div>
+
+      {/* Parent-only: AI-generated explanation (cached after first gen) */}
+      {isParent && (
+        <ExplanationSection
+          errorQuestionId={question.id}
+          cached={(question.explanation as ExplanationCardData | null) ?? null}
+        />
+      )}
 
       {/* Agent Analysis Summary */}
       <AgentSummaryCard trace={agentTrace} />

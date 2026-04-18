@@ -131,6 +131,9 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
             void utils.brain.invalidate();
             void utils.mastery.invalidate(); // Brain may flip review schedules
             break;
+          case "EXPLANATION":
+            void utils.error.invalidate(); // refresh error.detail so UI renders the cached card
+            break;
         }
 
         const perTypeKey = `toast.${event.status === "COMPLETED" ? "completed" : "failed"}.${event.type.toLowerCase()}`;

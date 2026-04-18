@@ -26,6 +26,7 @@ const TYPE_ICONS: Record<TaskState["type"], string> = {
   SUGGESTION: "🎯",
   EVAL: "🧪",
   BRAIN: "🧠",
+  EXPLANATION: "📖",
 };
 
 function StatusDot({ status }: { status: TaskState["status"] }) {
