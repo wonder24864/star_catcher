@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# ─── Stage 1: Dependencies ──────────────────────────────────────────────────
+# ─── Stage 1: Dependencies (full, incl. dev) ───────────────────────────────
 FROM node:22-alpine AS deps
 WORKDIR /app
 
@@ -10,6 +10,23 @@ COPY prisma ./prisma
 
 RUN --mount=type=cache,target=/root/.npm \
     npm ci && npx prisma generate
+
+# ─── Stage 1b: Prisma Runtime (CLI + client only, minimal install) ─────────
+# Installs just prisma + @prisma/client with their transitive deps in isolation.
+# Runner copies this focused tree, avoiding bloat from duplicating everything
+# Next.js standalone already bundles (saves ~3GB vs installing all prod deps).
+# Whole-tree install also covers new transitive deps across prisma version bumps
+# (e.g. 6.19 added effect/c12/empathic under @prisma/config).
+FROM node:22-alpine AS prisma-runtime
+WORKDIR /prisma-src
+RUN apk add --no-cache libc6-compat
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+RUN PRISMA_V=$(node -p "require('./package.json').devDependencies.prisma || require('./package.json').dependencies.prisma") && \
+    CLIENT_V=$(node -p "require('./package.json').dependencies['@prisma/client']") && \
+    rm -f package.json package-lock.json && \
+    npm init -y > /dev/null && \
+    npm install prisma@${PRISMA_V} @prisma/client@${CLIENT_V} --omit=optional
 
 # ─── Stage 2: Builder ───────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
@@ -51,14 +68,17 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma schema + generated client + CLI (for migrate deploy in entrypoint)
+# Prisma CLI + client + their transitive deps (isolated install from prisma-runtime
+# stage). Keeps tree bounded — avoids duplicating what Next.js standalone bundled.
+COPY --from=prisma-runtime /prisma-src/node_modules ./node_modules
+# Prisma schema (for migrate deploy)
 COPY --from=builder /app/prisma ./prisma
+# Generated Prisma client needs to land alongside standalone's node_modules too
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# External packages not traced by Next.js standalone (serverExternalPackages)
-# minio + its transitive dependencies
+# External packages Next.js standalone doesn't trace (serverExternalPackages
+# in next.config.ts: minio, pino, pino-pretty). Hand-copy their trees since
+# they're not pulled by @prisma/client install above.
 COPY --from=builder /app/node_modules/minio ./node_modules/minio
 COPY --from=builder /app/node_modules/async ./node_modules/async
 COPY --from=builder /app/node_modules/block-stream2 ./node_modules/block-stream2
@@ -80,7 +100,6 @@ COPY --from=builder /app/node_modules/strnum ./node_modules/strnum
 COPY --from=builder /app/node_modules/decode-uri-component ./node_modules/decode-uri-component
 COPY --from=builder /app/node_modules/filter-obj ./node_modules/filter-obj
 COPY --from=builder /app/node_modules/split-on-first ./node_modules/split-on-first
-# pino + pino-pretty + transitive dependencies
 COPY --from=builder /app/node_modules/pino ./node_modules/pino
 COPY --from=builder /app/node_modules/pino-pretty ./node_modules/pino-pretty
 COPY --from=builder /app/node_modules/pino-abstract-transport ./node_modules/pino-abstract-transport
