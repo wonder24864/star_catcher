@@ -82,11 +82,13 @@ docker save star-catcher:$TAG | gzip > release/star-catcher-$TAG.tar.gz
 ### A2. 生成密钥（开发机，一次性）
 
 ```bash
-echo "DB_PASSWORD=$(openssl rand -base64 24)"
+echo "DB_PASSWORD=$(openssl rand -hex 24)"          # hex，避免 / + 冲突 URL 解析
 echo "MINIO_ACCESS_KEY=$(openssl rand -hex 16)"
-echo "MINIO_SECRET_KEY=$(openssl rand -base64 32)"
-echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)"
+echo "MINIO_SECRET_KEY=$(openssl rand -base64 32)"  # 直接传给 MinIO，无 URL 问题
+echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)"   # 直接传给 NextAuth，无 URL 问题
 ```
+
+**特别注意 `DB_PASSWORD` 用 hex**：它会被嵌入 `DATABASE_URL` 字符串，里面出现 `/`、`+`、`:`、`@` 会破坏 URL 解析。hex 只包含 0-9/a-f，完全 URL-safe。
 
 输出的值稍后粘到 NAS UI 环境变量。不要写入文件。
 
