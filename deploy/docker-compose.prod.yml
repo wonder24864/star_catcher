@@ -131,7 +131,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=star_catcher
     volumes:
-      - star-catcher-pgdata:/var/lib/postgresql/data
+      - ${DATA_PATH_PREFIX:-./data}/pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U star_catcher -d star_catcher"]
       interval: 10s
@@ -154,7 +154,7 @@ services:
     container_name: star-catcher-redis
     command: redis-server --appendonly yes --maxmemory ${REDIS_MAXMEMORY:-256mb} --maxmemory-policy allkeys-lru
     volumes:
-      - star-catcher-redisdata:/data
+      - ${DATA_PATH_PREFIX:-./data}/redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -180,7 +180,7 @@ services:
       - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
       - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
     volumes:
-      - star-catcher-miniodata:/data
+      - ${DATA_PATH_PREFIX:-./data}/miniodata:/data
     ports:
       - "${MINIO_PORT:-9000}:${MINIO_PORT:-9000}"
       - "127.0.0.1:9001:9001"
@@ -201,11 +201,7 @@ services:
         max-file: "3"
     restart: unless-stopped
 
-# Named volumes: Docker manages lifecycle + permissions automatically.
-# No manual mkdir / chown needed. Backup via `docker run --rm -v <name>:/d alpine tar czf - /d`.
-# NAS PUID/PGID env vars are a linuxserver.io convention and do NOT apply to
-# pgvector/redis/minio official images — named volumes sidestep the whole issue.
-volumes:
-  star-catcher-pgdata:
-  star-catcher-redisdata:
-  star-catcher-miniodata:
+# Data volumes use bind mount to ${DATA_PATH_PREFIX:-./data} (relative to compose
+# file dir). Docker auto-creates pgdata/redisdata/miniodata subdirs on first run;
+# pgvector/redis/minio official images handle ownership via their own entrypoints,
+# so PUID/PGID env vars (a linuxserver.io convention) are not needed for this stack.
