@@ -174,9 +174,10 @@ export const errorRouter = router({
               imageRegion: true,
               homeworkSession: {
                 select: {
+                  // All image ids so the UI can skip the crop when multi-image
+                  // (see QuestionImage note on imageIndex).
                   images: {
                     orderBy: { sortOrder: "asc" },
-                    take: 1,
                     select: { id: true },
                   },
                 },
@@ -189,6 +190,13 @@ export const errorRouter = router({
       if (!eq) throw new TRPCError({ code: "NOT_FOUND" });
 
       await verifyStudentAccess(ctx.db, userId, role, (eq as { studentId: string }).studentId);
+
+      // Strip parent-only fields when a student fetches their own row.
+      // UI already guards visually, but the HTTP response must match to
+      // prevent data leak via DevTools → Network tab.
+      if (role === "STUDENT") {
+        return { ...eq, explanation: null, correctAnswer: null };
+      }
 
       return eq;
     }),
@@ -209,12 +217,30 @@ export const errorRouter = router({
       }
       const { userId, locale } = ctx.session!;
 
+      // Load studentId + explanation cache indicator in one query.
       const eq = await ctx.db.errorQuestion.findUnique({
         where: { id: input.errorQuestionId },
-        select: { id: true, studentId: true, deletedAt: true },
+        select: {
+          id: true,
+          studentId: true,
+          deletedAt: true,
+          explanation: true,
+        },
       });
       if (!eq || eq.deletedAt) throw new TRPCError({ code: "NOT_FOUND" });
       await verifyStudentAccess(ctx.db, userId, "PARENT", eq.studentId);
+
+      // P2-10 short-circuit: already cached → tell the client instead of
+      // creating a no-op TaskRun + BullMQ roundtrip + worker cache-hit dance.
+      // Client treats cached === true as "re-fetch error.detail to render".
+      if (eq.explanation) {
+        return {
+          jobId: null,
+          taskId: null,
+          taskKey: `explanation:${input.errorQuestionId}`,
+          cached: true as const,
+        };
+      }
 
       const taskKey = `explanation:${input.errorQuestionId}`;
       const { task: taskRun, isNew } = await createTaskRun(ctx.db, {
@@ -236,7 +262,12 @@ export const errorRouter = router({
         await attachBullJobId(ctx.db, taskRun.id, jobId);
       }
 
-      return { jobId, taskId: taskRun.id, taskKey };
+      return {
+        jobId,
+        taskId: taskRun.id,
+        taskKey,
+        cached: false as const,
+      };
     }),
 
   /**

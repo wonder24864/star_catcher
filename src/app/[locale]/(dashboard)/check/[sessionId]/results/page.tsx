@@ -572,11 +572,15 @@ export default function CheckResultsPage() {
                         </Badge>
                       )}
                     </div>
-                    {/* OCR-detected image region for this question (if any). */}
-                    {q.imageRegion && sessionData.images[0]?.id && (
+                    {/* OCR-detected image region for this question (if any).
+                       Multi-image sessions are skipped — the OCR schema doesn't
+                       record which image each region came from, so we'd crop
+                       the wrong source. Safe to narrow when we add imageIndex. */}
+                    {q.imageRegion && sessionData.images.length === 1 && (
                       <QuestionImage
                         imageId={sessionData.images[0].id}
                         region={q.imageRegion}
+                        alt={`第 ${q.questionNumber} 题配图`}
                         className="mt-1 max-w-xs"
                       />
                     )}

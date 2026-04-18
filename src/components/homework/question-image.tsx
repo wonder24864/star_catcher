@@ -10,11 +10,15 @@
  * If no imageRegion is stored, the component renders nothing — not all
  * questions have an associated figure.
  *
- * Note: current OCR schema doesn't tag which image a region belongs to for
- * multi-image sessions — the caller passes the relevant `imageId` (commonly
- * images[0]). Extending to multi-image sessions is a future schema change.
+ * Multi-image limitation: OCR schema currently doesn't tag which source
+ * image a region belongs to. When a session has multiple images, picking
+ * images[0] would show wrong crops for questions from image 2+. Callers
+ * MUST gate on single-image sessions (pass null imageId otherwise). When
+ * we add `imageIndex` to the OCR schema + migrate existing rows, this
+ * component can accept the full images[] array and dispatch by index.
  */
 
+import { useState } from "react";
 import { ImageOff } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 
@@ -28,21 +32,28 @@ export type QuestionImageRegion = {
 export function QuestionImage({
   imageId,
   region,
+  alt,
   className,
 }: {
-  imageId: string;
+  /** Pass null when the session has multiple images — see multi-image note above. */
+  imageId: string | null;
   region: QuestionImageRegion | null | undefined;
+  /** Accessible description, e.g. "第 3 题的配图". Falls back to generic if empty. */
+  alt?: string;
   className?: string;
 }) {
+  const [loadFailed, setLoadFailed] = useState(false);
   const { data, isError } = trpc.upload.getPresignedDownloadUrl.useQuery(
-    { imageId },
-    { staleTime: 5 * 60 * 1000, enabled: !!region },
+    { imageId: imageId ?? "" },
+    { staleTime: 5 * 60 * 1000, enabled: !!region && !!imageId },
   );
 
-  if (!region) return null;
-  if (!data?.url || isError) {
+  if (!region || !imageId) return null;
+  if (!data?.url || isError || loadFailed) {
     return (
       <div
+        role="img"
+        aria-label={alt ?? "图片加载失败"}
         className={
           "flex aspect-video items-center justify-center rounded-md border border-dashed bg-muted " +
           (className ?? "")
@@ -73,9 +84,9 @@ export function QuestionImage({
   return (
     <div
       role="img"
-      aria-label=""
+      aria-label={alt ?? "题目配图"}
       className={
-        "rounded-md border bg-muted bg-no-repeat " + (className ?? "")
+        "relative rounded-md border bg-muted bg-no-repeat " + (className ?? "")
       }
       style={{
         aspectRatio: `${w} / ${h}`,
@@ -83,6 +94,16 @@ export function QuestionImage({
         backgroundSize: `${sizeX}% ${sizeY}%`,
         backgroundPosition: `${posX}% ${posY}%`,
       }}
-    />
+    >
+      {/* Hidden probe: background-image has no onError, so mirror the URL
+         through a 1×1 <img> to detect failed loads (e.g. expired presigned URL). */}
+      <img
+        src={data.url}
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute h-0 w-0 opacity-0"
+        onError={() => setLoadFailed(true)}
+      />
+    </div>
   );
 }

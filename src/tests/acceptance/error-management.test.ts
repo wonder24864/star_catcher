@@ -164,7 +164,11 @@ describe("US-020: Error Question List", () => {
 describe("US-021: Error Question Detail", () => {
   beforeEach(setup);
 
-  test("shows full question with student/correct answers", async () => {
+  test("STUDENT sees question + own answer, but correctAnswer is stripped", async () => {
+    // Stripping is the server-side enforcement of the student/parent boundary
+    // introduced with the explanation cache (ADR-013). Previously only the
+    // UI hid correctAnswer — now the API contract guarantees students can't
+    // see it via DevTools either.
     db._errorQuestions.push({
       id: "eq1", studentId: "student1", sessionQuestionId: null,
       subject: "MATH", contentType: null, grade: null, questionType: null,
@@ -177,13 +181,32 @@ describe("US-021: Error Question Detail", () => {
 
     const caller = createCaller(createMockContext(db, studentCtx));
     const result = await caller.error.detail({ id: "eq1" }) as {
-      content: string; studentAnswer: string; correctAnswer: string; aiKnowledgePoint: string;
+      content: string; studentAnswer: string; correctAnswer: string | null; aiKnowledgePoint: string;
     };
 
     expect(result.content).toBe("3+4=?");
     expect(result.studentAnswer).toBe("8");
-    expect(result.correctAnswer).toBe("7");
+    expect(result.correctAnswer).toBeNull(); // stripped for STUDENT
     expect(result.aiKnowledgePoint).toBe("加法");
+  });
+
+  test("PARENT sees the full record including correctAnswer + explanation", async () => {
+    db._errorQuestions.push({
+      id: "eq2", studentId: "student1", sessionQuestionId: null,
+      subject: "MATH", contentType: null, grade: null, questionType: null,
+      content: "3+4=?", contentHash: null,
+      studentAnswer: "8", correctAnswer: "7",
+      errorAnalysis: null, aiKnowledgePoint: "加法", imageUrl: null,
+      totalAttempts: 2, correctAttempts: 0, isMastered: false,
+      deletedAt: null, createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, parentCtx));
+    const result = await caller.error.detail({ id: "eq2" }) as {
+      content: string; studentAnswer: string; correctAnswer: string | null;
+    };
+
+    expect(result.correctAnswer).toBe("7"); // parent can see
   });
 
   test("shows AI knowledge point annotation", async () => {

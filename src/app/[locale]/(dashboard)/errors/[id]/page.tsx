@@ -20,9 +20,6 @@ import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
 import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
 import { QuestionImage } from "@/components/homework/question-image";
 import { ExplanationSection } from "@/components/errors/explanation-section";
-import type {
-  ExplanationCard as ExplanationCardData,
-} from "@/lib/domain/ai/harness/schemas/generate-explanation";
 import { SUBJECT_HEX_COLORS } from "@/lib/constants/subject-colors";
 import { cn } from "@/lib/utils";
 
@@ -179,12 +176,14 @@ export default function ErrorDetailPage() {
             </div>
           </CardHeader>
           <CardContent className={cn("space-y-3", tier === "wonder" && "pl-6")}>
-            {/* Question's original image region (if OCR detected one) */}
+            {/* Question's original image region (if OCR detected one).
+               Multi-image sessions are skipped — see QuestionImage note. */}
             {question.sessionQuestion?.imageRegion &&
-              question.sessionQuestion.homeworkSession.images[0]?.id && (
+              question.sessionQuestion.homeworkSession.images.length === 1 && (
                 <QuestionImage
                   imageId={question.sessionQuestion.homeworkSession.images[0].id}
                   region={question.sessionQuestion.imageRegion}
+                  alt={t("homework.questionContent")}
                   className="max-w-sm"
                 />
               )}
@@ -248,11 +247,12 @@ export default function ErrorDetailPage() {
         </AdaptiveCard>
       </motion.div>
 
-      {/* Parent-only: AI-generated explanation (cached after first gen) */}
+      {/* Parent-only: AI-generated explanation (cached after first gen).
+         Shape is validated inside the component (P2-6). */}
       {isParent && (
         <ExplanationSection
           errorQuestionId={question.id}
-          cached={(question.explanation as ExplanationCardData | null) ?? null}
+          cached={question.explanation}
         />
       )}
 

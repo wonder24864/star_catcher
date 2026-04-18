@@ -79,11 +79,19 @@ export async function handleGenerateExplanation(
       });
     }
 
+    // kpName fallback: an empty string confuses the prompt ("the student
+    // is learning about `{{kpName}}`"). If the error question was created
+    // before the KG was populated, fall back to a human-readable descriptor
+    // derived from subject + grade so the AI has *some* context.
+    const kpName =
+      eq.aiKnowledgePoint?.trim() ||
+      (eq.grade ? `${eq.subject} (${eq.grade})` : eq.subject);
+
     const result = await generateExplanation({
       questionContent: eq.content,
       correctAnswer: eq.correctAnswer,
       studentAnswer: eq.studentAnswer,
-      kpName: eq.aiKnowledgePoint ?? "",
+      kpName,
       subject: eq.subject,
       grade: eq.grade ?? undefined,
       format: "auto",

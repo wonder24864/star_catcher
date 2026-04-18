@@ -41,7 +41,7 @@ export function useTaskLock(key: string | null | undefined): {
 }
 
 type AnyMutationResult = {
-  taskId?: string;
+  taskId?: string | null;
   taskKey?: string;
 } & Record<string, unknown>;
 
