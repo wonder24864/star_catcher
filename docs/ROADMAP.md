@@ -221,6 +221,12 @@
 - KG 2D 力导向图（d3-force simulation + SVG + d3-zoom + 节点 hover 邻居高亮 + PREREQUISITE/CONTAINS 箭头）
 - 共享 Pro 组件库 8 个（admin + parent 共用，不侵入学生 4-tier 体系）
 
+### 生产上线（2026-04-18）
+
+- NAS UI 部署方案落地：绿联 NAS Docker 图形界面，无需 SSH
+- compose 端口参数化（`APP_PORT` / `MINIO_PORT`），dev/prod 共用同一套 compose
+- 部署文档：`deploy/DEPLOY-PROD.md` 方案 A（UI）+ 方案 B（CLI）
+
 ### Phase 5 推迟到后续 Phase 的事项
 
 | # | 事项 | 推迟原因 |

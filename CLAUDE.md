@@ -12,6 +12,7 @@ Next.js 14+ (App Router), TypeScript, Tailwind CSS, shadcn/ui, tRPC, Prisma, Pos
 - 需求: `docs/REQUIREMENTS.md` | 架构: `docs/ARCHITECTURE.md` | 设计系统: `docs/DESIGN-SYSTEM.md`
 - 业务规则: `docs/BUSINESS-RULES.md` | 用户故事: `docs/user-stories/` | ADR: `docs/adr/`
 - Sprint 计划: `docs/sprints/` | 路线图: `docs/ROADMAP.md` | 启动计划: `docs/PHASE2-LAUNCH-PLAN.md` | Phase 3: `docs/PHASE3-LAUNCH-PLAN.md`
+- 部署: `deploy/DEPLOY-PROD.md`（含 NAS UI 方案 + CLI 方案）| 开发环境: `deploy/DEPLOY-DEV.md`
 
 ## Development Rules
 

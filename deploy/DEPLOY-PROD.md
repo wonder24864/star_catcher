@@ -1,5 +1,12 @@
 # Star Catcher — 生产环境部署指南（UGreen NAS）
 
+## 部署方案选择
+
+本文档提供两种部署方案，选一种即可：
+
+- **方案 A：NAS UI 部署**（推荐，无需 SSH）— 见 [方案 A](#方案-a-nas-ui-部署推荐) 节。完全通过绿联 NAS 的 Docker 图形界面完成。
+- **方案 B：CLI + SSH 部署** — 见 [方案 B](#方案-b-cli--ssh-部署) 节。需要 NAS 开 SSH，使用 `deploy.sh` 一键脚本。
+
 ## 架构概览
 
 ```
@@ -38,6 +45,154 @@ PostgreSQL 和 Redis 不暴露端口，只在 Docker 内部网络通信。
 **不冲突。** 生产 compose 中 PostgreSQL 不暴露 5432 端口到宿主机，只在 Docker 内部网络使用。你 NAS 上已有的 PostgreSQL 完全不受影响。
 
 ---
+
+## 方案 A：NAS UI 部署（推荐）
+
+适用于绿联 NAS 提供的 Docker 图形界面，**无需 SSH**，全部通过 UI 完成。
+
+### A1. 准备阶段（开发机）
+
+在项目根目录执行：
+
+```bash
+# 构建生产镜像（tag 用 git commit hash）
+TAG=$(git rev-parse --short HEAD)
+docker build -t star-catcher:$TAG .
+
+# 导出并压缩（约 200-400 MB）
+mkdir -p release
+docker save star-catcher:$TAG | gzip > release/star-catcher-$TAG.tar.gz
+```
+
+`release/` 目录已被 `.gitignore` 忽略，tar.gz 不会误提交。
+
+### A2. 生成密钥（开发机，一次性）
+
+```bash
+echo "DB_PASSWORD=$(openssl rand -base64 24)"
+echo "MINIO_ACCESS_KEY=$(openssl rand -hex 16)"
+echo "MINIO_SECRET_KEY=$(openssl rand -base64 32)"
+echo "NEXTAUTH_SECRET=$(openssl rand -base64 32)"
+```
+
+输出的值稍后粘到 NAS UI 环境变量。不要写入文件。
+
+### A3. NAS 侧准备
+
+1. **创建项目目录**：在 NAS 文件管理器里创建 `star-catcher/` 文件夹（位置任意，建议 `/docker/star-catcher/`）
+2. **预建数据子目录**：在上述文件夹内再建 `data/pgdata`、`data/redisdata`、`data/miniodata` 三个空子目录（防止 Docker 权限问题导致自动创建失败）
+3. **把 tar.gz 传到 NAS**：用 NAS 文件管理器上传 / SMB 共享，把 `release/star-catcher-<TAG>.tar.gz` 放到 `star-catcher/` 下
+
+### A4. NAS UI 操作
+
+**Step 1 — 导入镜像**：  
+NAS Docker 应用 → 镜像管理 → 导入 → 选刚传的 tar.gz。导入完成后镜像列表出现 `star-catcher:<TAG>`。
+
+**Step 2 — 新建 Compose 项目**：  
+NAS Docker 应用 → 项目（或 "Compose" / "Stack" 菜单）→ 新建：
+- 项目名：`star-catcher`
+- 项目目录：选 `star-catcher/` 文件夹（跟 tar.gz 同目录，支持相对路径）
+- compose 内容：粘 [deploy/docker-compose.prod.yml](./docker-compose.prod.yml) 整段内容
+
+**Step 3 — 配置环境变量**（在 UI 环境变量编辑面板里粘入）：
+
+```
+# 必改：NAS 地址（先用内网 IP，后续可切 Tailscale）
+NAS_TAILSCALE_HOSTNAME=<NAS 的 IP 或 Tailscale 地址>
+
+# 必改：镜像 tag（跟导入的镜像对齐）
+IMAGE_TAG=<git hash,例如 afbdefe>
+
+# 必改：数据目录用相对路径
+DATA_PATH_PREFIX=./data
+
+# 必改：端口（如果默认 3000/9000 被占用，换成其他）
+APP_PORT=3000
+MINIO_PORT=9000
+
+# 必改：密钥（A2 步骤生成的）
+DB_PASSWORD=<generated>
+MINIO_ACCESS_KEY=<generated>
+MINIO_SECRET_KEY=<generated>
+NEXTAUTH_SECRET=<generated>
+
+# 必改：管理员密码（首次登录用）
+ADMIN_DEFAULT_PASSWORD=<自己设一个>
+
+# 必改：Azure OpenAI 凭证
+AZURE_OPENAI_API_KEY=<Azure Portal>
+AZURE_OPENAI_ENDPOINT=<形如 https://xxx.openai.azure.com/>
+AZURE_OPENAI_DEPLOYMENT=<你的部署名>
+AZURE_OPENAI_API_VERSION=2024-12-01-preview
+
+# 首次启动必加（seed 完后删掉）
+RUN_SEED=1
+
+# ── 以下可留默认值 ──────────────────────────────────────
+MINIO_BUCKET=star-catcher
+NEXT_PUBLIC_APP_NAME=Star Catcher
+NEXT_PUBLIC_DEFAULT_LOCALE=zh
+EMBEDDING_PROVIDER=azure
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DEPLOYMENT=text-embedding-3-small
+EMBEDDING_DIMENSIONS=1536
+SEMANTIC_CACHE_ENABLED=false
+SEMANTIC_CACHE_TTL_HOURS=168
+SEMANTIC_CACHE_SIMILARITY_THRESHOLD=0.95
+OTEL_ENABLED=false
+LOG_LEVEL=info
+APP_MEM=1G
+WORKER_MEM=1G
+DB_MEM=1G
+REDIS_MEM=512M
+MINIO_MEM=512M
+REDIS_MAXMEMORY=256mb
+WORKER_CONCURRENCY=3
+```
+
+**Step 4 — 启动并等 seed 完成**：  
+UI 点"部署" / "启动"。查看 `star-catcher-app` 容器日志，等出现：
+```
+Running database migrations...
+Migrations complete.
+Running database seed...
+Seed complete.
+```
+首次启动约 60-90 秒。
+
+**Step 5 — 删除 RUN_SEED 并重启**：  
+UI 编辑项目环境变量 → **删除 `RUN_SEED=1`**（或改成 `0`）→ 只重启 `star-catcher-app` 容器。  
+不删会导致下次重启时重复 seed，可能引起容器 restart loop。
+
+**Step 6 — 验证**：  
+- NAS UI 看到 5 个容器全部 Running + healthy
+- 浏览器访问 `http://<NAS_IP>:<APP_PORT>` → 登录页正常
+- 用 `admin` + `ADMIN_DEFAULT_PASSWORD` 登录
+- 建学生 → 建作业 → 手机拍作业上传 → AI 识别成功
+
+### A5. 后续更新部署（UI 方案）
+
+1. 开发机构建新镜像 + 打包（同 A1，TAG 用新 git hash）
+2. 传新 tar.gz 到 NAS
+3. NAS UI 导入新镜像
+4. UI 编辑项目的 `IMAGE_TAG` 环境变量为新 hash
+5. 重启 `star-catcher-app` 和 `star-catcher-worker`（其他 3 个不用动，有数据持久化）
+
+回滚：把 `IMAGE_TAG` 改回旧 hash → 重启 app + worker。
+
+### A6. 切换 NAS 地址（192.168.x → Tailscale）
+
+初期内网 IP 测试通过后，想切到 Tailscale 域名：
+
+1. NAS UI 编辑项目环境变量
+2. 改 `NAS_TAILSCALE_HOSTNAME=<新地址>`
+3. 只重启 `star-catcher-app`
+
+**无需**改数据、重 seed。presigned URL 每次请求动态生成，旧 IP 的 URL 不会残留在 DB 里。
+
+---
+
+## 方案 B：CLI + SSH 部署
 
 ## 首次部署
 
