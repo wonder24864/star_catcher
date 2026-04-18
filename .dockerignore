@@ -30,3 +30,15 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+# Release artifacts — 镜像自身的 tar.gz，不能再打进镜像里造成膨胀
+release/
+
+# Build cache / coverage — 不需要进镜像
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Docs 不需要进运行时镜像（README / ARCHITECTURE 等）
+docs/
+CLAUDE.md
