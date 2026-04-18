@@ -1203,10 +1203,10 @@
         "startPractice": "动手试试",
         "viewExplanation": "看看讲解",
         "empty": "今天没有任务哦～",
-        "emptySubtext": "明天再来看看吧！"
-      },
-      "tasks.practice": {
-        "done": "太棒了！"
+        "emptySubtext": "明天再来看看吧！",
+        "practice": {
+          "done": "太棒了！"
+        }
       },
       "explanationCard": {
         "done": "我懂了！",

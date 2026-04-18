@@ -1203,10 +1203,10 @@
         "startPractice": "Let's try!",
         "viewExplanation": "Let's learn!",
         "empty": "No tasks today~",
-        "emptySubtext": "Come back tomorrow!"
-      },
-      "tasks.practice": {
-        "done": "Awesome!"
+        "emptySubtext": "Come back tomorrow!",
+        "practice": {
+          "done": "Awesome!"
+        }
       },
       "explanationCard": {
         "done": "I get it!",

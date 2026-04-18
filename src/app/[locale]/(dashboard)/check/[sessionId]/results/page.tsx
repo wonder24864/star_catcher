@@ -414,8 +414,9 @@ export default function CheckResultsPage() {
     finalScore: number | null;
     checkRounds: CheckRound[];
     questions: Question[];
-    images: Array<{ id: string; sortOrder: number }>;
+    images?: Array<{ id: string; sortOrder: number }>;
   };
+  const sessionImages = sessionData.images ?? [];
 
   const rounds = sessionData.checkRounds ?? [];
   const questions = sessionData.questions ?? [];
@@ -576,9 +577,9 @@ export default function CheckResultsPage() {
                        Multi-image sessions are skipped — the OCR schema doesn't
                        record which image each region came from, so we'd crop
                        the wrong source. Safe to narrow when we add imageIndex. */}
-                    {q.imageRegion && sessionData.images.length === 1 && (
+                    {q.imageRegion && sessionImages.length === 1 && sessionImages[0] && (
                       <QuestionImage
-                        imageId={sessionData.images[0].id}
+                        imageId={sessionImages[0].id}
                         region={q.imageRegion}
                         alt={`第 ${q.questionNumber} 题配图`}
                         className="mt-1 max-w-xs"
