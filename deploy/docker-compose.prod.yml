@@ -39,6 +39,7 @@ services:
       - NEXT_PUBLIC_DEFAULT_LOCALE=${NEXT_PUBLIC_DEFAULT_LOCALE:-zh}
       - ADMIN_DEFAULT_PASSWORD=${ADMIN_DEFAULT_PASSWORD}
       - RUN_MIGRATE=1
+      - RUN_SEED=${RUN_SEED:-0}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_PRETTY=false
     depends_on:
