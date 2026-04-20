@@ -10,7 +10,10 @@ export class ContentGuardrailComponent implements HarnessComponent {
       return;
     }
 
-    const check = checkContentSafety(ctx.response.content);
+    const check = checkContentSafety(
+      ctx.response.content,
+      ctx.request.operation.maxOutputLength,
+    );
     if (!check.safe) {
       ctx.fail(
         check.reason || "Content blocked by safety filter",

@@ -17,6 +17,9 @@ const operation: AIOperation<ExtractKnowledgePointsOutput> = {
   description: "Extract knowledge point tree from textbook table of contents",
   outputSchema: extractKnowledgePointsSchema,
   usesVision: false,
+  // A full-textbook TOC can produce 100+ KP entries (name + parent + depth +
+  // order + optional prerequisites). Raise the guardrail above the default.
+  maxOutputLength: 30000,
 };
 
 export interface ExtractKnowledgePointsParams {

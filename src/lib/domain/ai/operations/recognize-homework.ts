@@ -17,6 +17,10 @@ const operation: AIOperation<RecognizeHomeworkOutput> = {
   description: "Recognize homework images and extract questions with answers",
   outputSchema: recognizeHomeworkSchema,
   usesVision: true,
+  // A full homework page (multiple questions, each with content + answers +
+  // knowledge points + image regions) routinely exceeds the 8000-char default.
+  // 30000 chars ≈ ~25 typical questions; hard schema validation still applies.
+  maxOutputLength: 30000,
 };
 
 export interface RecognizeHomeworkParams {

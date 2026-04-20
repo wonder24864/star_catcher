@@ -43,23 +43,29 @@ const UNSAFE_PATTERNS: RegExp[] = [
 ];
 
 /**
- * Max length for AI output text to prevent hallucination flooding.
- * HELP_GENERATE Level 3 can be long, so we allow up to 8000 chars.
+ * Default max length for AI output text to prevent hallucination flooding.
+ * HELP_GENERATE Level 3 can be long, so we allow up to 8000 chars by default.
+ * Operations whose output scales with input (OCR full page, KP tree from TOC)
+ * should set `AIOperation.maxOutputLength` to override this.
  */
-const MAX_OUTPUT_LENGTH = 8000;
+export const DEFAULT_MAX_OUTPUT_LENGTH = 8000;
 
 /**
  * Check AI-generated content for K-12 safety.
  *
  * @param content - The raw AI response content (JSON string or parsed text)
+ * @param maxOutputLength - Override the default length cap (per-operation)
  * @returns GuardrailResult with safe=true if content passes all checks
  */
-export function checkContentSafety(content: string): GuardrailResult {
+export function checkContentSafety(
+  content: string,
+  maxOutputLength: number = DEFAULT_MAX_OUTPUT_LENGTH,
+): GuardrailResult {
   // 1. Length check — prevent hallucination floods
-  if (content.length > MAX_OUTPUT_LENGTH) {
+  if (content.length > maxOutputLength) {
     return {
       safe: false,
-      reason: `Output too long (${content.length} chars, max ${MAX_OUTPUT_LENGTH})`,
+      reason: `Output too long (${content.length} chars, max ${maxOutputLength})`,
     };
   }
 

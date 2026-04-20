@@ -14,6 +14,13 @@ export interface AIOperation<TOutput = unknown> {
   outputSchema: z.ZodType<TOutput>;
   /** Whether this operation uses vision (image input) */
   usesVision: boolean;
+  /**
+   * Max output length (in characters of raw AI response content) accepted by
+   * ContentGuardrail. Defaults to 8000. Raise for operations whose output
+   * size is naturally proportional to input (e.g. OCR of a full homework page,
+   * knowledge-point tree extraction from a textbook TOC).
+   */
+  maxOutputLength?: number;
 }
 
 /**

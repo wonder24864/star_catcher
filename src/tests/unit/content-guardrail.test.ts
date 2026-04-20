@@ -81,16 +81,32 @@ describe("ContentGuardrail", () => {
   });
 
   describe("length check", () => {
-    test("blocks excessively long output", () => {
+    test("blocks excessively long output at default limit", () => {
       const content = "x".repeat(8001);
       const result = checkContentSafety(content);
       expect(result.safe).toBe(false);
       expect(result.reason).toContain("too long");
+      expect(result.reason).toContain("max 8000");
     });
 
-    test("passes content at the length limit", () => {
+    test("passes content at the default length limit", () => {
       const content = "x".repeat(8000);
       expect(checkContentSafety(content).safe).toBe(true);
+    });
+
+    test("respects per-operation maxOutputLength override", () => {
+      const content = "x".repeat(10000);
+      // Default (8000) would block
+      expect(checkContentSafety(content).safe).toBe(false);
+      // Raised cap passes
+      expect(checkContentSafety(content, 30000).safe).toBe(true);
+    });
+
+    test("reports the override limit in the reason", () => {
+      const content = "x".repeat(30001);
+      const result = checkContentSafety(content, 30000);
+      expect(result.safe).toBe(false);
+      expect(result.reason).toContain("max 30000");
     });
   });
 
