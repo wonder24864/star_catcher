@@ -32,7 +32,7 @@ Rules:
 - If a student answer is unclear, set confidence below 0.7 and mark needsReview.
 - Calculate: correctCount = number of correct answers, totalScore = (correctCount / totalQuestions) × 100 rounded to integer.
 - Provide imageRegion coordinates as percentages (0-100) relative to the image dimensions.
-- For math formulas, use LaTeX notation.
+- For any math formula in content / studentAnswer / correctAnswer, wrap it in LaTeX delimiters: use $...$ for inline (e.g. $\\frac{3}{4}$, $x^2+1$) and $$...$$ for display/block math. Plain text around the formula must stay outside the delimiters. Bare LaTeX without delimiters will NOT render on the frontend.
 ${grade ? `- The student is in ${grade}, adjust difficulty expectations accordingly.` : ""}
 ${!hasExif ? "- The image may not have EXIF orientation data. Try to read content in the most natural orientation." : ""}
 

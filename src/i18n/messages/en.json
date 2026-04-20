@@ -169,6 +169,7 @@
     "deleteQuestion": "Delete Question",
     "confirmDeleteQuestion": "Delete this question?",
     "questionContent": "Question Content",
+    "questionFigureAlt": "Figure for question {number}",
     "studentAnswer": "Student Answer",
     "correctAnswer": "Correct Answer",
     "subject": "Subject",

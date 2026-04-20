@@ -169,6 +169,7 @@
     "deleteQuestion": "删除题目",
     "confirmDeleteQuestion": "确定删除这道题吗？",
     "questionContent": "题目内容",
+    "questionFigureAlt": "第 {number} 题配图",
     "studentAnswer": "学生答案",
     "correctAnswer": "正确答案",
     "subject": "学科",

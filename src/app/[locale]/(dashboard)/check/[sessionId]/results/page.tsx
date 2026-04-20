@@ -581,7 +581,7 @@ export default function CheckResultsPage() {
                       <QuestionImage
                         imageId={sessionImages[0].id}
                         region={q.imageRegion}
-                        alt={`第 ${q.questionNumber} 题配图`}
+                        alt={t("homework.questionFigureAlt", { number: q.questionNumber })}
                         className="mt-1 max-w-xs"
                       />
                     )}

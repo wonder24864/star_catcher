@@ -36,6 +36,7 @@ import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { MathText } from "@/components/ui/math-text";
+import { QuestionImage } from "@/components/homework/question-image";
 
 export default function RecognitionResultsPage() {
   const t = useTranslations();
@@ -136,7 +137,10 @@ export default function RecognitionResultsPage() {
     confidence: number | null;
     needsReview: boolean;
     aiKnowledgePoint: string | null;
+    imageRegion: { x: number; y: number; w: number; h: number } | null;
   }> ?? [];
+
+  const sessionImages = (session as { images?: Array<{ id: string }> }).images ?? [];
 
   const correctCount = questions.filter((q) => q.isCorrect === true).length;
   const totalScore = questions.length > 0
@@ -233,6 +237,20 @@ export default function RecognitionResultsPage() {
                           </AdaptiveSubjectBadge>
                         )}
                       </div>
+                      {/* OCR-detected image region (figure/diagram attached to
+                         the question). Only render when the session has a
+                         single source image — the OCR schema doesn't tag
+                         which image each region came from, so in multi-image
+                         sessions we'd crop the wrong source. Mirrors the
+                         gating used on /results. */}
+                      {q.imageRegion && sessionImages.length === 1 && sessionImages[0] && (
+                        <QuestionImage
+                          imageId={sessionImages[0].id}
+                          region={q.imageRegion}
+                          alt={t("homework.questionFigureAlt", { number: q.questionNumber })}
+                          className="mt-1 max-w-xs"
+                        />
+                      )}
                       <p className="mt-1 text-sm"><MathText text={q.content} /></p>
                     </div>
 
