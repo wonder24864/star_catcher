@@ -13,6 +13,7 @@ Next.js 14+ (App Router), TypeScript, Tailwind CSS, shadcn/ui, tRPC, Prisma, Pos
 - 业务规则: `docs/BUSINESS-RULES.md` | 用户故事: `docs/user-stories/` | ADR: `docs/adr/`
 - Sprint 计划: `docs/sprints/` | 路线图: `docs/ROADMAP.md` | 启动计划: `docs/PHASE2-LAUNCH-PLAN.md` | Phase 3: `docs/PHASE3-LAUNCH-PLAN.md`
 - 部署: `deploy/DEPLOY-PROD.md`（含 NAS UI 方案 + CLI 方案）| 开发环境: `deploy/DEPLOY-DEV.md`
+- **OCR bbox grounding 路线（GPU 到位后切 Qwen2.5-VL + Ollama 的分阶段落地方案）**: `docs/adr/014-ocr-bbox-grounding-strategy.md`
 
 ## Development Rules
 

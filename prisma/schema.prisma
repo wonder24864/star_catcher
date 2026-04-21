@@ -184,7 +184,8 @@ model HomeworkImage {
   privacyStripped  Boolean  @default(false) // GPS/privacy EXIF data stripped
   createdAt        DateTime @default(now())
 
-  homeworkSession HomeworkSession @relation(fields: [homeworkSessionId], references: [id], onDelete: Cascade)
+  homeworkSession HomeworkSession   @relation(fields: [homeworkSessionId], references: [id], onDelete: Cascade)
+  questions       SessionQuestion[]
 
   @@index([homeworkSessionId])
 }
@@ -192,6 +193,10 @@ model HomeworkImage {
 model SessionQuestion {
   id               String        @id @default(cuid())
   homeworkSessionId String
+  // Which source image this question was OCR'd from. NULL for legacy rows
+  // created before Sprint 17 (consumers must fall back to the session's
+  // first image by sortOrder when NULL). See ADR-001 / Sprint 17.
+  homeworkImageId  String?
   questionNumber   Int
   questionType     QuestionType?
   content          String        @db.Text
@@ -200,17 +205,19 @@ model SessionQuestion {
   isCorrect        Boolean?
   confidence       Float?        // AI confidence 0.0-1.0
   needsReview      Boolean       @default(false) // Flagged when confidence < 0.7
-  imageRegion      Json?         // Relative coords {x%, y%, w%, h%}
+  imageRegion      Json?         // Relative coords {x%, y%, w%, h%} on homeworkImage
   aiKnowledgePoint String?       @db.VarChar(256)
   createdAt        DateTime      @default(now()) @db.Timestamptz
   updatedAt        DateTime      @updatedAt @db.Timestamptz
 
   homeworkSession HomeworkSession       @relation(fields: [homeworkSessionId], references: [id], onDelete: Cascade)
+  homeworkImage   HomeworkImage?        @relation(fields: [homeworkImageId], references: [id], onDelete: SetNull)
   roundResults    RoundQuestionResult[]
   helpRequests    HelpRequest[]
   errorQuestion   ErrorQuestion?
 
   @@index([homeworkSessionId])
+  @@index([homeworkImageId])
 }
 
 enum QuestionType {

@@ -100,10 +100,9 @@ export default function CheckPage() {
                 onClick={() => {
                   if (s.status === "CREATED" || s.status === "RECOGNITION_FAILED" || s.status === "RECOGNIZING") {
                     router.push(`/check/new?sessionId=${s.id}`);
-                  } else if (s.status === "RECOGNIZED") {
+                  } else {
+                    // RECOGNIZED / CHECKING / COMPLETED all go to the canvas page.
                     router.push(`/check/${s.id}`);
-                  } else if (s.status === "CHECKING" || s.status === "COMPLETED") {
-                    router.push(`/check/${s.id}/results`);
                   }
                 }}
               >

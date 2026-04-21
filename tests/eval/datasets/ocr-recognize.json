@@ -1,9 +1,10 @@
 {
   "operation": "OCR_RECOGNIZE",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "promptVersion": "1.0.0",
   "exactMatchFields": ["subject"],
   "judgedFields": ["questions"],
+  "note": "Sprint 17 added sourceImageIndex to the AI schema so the canvas UI can route each question to its source image. Existing single-image cases expect sourceImageIndex=0 (or omitted); add a multi-image fixture to datasets/fixtures/ocr-recognize/ when production imagery is available.",
   "cases": [
     {
       "id": "ocr-math-g2-01-synthetic",

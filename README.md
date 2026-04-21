@@ -118,7 +118,7 @@ star_catcher/
 │   ├── PHASE2-LAUNCH-PLAN.md  # Phase 2 启动计划 + 设计决策记录
 │   ├── PHASE3-LAUNCH-PLAN.md  # Phase 3 启动计划（精简索引 — 模块/决策/验收）
 │   ├── phase3-db-schema.md    # Phase 3 DB 模型设计（Sprint 10a 迁移用）
-│   ├── adr/                   # 架构决策记录（11 个）
+│   ├── adr/                   # 架构决策记录（14 个，含 ADR-014 OCR bbox grounding 路线）
 │   ├── user-stories/          # 用户故事（14 个模块）
 │   ├── PHASE4-LAUNCH-PLAN.md  # Phase 4 启动计划（家长仪表盘 + 体验优化）
 │   ├── PHASE5-LAUNCH-PLAN.md  # Phase 5 启动计划（Brain 优化 + UI 现代化）
@@ -350,6 +350,7 @@ tests/eval/
 
 - [ ] 通过 TWA 打包 Android APK
 - [ ] 本地模型部署（Ollama/vLLM）降低 API 成本
+  - [ ] **OCR bbox grounding**：GPU 到位后切 Qwen2.5-VL + Ollama，替代当前 GPT 单发的 layout 抽取能力，让 canvas 页的题目框真正对准文本。分阶段方案与路径详见 [ADR-014](docs/adr/014-ocr-bbox-grounding-strategy.md)
 - [ ] 多教材版本支持（人教版/北师大版/苏教版）
 - [ ] 商业级安全（数据加密、审计日志、GDPR/个保法合规）
 - [ ] 学习数据导出 PDF 报告

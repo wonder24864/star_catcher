@@ -171,6 +171,23 @@ describe("homework.getSession", () => {
     const result = await caller.homework.getSession({ sessionId: "hw-session-1" });
     expect(result.id).toBe("hw-session-1");
   });
+
+  test("isOwner=true when caller created or is the student", async () => {
+    seedSession({ studentId: "student1", createdBy: "student1" });
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.getSession({ sessionId: "hw-session-1" });
+    expect(result.isOwner).toBe(true);
+  });
+
+  test("isOwner=false for family parent (read-only canvas)", async () => {
+    // Sprint 17: canvas page uses isOwner to hide ✓/✗, 删除, 完成核对, 改错重拍
+    // for parents. This test pins that contract so UI gating stays honest.
+    seedFamily();
+    seedSession();
+    const caller = createCaller(createMockContext(db, parentSession));
+    const result = await caller.homework.getSession({ sessionId: "hw-session-1" });
+    expect(result.isOwner).toBe(false);
+  });
 });
 
 describe("homework.listSessions", () => {
@@ -609,6 +626,162 @@ describe("homework.completeSession", () => {
     await expect(
       caller.homework.completeSession({ sessionId: "hw-session-1" })
     ).rejects.toThrow("FORBIDDEN");
+  });
+});
+
+// Sprint 17: canvas page's one-shot finalize mutation.
+describe("homework.finalizeCheck", () => {
+  test("RECOGNIZED + wrong questions → creates round 1, transitions to CHECKING", async () => {
+    seedSession({ status: "RECOGNIZED" });
+    seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+    seedQuestion("hw-session-1", { questionNumber: 2, isCorrect: false });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.finalizeCheck({ sessionId: "hw-session-1" });
+
+    expect(result.status).toBe("NEEDS_CORRECTIONS");
+    expect(result.wrongCount).toBe(1);
+    expect(db._checkRounds).toHaveLength(1);
+    expect(db._checkRounds[0].roundNumber).toBe(1);
+    expect(db._checkRounds[0].correctCount).toBe(1);
+    expect(db._homeworkSessions[0].status).toBe("CHECKING");
+  });
+
+  test("RECOGNIZED + all correct → cascades straight to COMPLETED + creates round 1", async () => {
+    seedSession({ status: "RECOGNIZED" });
+    seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+    seedQuestion("hw-session-1", { questionNumber: 2, isCorrect: true });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.finalizeCheck({ sessionId: "hw-session-1" });
+
+    expect(result.status).toBe("COMPLETED");
+    expect(result.wrongCount).toBe(0);
+    expect(db._checkRounds).toHaveLength(1);
+    expect(db._homeworkSessions[0].status).toBe("COMPLETED");
+    expect(db._homeworkSessions[0].finalScore).toBe(100);
+  });
+
+  test("CHECKING + wrong questions → no state change, returns NEEDS_CORRECTIONS", async () => {
+    seedSession({ status: "CHECKING" });
+    seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+    seedQuestion("hw-session-1", { questionNumber: 2, isCorrect: false });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.finalizeCheck({ sessionId: "hw-session-1" });
+
+    expect(result.status).toBe("NEEDS_CORRECTIONS");
+    expect(result.wrongCount).toBe(1);
+    expect(db._homeworkSessions[0].status).toBe("CHECKING");
+    // No new round created — the CHECKING branch just reports state.
+    expect(db._checkRounds).toHaveLength(0);
+  });
+
+  test("CHECKING + wrong + force=true → COMPLETED with finalScore preserved", async () => {
+    seedSession({ status: "CHECKING" });
+    seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+    seedQuestion("hw-session-1", { questionNumber: 2, isCorrect: false });
+    db._checkRounds.push({
+      id: "round-1", homeworkSessionId: "hw-session-1", roundNumber: 1,
+      score: 50, totalQuestions: 2, correctCount: 1, createdAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.finalizeCheck({
+      sessionId: "hw-session-1",
+      force: true,
+    });
+
+    expect(result.status).toBe("COMPLETED");
+    // wrongCount is passed back so the UI can still show what closed out.
+    expect(result.wrongCount).toBe(1);
+    expect(db._homeworkSessions[0].status).toBe("COMPLETED");
+    expect(db._homeworkSessions[0].finalScore).toBe(50);
+  });
+
+  test("CHECKING + all correct → COMPLETED with finalScore from last round", async () => {
+    seedSession({ status: "CHECKING" });
+    seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+    db._checkRounds.push({
+      id: "round-2", homeworkSessionId: "hw-session-1", roundNumber: 2,
+      score: 100, totalQuestions: 1, correctCount: 1, createdAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.finalizeCheck({ sessionId: "hw-session-1" });
+
+    expect(result.status).toBe("COMPLETED");
+    expect(db._homeworkSessions[0].finalScore).toBe(100);
+  });
+
+  test("RECOGNIZED + no questions → NO_QUESTIONS_TO_FINALIZE", async () => {
+    seedSession({ status: "RECOGNIZED" });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.finalizeCheck({ sessionId: "hw-session-1" })
+    ).rejects.toThrow("NO_QUESTIONS_TO_FINALIZE");
+  });
+
+  test("rejects for non-owner non-parent", async () => {
+    seedSession({ createdBy: "other", studentId: "other", status: "RECOGNIZED" });
+    seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.finalizeCheck({ sessionId: "hw-session-1" })
+    ).rejects.toThrow("FORBIDDEN");
+  });
+
+  test("rejects other statuses (CREATED, RECOGNIZING, COMPLETED)", async () => {
+    seedSession({ status: "CREATED" });
+    seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    await expect(
+      caller.homework.finalizeCheck({ sessionId: "hw-session-1" })
+    ).rejects.toThrow("SESSION_NOT_FINALIZABLE");
+  });
+
+  test("idempotent under concurrent finalize: second call is a no-op that reports state", async () => {
+    // Simulates the race: verifySessionAccess reads status=RECOGNIZED, but by
+    // the time we hit the CAS updateMany someone else has already moved the
+    // session to CHECKING. The CAS matches 0 rows → we bail out cleanly and
+    // return the current state instead of leaking P2002 to the client.
+    const sess = seedSession({ status: "RECOGNIZED" });
+    seedQuestion("hw-session-1", { questionNumber: 1, isCorrect: true });
+    seedQuestion("hw-session-1", { questionNumber: 2, isCorrect: false });
+
+    // Patch findUnique once so verifySessionAccess still sees RECOGNIZED
+    // (i.e. the race-losing branch), but the underlying row is already
+    // CHECKING by the time the CAS runs.
+    const originalFindUnique = db.homeworkSession.findUnique;
+    let calls = 0;
+    db.homeworkSession.findUnique = async (args: Parameters<typeof originalFindUnique>[0]) => {
+      calls += 1;
+      if (calls === 1) {
+        return { ...sess, status: "RECOGNIZED" };
+      }
+      return originalFindUnique(args);
+    };
+    // Flip the real row to CHECKING so the CAS misses.
+    sess.status = "CHECKING";
+    // Seed the already-existing round 1 from the winning call.
+    db._checkRounds.push({
+      id: "round-1", homeworkSessionId: "hw-session-1", roundNumber: 1,
+      score: 50, totalQuestions: 2, correctCount: 1, createdAt: new Date(),
+    });
+
+    const caller = createCaller(createMockContext(db, studentSession));
+    const result = await caller.homework.finalizeCheck({ sessionId: "hw-session-1" });
+
+    // Race-loser reports current state instead of erroring.
+    expect(result.status).toBe("NEEDS_CORRECTIONS");
+    expect(result.wrongCount).toBe(1);
+    // And did NOT create a duplicate round.
+    expect(db._checkRounds).toHaveLength(1);
+
+    db.homeworkSession.findUnique = originalFindUnique;
   });
 });
 

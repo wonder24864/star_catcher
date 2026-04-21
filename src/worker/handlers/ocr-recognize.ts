@@ -97,10 +97,20 @@ export async function handleOcrRecognize(
       });
     }
 
+    // Resolve sourceImageIndex (0-based into images ordered by sortOrder) to
+    // homeworkImageId so the canvas UI can render each bbox on the right image.
+    // Falls back to images[0] for missing/out-of-range indices — the AI
+    // sometimes omits it on single-image input.
+    const resolveImageId = (idx: number | null | undefined): string => {
+      const i = typeof idx === "number" && idx >= 0 && idx < images.length ? idx : 0;
+      return images[i]!.id;
+    };
+
     // Create SessionQuestion records from AI output
     await db.sessionQuestion.createMany({
       data: data.questions.map((q) => ({
         homeworkSessionId: sessionId,
+        homeworkImageId: resolveImageId(q.sourceImageIndex),
         questionNumber: q.questionNumber,
         questionType: q.questionType ?? undefined,
         content: q.content,

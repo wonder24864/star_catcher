@@ -74,6 +74,37 @@ export const completeSessionSchema = z.object({
   sessionId: z.string().min(1),
 });
 
+/**
+ * Unified mutation for the canvas UX (Sprint 17).
+ *
+ * One of two concrete actions depending on session status:
+ * - RECOGNIZED → create CheckRound #1 + transition to CHECKING
+ *   (same body as confirmResults). If all-correct, also flips to COMPLETED
+ *   and runs the ErrorQuestion / Question Understanding side-effects.
+ * - CHECKING → transition to COMPLETED if all-correct
+ *   (same body as completeSession).
+ *
+ * Returns `{ status: "NEEDS_CORRECTIONS", wrongCount }` when status is
+ * CHECKING but wrongCount > 0 — the UI then shows the "还有 N 题待改" banner
+ * and the re-take flow instead of forcing COMPLETED with wrong answers.
+ */
+export const finalizeCheckSchema = z.object({
+  sessionId: z.string().min(1),
+  subject: z.enum([
+    "MATH", "CHINESE", "ENGLISH", "PHYSICS", "CHEMISTRY",
+    "BIOLOGY", "POLITICS", "HISTORY", "GEOGRAPHY", "OTHER",
+  ]).optional(),
+  grade: gradeEnum.optional(),
+  /**
+   * CHECKING + wrongCount>0 returns NEEDS_CORRECTIONS by default so students
+   * don't accidentally close out with wrong answers. Set force=true after the
+   * "结束检查 (there are N wrong)" confirm dialog to skip that gate and
+   * transition to COMPLETED anyway — used when the student explicitly chooses
+   * to stop rather than retake.
+   */
+  force: z.boolean().optional(),
+});
+
 export const submitCorrectionsSchema = z.object({
   sessionId: z.string().min(1),
   corrections: z

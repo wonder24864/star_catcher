@@ -16,6 +16,10 @@ const questionSchema = z.object({
   correctAnswer: z.string().nullable().optional(),
   isCorrect: z.boolean().nullable().optional(),
   confidence: z.number().min(0).max(1).optional(),
+  // 0-based index into the imageUrls[] array — which source image this
+  // question was extracted from. Required for the canvas UI to render
+  // the bbox on the right image. Omit (or set 0) for single-image input.
+  sourceImageIndex: z.number().int().min(0).optional(),
   imageRegion: z.object({
     x: z.number().min(0).max(100),
     y: z.number().min(0).max(100),

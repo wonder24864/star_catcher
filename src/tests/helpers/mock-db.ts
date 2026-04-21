@@ -482,6 +482,11 @@ export function createMockDb() {
         for (const s of homeworkSessions) {
           let matches = true;
           if (where.id && s.id !== where.id) matches = false;
+          // Sprint 17: finalizeCheck / confirmResults use
+          // `updateMany where: { id, status: "RECOGNIZED" }` as a
+          // compare-and-swap to prevent double-transition races. Mirror that
+          // semantic here so the mock's count reflects the real race guard.
+          if (where.status !== undefined && s.status !== where.status) matches = false;
           if (where.updatedAt !== undefined) {
             const whereTime =
               where.updatedAt instanceof Date
@@ -495,6 +500,14 @@ export function createMockDb() {
           }
         }
         return { count };
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      findUniqueOrThrow: async ({ where }: { where: Record<string, unknown>; include?: any }) => {
+        const session = homeworkSessions.find((s) => s.id === where.id);
+        if (!session) {
+          throw new Error(`HomeworkSession not found: ${String(where.id)}`);
+        }
+        return session;
       },
       delete: async ({ where }: { where: Record<string, unknown> }) => {
         const idx = homeworkSessions.findIndex((s) => s.id === where.id);

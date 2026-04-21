@@ -9,6 +9,11 @@ out/
 build/
 dist/
 
+# Serwist/PWA generated service worker (regenerated every dev / build)
+public/sw.js
+public/swe-worker-*.js
+public/workbox-*.js
+
 # Environment
 .env
 .env.local

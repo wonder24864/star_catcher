@@ -31,7 +31,8 @@ Rules:
 - For handwritten answers, do your best to read them accurately.
 - If a student answer is unclear, set confidence below 0.7 and mark needsReview.
 - Calculate: correctCount = number of correct answers, totalScore = (correctCount / totalQuestions) × 100 rounded to integer.
-- Provide imageRegion coordinates as percentages (0-100) relative to the image dimensions.
+- Provide imageRegion coordinates as percentages (0-100) relative to the image dimensions of the SPECIFIC source image this question came from (not the collage).
+- For multi-image inputs, set sourceImageIndex to the 0-based index of the image in the input array (first image = 0, second = 1, etc.). For single-image inputs set it to 0 or omit.
 - For any math formula in content / studentAnswer / correctAnswer, wrap it in LaTeX delimiters: use $...$ for inline (e.g. $\\frac{3}{4}$, $x^2+1$) and $$...$$ for display/block math. Plain text around the formula must stay outside the delimiters. Bare LaTeX without delimiters will NOT render on the frontend.
 ${grade ? `- The student is in ${grade}, adjust difficulty expectations accordingly.` : ""}
 ${!hasExif ? "- The image may not have EXIF orientation data. Try to read content in the most natural orientation." : ""}
@@ -52,6 +53,7 @@ Output format: JSON matching this schema exactly:
       "correctAnswer": "correct answer or null",
       "isCorrect": true/false/null,
       "confidence": 0.0-1.0,
+      "sourceImageIndex": 0,
       "imageRegion": {"x": %, "y": %, "w": %, "h": %},
       "knowledgePoint": "knowledge point name"
     }

@@ -15,7 +15,11 @@ import {
 import { StudentMemoryImpl } from "@/lib/domain/memory/student-memory";
 import { createTaskRun, attachBullJobId } from "@/lib/task-runner";
 import { gradeToSchoolLevel } from "@/lib/domain/school-level";
-import type { PrismaClient } from "@prisma/client";
+import type {
+  PrismaClient,
+  HomeworkSession,
+  SessionQuestion,
+} from "@prisma/client";
 import {
   createSessionSchema,
   getSessionSchema,
@@ -29,6 +33,7 @@ import {
   confirmResultsSchema,
   getCheckStatusSchema,
   completeSessionSchema,
+  finalizeCheckSchema,
   submitCorrectionsSchema,
   submitCorrectionPhotosSchema,
   createManualErrorSchema,
@@ -94,6 +99,106 @@ function getDefaultMaxHelpLevel(grade: string | null | undefined): number {
 // Re-export shared utility (extracted in Sprint 11, Task 103b)
 const inferSchoolLevel = gradeToSchoolLevel;
 
+/**
+ * Shared side-effects for marking a session COMPLETED:
+ * ErrorQuestion upsert (dedup by contentHash) + embedding enqueue +
+ * Question Understanding Agent enqueue. Sprint 17: extracted so finalizeCheck
+ * and completeSession use one implementation.
+ *
+ * Takes the Prisma row types directly — Subject / ContentType / Grade /
+ * QuestionType enums survive end-to-end so we never fall back to `as never`.
+ */
+async function runCompletionSideEffects(params: {
+  db: Context["db"];
+  userId: string;
+  locale: string | undefined;
+  log: { error: (o: unknown, msg: string) => void };
+  sessionId: string;
+  session: Pick<
+    HomeworkSession,
+    "studentId" | "subject" | "contentType" | "grade"
+  >;
+  questions: Array<
+    Pick<
+      SessionQuestion,
+      | "id"
+      | "content"
+      | "studentAnswer"
+      | "correctAnswer"
+      | "isCorrect"
+      | "questionType"
+      | "aiKnowledgePoint"
+    >
+  >;
+}) {
+  const { session } = params;
+  const subject = session.subject ?? "OTHER";
+  const wrongQuestions = params.questions.filter((q) => q.isCorrect !== true);
+  const errorQuestionEntries: Array<{ errorQuestionId: string; content: string }> = [];
+
+  for (const q of wrongQuestions) {
+    const hash = computeContentHash(q.content);
+    const existing = await params.db.errorQuestion.findFirst({
+      where: { studentId: session.studentId, contentHash: hash },
+    });
+    if (existing) {
+      await params.db.errorQuestion.update({
+        where: { id: existing.id },
+        data: { totalAttempts: existing.totalAttempts + 1 },
+      });
+      errorQuestionEntries.push({ errorQuestionId: existing.id, content: q.content });
+    } else {
+      const created = await params.db.errorQuestion.create({
+        data: {
+          studentId: session.studentId,
+          sessionQuestionId: q.id,
+          subject,
+          contentType: session.contentType ?? undefined,
+          grade: session.grade ?? undefined,
+          questionType: q.questionType ?? undefined,
+          content: q.content,
+          contentHash: hash,
+          studentAnswer: q.studentAnswer ?? undefined,
+          correctAnswer: q.correctAnswer ?? undefined,
+          aiKnowledgePoint: q.aiKnowledgePoint ?? undefined,
+        },
+      });
+      errorQuestionEntries.push({ errorQuestionId: created.id, content: q.content });
+
+      if (q.content && q.content.trim().length > 0) {
+        enqueueEmbeddingGenerate({
+          errorQuestionId: created.id,
+          userId: params.userId,
+          correlationId: `eg-${params.sessionId}-${created.id}`,
+        }).catch(() => {
+          // Non-fatal: ErrorQuestion is created; embedding can be backfilled
+        });
+      }
+    }
+  }
+
+  for (const entry of errorQuestionEntries) {
+    if (entry.content && entry.content.trim().length > 0) {
+      enqueueQuestionUnderstanding({
+        sessionId: params.sessionId,
+        questionId: entry.errorQuestionId,
+        questionText: entry.content,
+        subject,
+        grade: session.grade ?? undefined,
+        schoolLevel: session.grade ? inferSchoolLevel(session.grade) : "PRIMARY",
+        studentId: session.studentId,
+        userId: params.userId,
+        locale: params.locale ?? "zh-CN",
+      }).catch((err) => {
+        params.log.error(
+          { errorQuestionId: entry.errorQuestionId, err },
+          "Failed to enqueue question-understanding",
+        );
+      });
+    }
+  }
+}
+
 export const homeworkRouter = router({
   /**
    * Create a new homework session.
@@ -125,7 +230,15 @@ export const homeworkRouter = router({
     }),
 
   /**
-   * Get a session with its images.
+   * Get a session with its images, questions, and check rounds.
+   *
+   * Sprint 17: check rounds are now included in every call because the
+   * canvas page handles RECOGNIZED/CHECKING/COMPLETED states in one UI
+   * (rounds = [] for RECOGNIZED, array for CHECKING/COMPLETED).
+   *
+   * getCheckStatus is still kept for backwards compat with the old
+   * /parent/sessions view and server-side tests, but the student-facing UI
+   * no longer uses it.
    */
   getSession: protectedProcedure
     .input(getSessionSchema)
@@ -138,6 +251,10 @@ export const homeworkRouter = router({
           },
           questions: {
             orderBy: { questionNumber: "asc" },
+          },
+          checkRounds: {
+            orderBy: { roundNumber: "asc" },
+            include: { results: true },
           },
         },
       });
@@ -158,7 +275,13 @@ export const homeworkRouter = router({
         }
       }
 
-      return session;
+      // isOwner drives UI read-only mode on the canvas page. Parents in the
+      // same family get access via verifyParentStudentAccess but don't own
+      // the session, so all mutating affordances (toggle / delete / finalize
+      // / recheck) should stay hidden for them. Matches the RBAC on
+      // updateQuestion / deleteQuestion / finalizeCheck which refuse
+      // non-owner callers at verifySessionAccess.
+      return { ...session, isOwner: hasDirectAccess };
     }),
 
   /**
@@ -443,9 +566,13 @@ export const homeworkRouter = router({
       const correctCount = questions.filter((q) => q.isCorrect === true).length;
       const score = calculateScore(correctCount, totalQuestions);
 
-      // Transition session to CHECKING and record round count
-      const updated = await ctx.db.homeworkSession.update({
-        where: { id: input.sessionId },
+      // Compare-and-swap on status — only the caller that flips
+      // RECOGNIZED → CHECKING creates round 1. Sprint 17: mirrors the CAS in
+      // finalizeCheck so concurrent taps/retries don't leak P2002 to the
+      // loser. If we lose the race, re-read and return the current session
+      // idempotently (the UI treats this like a successful transition).
+      const cas = await ctx.db.homeworkSession.updateMany({
+        where: { id: input.sessionId, status: "RECOGNIZED" },
         data: {
           status: "CHECKING",
           subject: input.subject || undefined,
@@ -453,6 +580,11 @@ export const homeworkRouter = router({
           totalRounds: 1,
         },
       });
+      if (cas.count === 0) {
+        return await ctx.db.homeworkSession.findUniqueOrThrow({
+          where: { id: input.sessionId },
+        });
+      }
 
       // Create CheckRound #1 with per-question results
       await ctx.db.checkRound.create({
@@ -473,7 +605,9 @@ export const homeworkRouter = router({
         },
       });
 
-      return updated;
+      return await ctx.db.homeworkSession.findUniqueOrThrow({
+        where: { id: input.sessionId },
+      });
     }),
 
   // --- Check flow state machine ---
@@ -554,93 +688,182 @@ export const homeworkRouter = router({
         },
       });
 
-      // --- Auto-record wrong questions to error notebook (Task 25) ---
+      // Auto-record wrong questions + trigger agents (extracted helper,
+      // shared with finalizeCheck).
       const questions = await ctx.db.sessionQuestion.findMany({
         where: { homeworkSessionId: input.sessionId },
       });
-      const wrongQuestions = questions.filter(
-        (q: { isCorrect: boolean | null }) => q.isCorrect !== true
+      await runCompletionSideEffects({
+        db: ctx.db,
+        userId: ctx.session.userId,
+        locale: ctx.session.locale,
+        log: ctx.log,
+        sessionId: input.sessionId,
+        session,
+        questions,
+      });
+
+      return updated;
+    }),
+
+  /**
+   * Sprint 17: one-shot mutation for the canvas UX.
+   *
+   * RECOGNIZED → create CheckRound #1, status → CHECKING. If all questions
+   *   are correct, cascade straight to COMPLETED (runs side-effects).
+   * CHECKING + allCorrect → COMPLETED (runs side-effects).
+   * CHECKING + wrongCount>0 + force=false → no state change; returns
+   *   NEEDS_CORRECTIONS so the canvas shows the "N 题待改" banner.
+   * CHECKING + force=true → COMPLETED regardless of wrongCount — used when
+   *   the student explicitly picks "结束检查" after the confirm dialog.
+   *
+   * confirmResults / completeSession are retained for server-side callers
+   * (acceptance tests, any future non-canvas UI) but the student-facing UI
+   * only uses finalizeCheck now.
+   */
+  finalizeCheck: protectedProcedure
+    .input(finalizeCheckSchema)
+    .mutation(async ({ ctx, input }) => {
+      const session = await verifySessionAccess(
+        ctx.db,
+        input.sessionId,
+        ctx.session.userId,
       );
 
-      // Collect ErrorQuestion IDs for Agent trigger
-      const errorQuestionEntries: Array<{ errorQuestionId: string; content: string }> = [];
+      const questions = await ctx.db.sessionQuestion.findMany({
+        where: { homeworkSessionId: input.sessionId },
+      });
+      const totalQuestions = questions.length;
+      const correctCount = questions.filter((q) => q.isCorrect === true).length;
+      const wrongCount = totalQuestions - correctCount;
+      const allCorrect = wrongCount === 0 && totalQuestions > 0;
 
-      for (const q of wrongQuestions) {
-        const hash = computeContentHash(q.content);
+      if (session.status === "RECOGNIZED") {
+        if (totalQuestions === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "NO_QUESTIONS_TO_FINALIZE",
+          });
+        }
+        const score = calculateScore(correctCount, totalQuestions);
 
-        // Check for existing ErrorQuestion with same content for this student
-        const existing = await ctx.db.errorQuestion.findFirst({
-          where: {
-            studentId: session.studentId,
-            contentHash: hash,
+        // Compare-and-swap on status: only the caller that flips RECOGNIZED
+        // → CHECKING gets to create round 1. This closes the window where
+        // two concurrent finalizeCheck calls would both pass the
+        // status===RECOGNIZED check (line 714) and then race on CheckRound
+        // creation, leaking the P2002 unique-constraint error to the loser.
+        const cas = await ctx.db.homeworkSession.updateMany({
+          where: { id: input.sessionId, status: "RECOGNIZED" },
+          data: {
+            status: "CHECKING",
+            subject: input.subject || undefined,
+            grade: input.grade || undefined,
+            totalRounds: 1,
+          },
+        });
+        if (cas.count === 0) {
+          // We lost the race — another call already transitioned. Re-read
+          // and report current state idempotently (no error surfaced).
+          const latest = await ctx.db.homeworkSession.findUniqueOrThrow({
+            where: { id: input.sessionId },
+          });
+          return latest.status === "COMPLETED"
+            ? { status: "COMPLETED" as const, session: latest, wrongCount }
+            : { status: "NEEDS_CORRECTIONS" as const, session: latest, wrongCount };
+        }
+        await ctx.db.checkRound.create({
+          data: {
+            homeworkSessionId: input.sessionId,
+            roundNumber: 1,
+            score,
+            totalQuestions,
+            correctCount,
+            results: {
+              create: questions.map((q) => ({
+                sessionQuestionId: q.id,
+                studentAnswer: q.studentAnswer,
+                isCorrect: q.isCorrect ?? false,
+                correctedFromPrev: false,
+              })),
+            },
           },
         });
 
-        if (existing) {
-          // Dedup: bump totalAttempts
-          await ctx.db.errorQuestion.update({
-            where: { id: existing.id },
-            data: { totalAttempts: existing.totalAttempts + 1 },
+        if (allCorrect) {
+          const updated = await ctx.db.homeworkSession.update({
+            where: { id: input.sessionId },
+            data: { status: "COMPLETED", finalScore: score },
           });
-          errorQuestionEntries.push({ errorQuestionId: existing.id, content: q.content });
-        } else {
-          // Create new ErrorQuestion
-          const created = await ctx.db.errorQuestion.create({
-            data: {
-              studentId: session.studentId,
-              sessionQuestionId: q.id,
-              subject: session.subject ?? "OTHER",
-              contentType: session.contentType ?? undefined,
-              grade: session.grade ?? undefined,
-              questionType: q.questionType ?? undefined,
-              content: q.content,
-              contentHash: hash,
-              studentAnswer: q.studentAnswer ?? undefined,
-              correctAnswer: q.correctAnswer ?? undefined,
-              aiKnowledgePoint: q.aiKnowledgePoint ?? undefined,
-            },
-          });
-          errorQuestionEntries.push({ errorQuestionId: created.id, content: q.content });
-
-          // Sprint 13: async embedding generation for similar-question search
-          if (q.content && q.content.trim().length > 0) {
-            enqueueEmbeddingGenerate({
-              errorQuestionId: created.id,
-              userId: ctx.session.userId,
-              correlationId: `eg-${input.sessionId}-${created.id}`,
-            }).catch(() => {
-              // Non-fatal: ErrorQuestion is created; embedding can be backfilled
-            });
-          }
-        }
-      }
-
-      // --- Auto-trigger Question Understanding Agent (Task 56, US-033) ---
-      // Enqueue asynchronously — don't block the response
-      for (const entry of errorQuestionEntries) {
-        if (entry.content && entry.content.trim().length > 0) {
-          enqueueQuestionUnderstanding({
-            sessionId: input.sessionId,
-            questionId: entry.errorQuestionId,
-            questionText: entry.content,
-            subject: session.subject ?? "OTHER",
-            grade: session.grade ?? undefined,
-            schoolLevel: session.grade
-              ? inferSchoolLevel(session.grade)
-              : "PRIMARY",
-            studentId: session.studentId,
+          // In the RECOGNIZED → CHECKING → COMPLETED cascade the user can
+          // also supply subject/grade in the same mutation; apply those to
+          // the session object passed into the side-effects so new
+          // ErrorQuestions get indexed under the up-to-date taxonomy.
+          await runCompletionSideEffects({
+            db: ctx.db,
             userId: ctx.session.userId,
-            locale: ctx.session.locale ?? "zh-CN",
-          }).catch((err) => {
-            ctx.log.error(
-              { errorQuestionId: entry.errorQuestionId, err },
-              "Failed to enqueue question-understanding",
-            );
+            locale: ctx.session.locale,
+            log: ctx.log,
+            sessionId: input.sessionId,
+            session: {
+              studentId: session.studentId,
+              subject: input.subject ?? session.subject,
+              contentType: session.contentType,
+              grade: input.grade ?? session.grade,
+            },
+            questions,
           });
+          return { status: "COMPLETED" as const, session: updated, wrongCount: 0 };
         }
+        const refreshed = await ctx.db.homeworkSession.findUnique({
+          where: { id: input.sessionId },
+        });
+        return {
+          status: "NEEDS_CORRECTIONS" as const,
+          session: refreshed ?? session,
+          wrongCount,
+        };
       }
 
-      return updated;
+      if (session.status === "CHECKING") {
+        // Guard: close out only when allCorrect OR the client explicitly
+        // confirmed "结束检查 (N wrong)" (force=true). Without force we just
+        // report state so the canvas can show the correction banner.
+        if (!allCorrect && !input.force) {
+          return {
+            status: "NEEDS_CORRECTIONS" as const,
+            session,
+            wrongCount,
+          };
+        }
+        const lastRound = await ctx.db.checkRound.findFirst({
+          where: { homeworkSessionId: input.sessionId },
+          orderBy: { roundNumber: "desc" },
+        });
+        const updated = await ctx.db.homeworkSession.update({
+          where: { id: input.sessionId },
+          data: {
+            status: "COMPLETED",
+            finalScore: lastRound?.score ?? null,
+          },
+        });
+        await runCompletionSideEffects({
+          db: ctx.db,
+          userId: ctx.session.userId,
+          locale: ctx.session.locale,
+          log: ctx.log,
+          sessionId: input.sessionId,
+          session,
+          questions,
+        });
+        // wrongCount is preserved here even on force=true so the UI can
+        // still show how many answers got closed out wrong in the celebration.
+        return { status: "COMPLETED" as const, session: updated, wrongCount };
+      }
+
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "SESSION_NOT_FINALIZABLE",
+      });
     }),
 
   /**

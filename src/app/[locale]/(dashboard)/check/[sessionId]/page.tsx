@@ -1,110 +1,355 @@
 "use client";
 
-import { useState } from "react";
+/**
+ * Homework Check — Canvas page.
+ *
+ * Sprint 17 rewrite: replaces the old list-based recognition review page
+ * AND the /results page. The whole core+correction+completion flow now
+ * lives here, with the UX centered on the original photo + tappable
+ * question boxes (inspired by Bytedance's homework correction app).
+ *
+ * States handled:
+ *   - RECOGNIZING  → full-screen RecognitionOverlay (AI is working)
+ *   - RECOGNIZED   → canvas is editable; "完成核对" creates round 1
+ *   - CHECKING     → canvas is editable; upload corrections / or finalize if all-correct
+ *   - COMPLETED    → canvas is read-only; history drawer is visible
+ *   - RECOGNITION_FAILED → redirect back to /check
+ *
+ * Role differences:
+ *   - STUDENT does not see the AI-extracted correct answer in the sheet
+ *     (US-016); PARENT/ADMIN does. Toggle / help / upload correction all
+ *     stay available for the owner as before.
+ */
+
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
-import { motion } from "framer-motion";
 import {
   ArrowLeft,
-  Check,
-  X,
-  AlertTriangle,
-  Plus,
-  Trash2,
-  ChevronRight,
-  Lightbulb,
+  CheckCircle2,
+  Camera,
+  Loader2,
+  ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { AdaptiveCard } from "@/components/adaptive/adaptive-card";
 import { AdaptiveButton } from "@/components/adaptive/adaptive-button";
 import { AdaptiveScore } from "@/components/adaptive/adaptive-score";
-import { AdaptiveSubjectBadge } from "@/components/adaptive/adaptive-subject-badge";
 import { RecognitionOverlay } from "@/components/homework/recognition-overlay";
+import { Celebration } from "@/components/animation/celebration";
+import { HomeworkCanvas } from "@/components/homework/homework-canvas";
+import {
+  QuestionDetailSheet,
+  type DetailSheetQuestion,
+} from "@/components/homework/question-detail-sheet";
+import {
+  ImageTabSwitcher,
+  type ImageTabStats,
+} from "@/components/homework/image-tab-switcher";
+import { RoundHistoryDrawer } from "@/components/homework/round-history-drawer";
+import { PhotoCapture } from "@/components/homework/photo-capture";
+import { useUpload } from "@/hooks/use-upload";
+import { useStartTask, useTaskLock } from "@/hooks/use-task";
+import { MAX_IMAGES_PER_SESSION } from "@/lib/domain/validations/upload";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { MathText } from "@/components/ui/math-text";
-import { QuestionImage } from "@/components/homework/question-image";
+import { useTierTranslations } from "@/hooks/use-tier-translations";
 
-export default function RecognitionResultsPage() {
+type SessionImage = { id: string; sortOrder: number };
+// Minimal shape the page uses — intentionally narrower than Prisma's
+// SessionQuestion. `confidence` is read server-side (sets needsReview at OCR
+// time) but the UI doesn't need it directly, so it's omitted here.
+type Question = {
+  id: string;
+  questionNumber: number;
+  content: string;
+  studentAnswer: string | null;
+  correctAnswer: string | null;
+  isCorrect: boolean | null;
+  needsReview: boolean;
+  aiKnowledgePoint: string | null;
+  homeworkImageId: string | null;
+  imageRegion: { x: number; y: number; w: number; h: number } | null;
+};
+type CheckRound = {
+  id: string;
+  roundNumber: number;
+  score: number | null;
+  totalQuestions: number | null;
+  correctCount: number | null;
+};
+
+export default function HomeworkCheckCanvasPage() {
   const t = useTranslations();
+  const tC = useTierTranslations("homework");
   const router = useRouter();
   const params = useParams();
   const sessionId = params.sessionId as string;
   const { data: authSession } = useSession();
-  // Students should NOT see the AI-extracted correct answer on the review
-  // page — they should fix their own answer and then ask for help on the
-  // /results page. Parents/admins see it so they can verify OCR accuracy.
   const canSeeCorrectAnswer = authSession?.user?.role !== "STUDENT";
 
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newQuestion, setNewQuestion] = useState({
-    content: "",
-    studentAnswer: "",
-    correctAnswer: "",
-  });
+  // selectedImageId is nullable; activeImage is always derived below with
+  // images[0] as fallback, so no effect is needed to pick a default.
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+  const [openQuestionId, setOpenQuestionId] = useState<string | null>(null);
+  const [confirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
+  const [correctionDialogOpen, setCorrectionDialogOpen] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [correctionImageIds, setCorrectionImageIds] = useState<string[]>([]);
+  const [isUploadingCorrection, setIsUploadingCorrection] = useState(false);
+  const [pendingCorrection, setPendingCorrection] = useState(false);
+  // Track outstanding upload promises so the submit button stays disabled
+  // while work is in flight. Each uploadFile call appends a resolver here.
+  const uploadResolversRef = useRef<Array<() => void>>([]);
 
   const utils = trpc.useUtils();
 
   const { data: session, isLoading } = trpc.homework.getSession.useQuery(
     { sessionId },
-    { enabled: !!sessionId }
+    { enabled: !!sessionId },
   );
 
-  // SSE subscription: listen for async job completion (OCR recognition)
+  // Narrowed view-model for the page. The tRPC return type is the full
+  // Prisma row shape + computed isOwner; this alias captures only the fields
+  // the canvas reads so the rest of the component stays Prisma-import-free.
+  const sessionData = session as unknown as
+    | {
+        status: string;
+        finalScore: number | null;
+        images: SessionImage[];
+        questions: Question[];
+        checkRounds: CheckRound[];
+        isOwner: boolean;
+      }
+    | undefined;
+
+  // SSE — OCR / correction-photos / finalize all land here. One subscription
+  // covers both since the event schema discriminates on `type`.
   trpc.subscription.onSessionJobComplete.useSubscription(
     { sessionId },
     {
-      enabled: session?.status === "RECOGNIZING",
+      enabled: !!session,
       onData: (event) => {
         if (event.type === "ocr-recognize") {
           utils.homework.getSession.invalidate({ sessionId });
           if (event.status === "failed") {
             toast.error(t("homework.recognitionFailed"));
           }
+        } else if (event.type === "correction-photos") {
+          setPendingCorrection(false);
+          utils.homework.getSession.invalidate({ sessionId });
+          if (event.status === "completed") {
+            toast.success(t("homework.markup.recheckSuccess"));
+          } else {
+            toast.error(t("error.serverError"));
+          }
+          setCorrectionDialogOpen(false);
+          setCorrectionImageIds([]);
         }
       },
-    }
+    },
   );
 
   const updateQuestion = trpc.homework.updateQuestion.useMutation({
-    onSuccess: () => utils.homework.getSession.invalidate({ sessionId }),
-    onError: () => toast.error(t("error.serverError")),
+    onMutate: async (vars) => {
+      // Optimistic — flip the cached isCorrect locally so the badge changes
+      // instantly. Server may override on error; we invalidate in onSettled.
+      await utils.homework.getSession.cancel({ sessionId });
+      const prev = utils.homework.getSession.getData({ sessionId });
+      if (prev) {
+        const prevShape = prev as unknown as { questions: Question[] };
+        utils.homework.getSession.setData({ sessionId }, {
+          ...prev,
+          questions: prevShape.questions.map((q) =>
+            q.id === vars.questionId ? { ...q, isCorrect: vars.isCorrect ?? q.isCorrect } : q,
+          ),
+        } as unknown as typeof prev);
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) utils.homework.getSession.setData({ sessionId }, ctx.prev);
+      toast.error(t("error.serverError"));
+    },
+    onSettled: () => utils.homework.getSession.invalidate({ sessionId }),
   });
 
   const deleteQuestion = trpc.homework.deleteQuestion.useMutation({
-    onSuccess: () => utils.homework.getSession.invalidate({ sessionId }),
-    onError: () => toast.error(t("error.serverError")),
-  });
-
-  const addQuestion = trpc.homework.addQuestion.useMutation({
     onSuccess: () => {
       utils.homework.getSession.invalidate({ sessionId });
-      setAddDialogOpen(false);
-      setNewQuestion({ content: "", studentAnswer: "", correctAnswer: "" });
+      setOpenQuestionId(null);
     },
     onError: () => toast.error(t("error.serverError")),
   });
 
-  const confirmResults = trpc.homework.confirmResults.useMutation({
-    onSuccess: () => {
-      toast.success(t("common.success"));
-      router.push(`/check/${sessionId}/results`);
+  const finalizeCheck = trpc.homework.finalizeCheck.useMutation({
+    onSuccess: (result) => {
+      utils.homework.getSession.invalidate({ sessionId });
+      if (result.status === "COMPLETED") {
+        toast.success(t("homework.check.completedTitle"));
+        setShowCelebration(true);
+      } else {
+        // NEEDS_CORRECTIONS — toast and keep the user on the canvas.
+        toast.info(
+          t("homework.markup.needsCorrections", { count: result.wrongCount }),
+        );
+      }
+      setConfirmCompleteOpen(false);
     },
-    onError: () => toast.error(t("error.serverError")),
+    onError: (err) => {
+      if (err.message === "NO_QUESTIONS_TO_FINALIZE") {
+        toast.error(t("homework.noQuestions"));
+      } else {
+        toast.error(t("error.serverError"));
+      }
+    },
   });
+
+  const submitCorrectionPhotosMutation =
+    trpc.homework.submitCorrectionPhotos.useMutation({
+      onSuccess: () => setPendingCorrection(true),
+      onError: (err) => {
+        if (err.message === "DATA_CONFLICT") {
+          toast.error(t("error.dataConflict"));
+        } else {
+          toast.error(t("error.serverError"));
+        }
+      },
+    });
+
+  const { start: startCorrection } = useStartTask({
+    type: "CORRECTION",
+    buildKey: (input: { sessionId: string; imageIds: string[] }) =>
+      `correction:${input.sessionId}`,
+    mutation: submitCorrectionPhotosMutation,
+  });
+  const correctionLock = useTaskLock(`correction:${sessionId}`);
+  const submittingCorrection =
+    submitCorrectionPhotosMutation.isPending || correctionLock.locked;
+
+  const { upload: uploadFile, uploadProgress: correctionUploadProgress, reset: resetUpload } =
+    useUpload({
+      sessionId,
+      onSuccess: (image) => {
+        setCorrectionImageIds((prev) => [...prev, image.id]);
+        uploadResolversRef.current.shift()?.();
+      },
+      onError: (errorKey) => {
+        toast.error(t(errorKey));
+        uploadResolversRef.current.shift()?.();
+      },
+    });
+
+  // Sequentially upload a batch of files. Each call to uploadFile is awaited
+  // via a resolver stored in uploadResolversRef so we don't race the
+  // single-file state inside useUpload. No setState-in-effect needed.
+  const existingImageCount = sessionData?.images.length ?? 0;
+  const handleCorrectionFilesSelected = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0) return;
+      setIsUploadingCorrection(true);
+      try {
+        for (let i = 0; i < files.length; i++) {
+          resetUpload();
+          await new Promise<void>((resolve) => {
+            uploadResolversRef.current.push(resolve);
+            uploadFile(
+              files[i]!,
+              existingImageCount + correctionImageIds.length + i,
+            );
+          });
+        }
+      } finally {
+        setIsUploadingCorrection(false);
+      }
+    },
+    [existingImageCount, resetUpload, uploadFile, correctionImageIds.length],
+  );
+
+  const images = useMemo(
+    () =>
+      (sessionData?.images ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder),
+    [sessionData],
+  );
+  const questions = useMemo(() => sessionData?.questions ?? [], [sessionData]);
+  const rounds = useMemo(() => sessionData?.checkRounds ?? [], [sessionData]);
+  const status = sessionData?.status;
+  const isCompleted = status === "COMPLETED";
+  // Parents in the same family can load the canvas (getSession allows them
+  // via verifyParentStudentAccess) but can't mutate — the mutation
+  // procedures reject non-owner callers. Treating them as read-only here
+  // hides the affordances they couldn't use anyway, so they don't get a
+  // silent FORBIDDEN toast when they tap ✓/✗ etc.
+  const isOwner = sessionData?.isOwner ?? false;
+  const isReadOnly = isCompleted || !isOwner;
+
+  const imageTabStats: ImageTabStats[] = useMemo(
+    () =>
+      images.map((img, i) => {
+        const qs = questions.filter(
+          (q) => (q.homeworkImageId ?? images[0]?.id) === img.id,
+        );
+        return {
+          imageId: img.id,
+          number: i + 1,
+          total: qs.length,
+          unjudged: qs.filter((q) => q.isCorrect === null).length,
+          wrong: qs.filter((q) => q.isCorrect === false).length,
+        };
+      }),
+    [images, questions],
+  );
+
+  // Derive active image from selectedImageId, with images[0] as fallback.
+  // This covers "initial load" (selectedImageId is null) and "selected image
+  // later gets deleted" (find returns undefined) in one branch.
+  const activeImage = selectedImageId
+    ? images.find((i) => i.id === selectedImageId) ?? images[0]
+    : images[0];
+
+  const questionsOnActive = useMemo(() => {
+    if (!activeImage) return [];
+    // Legacy rows without homeworkImageId fall through to the first image so
+    // they still show up during the rollout. See ADR backfill note.
+    const firstId = images[0]?.id;
+    return questions.filter(
+      (q) => (q.homeworkImageId ?? firstId) === activeImage.id,
+    );
+  }, [activeImage, questions, images]);
+
+  const correctCount = questions.filter((q) => q.isCorrect === true).length;
+  const wrongCount = questions.filter((q) => q.isCorrect === false).length;
+  const unjudgedCount = questions.filter((q) => q.isCorrect === null).length;
+  const totalScore =
+    questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
+  const latestRound: CheckRound | undefined = rounds[rounds.length - 1];
+
+  const openedQuestion: DetailSheetQuestion | null = useMemo(() => {
+    if (!openQuestionId) return null;
+    const q = questions.find((x) => x.id === openQuestionId);
+    if (!q) return null;
+    return {
+      id: q.id,
+      questionNumber: q.questionNumber,
+      content: q.content,
+      studentAnswer: q.studentAnswer,
+      correctAnswer: q.correctAnswer,
+      isCorrect: q.isCorrect,
+      needsReview: q.needsReview,
+      aiKnowledgePoint: q.aiKnowledgePoint,
+    };
+  }, [openQuestionId, questions]);
+
+  // --- Render guards ---
 
   if (isLoading) {
     return (
@@ -114,289 +359,375 @@ export default function RecognitionResultsPage() {
     );
   }
 
-  if (!session) {
+  if (!session || !sessionData) {
     router.push("/check");
     return null;
   }
 
-  // AI is processing — full-screen tier-adaptive overlay.
-  // When arriving from /check/new the cache is pre-warmed with status=RECOGNIZING
-  // (optimistic update in the mutation), so this path matches without a flicker.
-  if (session.status === "RECOGNIZING") {
+  if (status === "RECOGNIZING") {
     return <RecognitionOverlay open={true} />;
   }
 
-  const questions = (session as Record<string, unknown>).questions as Array<{
-    id: string;
-    questionNumber: number;
-    questionType: string | null;
-    content: string;
-    studentAnswer: string | null;
-    correctAnswer: string | null;
-    isCorrect: boolean | null;
-    confidence: number | null;
-    needsReview: boolean;
-    aiKnowledgePoint: string | null;
-    imageRegion: { x: number; y: number; w: number; h: number } | null;
-  }> ?? [];
+  if (status === "RECOGNITION_FAILED" || status === "CREATED") {
+    router.push(`/check/new?sessionId=${sessionId}`);
+    return null;
+  }
 
-  const sessionImages = (session as { images?: Array<{ id: string }> }).images ?? [];
+  // --- Handlers ---
 
-  const correctCount = questions.filter((q) => q.isCorrect === true).length;
-  const totalScore = questions.length > 0
-    ? Math.round((correctCount / questions.length) * 100)
-    : 0;
+  const handleTapQuestion = (qid: string) => {
+    setOpenQuestionId(qid);
+  };
 
-  const handleToggleCorrect = (questionId: string, currentIsCorrect: boolean | null) => {
-    const newValue = currentIsCorrect === true ? false : true;
+  const handleToggleCorrect = (questionId: string, newValue: boolean) => {
+    if (isReadOnly) return;
     updateQuestion.mutate({ questionId, isCorrect: newValue });
   };
 
-  const handleAddQuestion = () => {
-    if (!newQuestion.content.trim()) return;
-    addQuestion.mutate({
-      sessionId,
-      content: newQuestion.content,
-      studentAnswer: newQuestion.studentAnswer || null,
-      correctAnswer: newQuestion.correctAnswer || null,
-    });
+  const handleDelete = (questionId: string) => {
+    if (isReadOnly) return;
+    deleteQuestion.mutate({ questionId });
   };
 
+  const handleFinalize = () => {
+    // RECOGNIZED path: first finalize creates round 1 from current isCorrect
+    // values. Unjudged questions get a confirm dialog — once confirmed, the
+    // mutation accepts them as whatever the AI guessed (isCorrect=false for
+    // null). No force flag needed here: server creates round 1 regardless.
+    if (status === "RECOGNIZED") {
+      if (unjudgedCount > 0) {
+        setConfirmCompleteOpen(true);
+      } else {
+        finalizeCheck.mutate({ sessionId });
+      }
+      return;
+    }
+    // CHECKING path: all-correct → direct finalize. Wrong-count>0 needs the
+    // confirm dialog, and its "确定" button passes force=true to skip the
+    // "can't finalize with wrong answers" server guard.
+    if (status === "CHECKING") {
+      if (wrongCount > 0) {
+        setConfirmCompleteOpen(true);
+      } else {
+        finalizeCheck.mutate({ sessionId });
+      }
+    }
+  };
+
+  const handleConfirmFinalize = () => {
+    // force is the CHECKING+wrong case; for RECOGNIZED the server doesn't
+    // check force so passing it is harmless.
+    const force = status === "CHECKING" && wrongCount > 0;
+    finalizeCheck.mutate({ sessionId, force });
+  };
+
+  const handleOpenCorrection = () => {
+    setCorrectionImageIds([]);
+    uploadResolversRef.current = [];
+    setCorrectionDialogOpen(true);
+  };
+
+  const handleSubmitCorrectionPhotos = () => {
+    if (correctionImageIds.length === 0) return;
+    void startCorrection({ sessionId, imageIds: correctionImageIds });
+  };
+
+  const progressLabel =
+    status === "RECOGNIZED"
+      ? t("homework.markup.progress", {
+          done: questions.length - unjudgedCount,
+          total: questions.length,
+        })
+      : status === "CHECKING"
+        ? t("homework.check.scoreDisplay", {
+            correct: latestRound?.correctCount ?? correctCount,
+            total: latestRound?.totalQuestions ?? questions.length,
+            score: latestRound?.score ?? totalScore,
+          })
+        : t("homework.check.finalScore", { score: sessionData.finalScore ?? 0 });
+
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+    <div className="space-y-3 pb-24">
+      <Celebration
+        show={showCelebration}
+        onComplete={() => setShowCelebration(false)}
+      />
+
+      {/* Top bar */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Button variant="ghost" size="icon" onClick={() => router.push("/check")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h1 className="text-xl font-bold">{t("homework.recognitionResults")}</h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>
-                {t("homework.correctCount", { correct: correctCount, total: questions.length })}
-              </span>
-              <span>·</span>
-              <AdaptiveScore value={totalScore} total={100} />
-            </div>
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold truncate">
+              {isCompleted
+                ? t("homework.check.completedTitle")
+                : t("homework.markup.title")}
+            </h1>
+            <p className="text-xs text-muted-foreground truncate">{progressLabel}</p>
           </div>
         </div>
-        <Badge variant="secondary">
-          {t(`homework.status.${session.status}`)}
+        <Badge variant={isCompleted ? "default" : "secondary"} className="shrink-0">
+          {t(`homework.status.${status}`)}
         </Badge>
       </div>
 
-      {/* Student-facing tip: help is available on the next page after
-          confirming the OCR result. Keeps the review page focused on
-          verifying AI accuracy while signposting where hints live. */}
-      {!canSeeCorrectAnswer && questions.length > 0 && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
-          <Lightbulb className="h-4 w-4 mt-0.5 shrink-0" />
-          <p>{t("homework.reviewStudentTip")}</p>
+      {/* Completed banner — short + sweet */}
+      {isCompleted && (
+        <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/30 px-3 py-2 flex items-center gap-2 text-sm text-green-800 dark:text-green-200">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <span>
+            {t("homework.check.finalScore", { score: sessionData.finalScore ?? 0 })}
+          </span>
+          <AdaptiveScore value={sessionData.finalScore ?? 0} className="ml-auto" />
         </div>
       )}
 
-      {/* Questions list */}
+      {/* Round history (only shows with 1+ rounds, collapsed by default) */}
+      <RoundHistoryDrawer rounds={rounds} />
+
+      {/* Image tabs — hidden when session has exactly one photo */}
+      <ImageTabSwitcher
+        images={imageTabStats}
+        activeImageId={activeImage?.id ?? ""}
+        onSelect={(id) => setSelectedImageId(id)}
+      />
+
+      {/* Canvas or empty-state */}
       {questions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-lg border border-dashed">
           <p>{t("homework.noQuestions")}</p>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {questions.map((q, index) => (
-            <motion.div
-              key={q.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.04, duration: 0.25, ease: "easeOut" }}
-            >
-              <AdaptiveCard
-                className={cn(
-                  "border-l-4",
-                  q.isCorrect === true && "border-l-green-500",
-                  q.isCorrect === false && "border-l-red-500",
-                  q.isCorrect === null && "border-l-gray-300"
-                )}
-              >
-                <CardContent className="py-3 space-y-2">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-muted-foreground">
-                          #{q.questionNumber}
-                        </span>
-                        {q.needsReview && (
-                          <Badge variant="outline" className="text-amber-600 border-amber-300">
-                            <AlertTriangle className="h-3 w-3 mr-1" />
-                            {t("homework.needsReview")}
-                          </Badge>
-                        )}
-                        {q.aiKnowledgePoint && (
-                          <AdaptiveSubjectBadge subject="MATH">
-                            {q.aiKnowledgePoint}
-                          </AdaptiveSubjectBadge>
-                        )}
-                      </div>
-                      {/* OCR-detected image region (figure/diagram attached to
-                         the question). Only render when the session has a
-                         single source image — the OCR schema doesn't tag
-                         which image each region came from, so in multi-image
-                         sessions we'd crop the wrong source. Mirrors the
-                         gating used on /results. */}
-                      {q.imageRegion && sessionImages.length === 1 && sessionImages[0] && (
-                        <QuestionImage
-                          imageId={sessionImages[0].id}
-                          region={q.imageRegion}
-                          alt={t("homework.questionFigureAlt", { number: q.questionNumber })}
-                          className="mt-1 max-w-xs"
-                        />
-                      )}
-                      <p className="mt-1 text-sm"><MathText text={q.content} /></p>
-                    </div>
+      ) : activeImage ? (
+        <HomeworkCanvas
+          imageId={activeImage.id}
+          questions={questionsOnActive.map((q) => ({
+            id: q.id,
+            questionNumber: q.questionNumber,
+            isCorrect: q.isCorrect,
+            needsReview: q.needsReview,
+            imageRegion: q.imageRegion,
+          }))}
+          onTapQuestion={handleTapQuestion}
+          highlightedQuestionId={openQuestionId}
+        />
+      ) : null}
 
-                    {/* Correct/Incorrect toggle.
-                        When inactive the shadcn `outline` variant defaults to
-                        `bg-background` — that's DARK indigo in cosmic, which
-                        rendered as a black hole inside the white `bg-card`
-                        wrapper and swallowed the icon. Override with
-                        `bg-card text-card-foreground border-card-foreground/30`
-                        so the inactive state matches the card color scope
-                        across every tier (user feedback 2026-04-17). */}
-                    <div className="flex items-center gap-1 ml-3">
-                      <Button
-                        variant={q.isCorrect === false ? "destructive" : "outline"}
-                        size="icon"
-                        className={cn(
-                          "h-9 w-9",
-                          q.isCorrect !== false &&
-                            "bg-card text-card-foreground border-card-foreground/30 hover:bg-muted dark:bg-card dark:hover:bg-muted",
-                        )}
-                        onClick={() => handleToggleCorrect(q.id, q.isCorrect)}
-                        aria-label={t("homework.markIncorrect")}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant={q.isCorrect === true ? "default" : "outline"}
-                        size="icon"
-                        className={cn(
-                          "h-9 w-9",
-                          q.isCorrect === true && "bg-green-600 text-white hover:bg-green-700",
-                          q.isCorrect !== true &&
-                            "bg-card text-card-foreground border-card-foreground/30 hover:bg-muted dark:bg-card dark:hover:bg-muted",
-                        )}
-                        onClick={() => handleToggleCorrect(q.id, q.isCorrect)}
-                        aria-label={t("homework.markCorrect")}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Answer display. Students only see their own answer —
-                      the AI-extracted "correct answer" is hidden so they can
-                      self-reflect before requesting help on /results. */}
-                  <div
-                    className={cn(
-                      "grid gap-2 text-sm",
-                      canSeeCorrectAnswer ? "grid-cols-2" : "grid-cols-1",
-                    )}
-                  >
-                    <div>
-                      <span className="text-muted-foreground">{t("homework.studentAnswer")}:</span>{" "}
-                      <span className={cn(q.isCorrect === false && "text-red-600 font-medium")}>
-                        {q.studentAnswer ? <MathText text={q.studentAnswer} /> : "—"}
-                      </span>
-                    </div>
-                    {canSeeCorrectAnswer && (
-                      <div>
-                        <span className="text-muted-foreground">{t("homework.correctAnswer")}:</span>{" "}
-                        <span>{q.correctAnswer ? <MathText text={q.correctAnswer} /> : "—"}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex justify-end">
-                    <AdaptiveButton
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={() => deleteQuestion.mutate({ questionId: q.id })}
-                    >
-                      <Trash2 className="h-3 w-3 mr-1" />
-                      {t("common.delete")}
-                    </AdaptiveButton>
-                  </div>
-                </CardContent>
-              </AdaptiveCard>
-            </motion.div>
-          ))}
+      {/* Tip row — pinch hint + summary. Hidden for non-owners / completed
+         since there's nothing to do. */}
+      {questions.length > 0 && !isReadOnly && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span>{t("homework.markup.pinchHint")}</span>
+          <span>·</span>
+          <span>{t("homework.markup.tapHint")}</span>
         </div>
       )}
 
-      {/* Bottom actions */}
-      <div className="flex items-center gap-3 pt-4 border-t">
-        {/* Add question dialog */}
-        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-          <DialogTrigger asChild>
-            <AdaptiveButton variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              {t("homework.addQuestion")}
+      {/* Bottom action bar — owner only. Parents viewing a family-member's
+         session see the canvas read-only (no action bar), and COMPLETED
+         sessions collapse to the single "回到列表" button below. */}
+      {!isReadOnly ? (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur px-4 py-3 flex items-center gap-2 sm:static sm:bg-transparent sm:border-none sm:backdrop-blur-0 sm:px-0 sm:pt-4">
+          {status === "CHECKING" && wrongCount > 0 && (
+            <AdaptiveButton
+              variant="outline"
+              size="lg"
+              className="flex-1"
+              onClick={handleOpenCorrection}
+            >
+              <Camera className="h-4 w-4 mr-1" />
+              {tC("check.recheck")}
             </AdaptiveButton>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("homework.addQuestion")}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label>{t("homework.questionContent")}</Label>
-                <Input
-                  value={newQuestion.content}
-                  onChange={(e) =>
-                    setNewQuestion((p) => ({ ...p, content: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <Label>{t("homework.studentAnswer")}</Label>
-                <Input
-                  value={newQuestion.studentAnswer}
-                  onChange={(e) =>
-                    setNewQuestion((p) => ({ ...p, studentAnswer: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <Label>{t("homework.correctAnswer")}</Label>
-                <Input
-                  value={newQuestion.correctAnswer}
-                  onChange={(e) =>
-                    setNewQuestion((p) => ({ ...p, correctAnswer: e.target.value }))
-                  }
-                />
-              </div>
-              <AdaptiveButton onClick={handleAddQuestion} disabled={!newQuestion.content.trim()}>
-                {t("common.confirm")}
-              </AdaptiveButton>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Confirm results */}
-        {session.status === "RECOGNIZED" && (
+          )}
           <AdaptiveButton
-            className="flex-1"
             size="lg"
-            onClick={() => confirmResults.mutate({ sessionId })}
-            disabled={confirmResults.isPending || questions.length === 0}
+            className="flex-1"
+            disabled={
+              questions.length === 0 ||
+              finalizeCheck.isPending ||
+              pendingCorrection
+            }
+            onClick={handleFinalize}
           >
-            {t("homework.confirmResults")}
-            <ChevronRight className="h-4 w-4 ml-2" />
+            {finalizeCheck.isPending ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : null}
+            {/* CHECKING+wrongCount>0 opens the "结束检查" confirm dialog
+               where the student deliberately closes out with errors. Any
+               other state just says "完成核对". Wonder-tier "全部做好了" would
+               lie when wrong>0, so we use the neutral endCheck key there. */}
+            {status === "CHECKING" && wrongCount > 0
+              ? t("homework.markup.endCheck")
+              : t("homework.markup.finalize")}
           </AdaptiveButton>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="pt-4">
+          <AdaptiveButton
+            className="w-full"
+            size="lg"
+            onClick={() => router.push("/check")}
+          >
+            {tC("check.backToList")}
+          </AdaptiveButton>
+        </div>
+      )}
+
+      {/* Detail sheet */}
+      <QuestionDetailSheet
+        open={!!openQuestionId}
+        onOpenChange={(o) => !o && setOpenQuestionId(null)}
+        sessionId={sessionId}
+        question={openedQuestion}
+        canSeeCorrectAnswer={canSeeCorrectAnswer}
+        isCompleted={isCompleted}
+        canUseHelp={status === "CHECKING" || status === "COMPLETED"}
+        readOnly={isReadOnly}
+        onToggleCorrect={handleToggleCorrect}
+        onDelete={handleDelete}
+      />
+
+      {/* Confirm-finalize dialog */}
+      <Dialog open={confirmCompleteOpen} onOpenChange={setConfirmCompleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("homework.check.confirmCompleteTitle")}</DialogTitle>
+            <DialogDescription>
+              {status === "RECOGNIZED"
+                ? t("homework.markup.confirmUnjudged", { count: unjudgedCount })
+                : t("homework.check.confirmCompleteDesc", { count: wrongCount })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <AdaptiveButton
+              variant="outline"
+              onClick={() => setConfirmCompleteOpen(false)}
+            >
+              {t("common.cancel")}
+            </AdaptiveButton>
+            <AdaptiveButton
+              onClick={handleConfirmFinalize}
+              disabled={finalizeCheck.isPending}
+            >
+              {finalizeCheck.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              {status === "CHECKING" && wrongCount > 0
+                ? t("homework.markup.endCheck")
+                : t("homework.markup.finalize")}
+            </AdaptiveButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Correction-photos upload dialog (mirrors old /results behavior) */}
+      <Dialog
+        open={correctionDialogOpen}
+        onOpenChange={(open) => {
+          if (!submittingCorrection && !isUploadingCorrection && !pendingCorrection) {
+            setCorrectionDialogOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("homework.check.correctionFormTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("homework.check.uploadCorrectionPhotos")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {correctionImageIds.length > 0 && !pendingCorrection && (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <ImageIcon className="h-4 w-4" />
+                {t("homework.check.correctionPhotosUploaded", {
+                  count: correctionImageIds.length,
+                })}
+              </div>
+            )}
+
+            {isUploadingCorrection && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {correctionUploadProgress.status === "compressing"
+                      ? t("homework.check.compressingPhoto")
+                      : correctionUploadProgress.status === "confirming"
+                        ? t("homework.check.confirmingPhoto")
+                        : t("homework.check.uploadingPhoto")}
+                  </span>
+                  {correctionUploadProgress.status === "uploading" && (
+                    <span className="tabular-nums text-xs">
+                      {correctionUploadProgress.progress}%
+                    </span>
+                  )}
+                </div>
+                {correctionUploadProgress.status === "uploading" && (
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full bg-primary transition-[width] duration-200"
+                      style={{ width: `${correctionUploadProgress.progress}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {pendingCorrection ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-6 rounded-lg bg-muted/30">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <div className="text-center space-y-0.5">
+                  <p className="text-sm font-medium">
+                    {t("homework.check.gradingInProgress")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("homework.check.gradingSubtitle")}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <PhotoCapture
+                onFilesSelected={handleCorrectionFilesSelected}
+                disabled={isUploadingCorrection || submittingCorrection}
+                maxRemaining={MAX_IMAGES_PER_SESSION - correctionImageIds.length}
+              />
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <AdaptiveButton
+              variant="outline"
+              onClick={() => setCorrectionDialogOpen(false)}
+              disabled={
+                submittingCorrection || isUploadingCorrection || pendingCorrection
+              }
+            >
+              {t("common.cancel")}
+            </AdaptiveButton>
+            <AdaptiveButton
+              onClick={handleSubmitCorrectionPhotos}
+              disabled={
+                correctionImageIds.length === 0 ||
+                isUploadingCorrection ||
+                submittingCorrection ||
+                pendingCorrection
+              }
+            >
+              {submittingCorrection || pendingCorrection ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t("homework.check.submittingCorrections")}
+                </>
+              ) : (
+                t("homework.check.submitCorrections")
+              )}
+            </AdaptiveButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
